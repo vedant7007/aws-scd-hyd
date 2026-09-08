@@ -67,3 +67,15 @@ export type SeatCount = {
   seatsTaken: number
   capacity: number
 }
+
+/** Summary of the most recent reconciliation run, SPEC.md section 8. */
+export type ReconcileSummary = Keyed & {
+  ranAt: string
+  provider: string
+  checked: number
+  inserted: number
+  deactivated: number
+  mismatches: number
+  ok: boolean
+  error?: string
+}

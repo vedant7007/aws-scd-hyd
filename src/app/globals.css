@@ -366,3 +366,47 @@
   cursor: not-allowed;
   color: var(--muted);
 }
+
+/* Forms and admin surfaces. Still no values, only tokens. */
+.field {
+  background: var(--bg);
+  color: var(--text);
+  border: var(--hairline) solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.75em 1em;
+  font: inherit;
+  width: 100%;
+}
+
+.field:focus-visible {
+  border-color: var(--accent);
+}
+
+.stat {
+  border-top: var(--hairline) solid var(--border);
+  padding-top: 0.75rem;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.data-table th,
+.data-table td {
+  border-bottom: var(--hairline) solid var(--border);
+  padding: 0.6rem 1rem 0.6rem 0;
+  vertical-align: top;
+}
+
+.data-table th {
+  color: var(--muted);
+  font-weight: 500;
+  font-size: var(--step--1);
+}
+
+/* Wide tables scroll inside their own box, the page never scrolls sideways. */
+.scroll-x {
+  overflow-x: auto;
+}

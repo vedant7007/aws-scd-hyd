@@ -5,6 +5,21 @@ import { auth } from './auth/resource'
 
 const backend = defineBackend({ auth })
 
+/**
+ * Organisers only. Self sign up is off, so an account exists only because an
+ * admin created it, and /admin still checks the email against ADMIN_EMAILS
+ * afterwards. Two gates, because Cognito membership alone is not authorisation.
+ */
+const { cfnUserPool, cfnUserPoolClient } = backend.auth.resources.cfnResources
+cfnUserPool.adminCreateUserConfig = { allowAdminCreateUserOnly: true }
+
+/**
+ * USER_PASSWORD_AUTH so the sign in round trip happens on our server rather
+ * than in the browser. SPEC.md section 7 forbids AWS SDK calls from client
+ * components, and the SRP flow the Amplify UI library uses runs client side.
+ */
+cfnUserPoolClient.explicitAuthFlows = ['ALLOW_USER_PASSWORD_AUTH', 'ALLOW_REFRESH_TOKEN_AUTH']
+
 const data = backend.createStack('scd-data')
 
 /**

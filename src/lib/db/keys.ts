@@ -6,6 +6,7 @@ export const keys = {
   selection: (ticketRef: string, slotId: string) => ({ PK: `ATT#${ticketRef}`, SK: `SLOT#${slotId}` }),
   session: (sessionId: string) => ({ PK: `SESSION#${sessionId}`, SK: 'META' }),
   config: () => ({ PK: 'CONFIG', SK: 'EVENT' }),
+  reconcile: () => ({ PK: 'RECONCILE', SK: 'LATEST' }),
   subscriber: (email: string) => ({ PK: `SUB#${normaliseEmail(email)}`, SK: 'PROFILE' }),
 }
 
