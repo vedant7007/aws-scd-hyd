@@ -58,6 +58,12 @@
 
   /* deliberately flat, see SPEC.md section 10 */
   --shadow: none;
+
+  /* The QR plate does NOT flip with the theme. A scanner reads dark modules on
+     a light field, and an inverted QR fails on many phones. This has to work at
+     a gate, in sunlight, on someone else's cheap handset. */
+  --qr-bg: #ffffff;
+  --qr-ink: #0a0a0a;
 }
 
 /* Dark is first class. No explicit choice means follow the OS. */
@@ -320,4 +326,43 @@
 
 :root[data-theme="dark"] .on-light {
   display: none;
+}
+
+
+/* Pass QR. Fixed light plate, sized by CSS so the component names no numbers. */
+.qr-plate {
+  background: var(--qr-bg);
+  color: var(--qr-ink);
+  padding: 1rem;
+  border-radius: var(--radius);
+  width: min(20rem, 70vw);
+}
+
+.qr-plate svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* Session picker. Hairline rows, no cards. */
+.pick {
+  display: flex;
+  width: 100%;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1.5rem;
+  border-top: var(--hairline) solid var(--border);
+  padding-block: 1rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.pick[aria-pressed="true"] {
+  border-left: 3px solid var(--accent);
+  padding-left: 0.75rem;
+}
+
+.pick:disabled {
+  cursor: not-allowed;
+  color: var(--muted);
 }
