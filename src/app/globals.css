@@ -410,3 +410,42 @@
 .scroll-x {
   overflow-x: auto;
 }
+
+/* Gate scanner. Deliberately no new palette entries, the theme is not final:
+   tone is carried by fill, border style and outline using existing tokens. */
+.scan-video {
+  width: min(28rem, 100%);
+  border: var(--hairline) solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.scan-card {
+  background: var(--surface);
+  border-left: 4px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+}
+
+.scan-ok {
+  border-left-color: var(--accent);
+}
+
+/* Already done. Loud on purpose, a silent success here means a double entry. */
+.scan-repeat {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-left-color: var(--accent-ink);
+}
+
+.scan-queued {
+  border-left-style: dashed;
+  border-left-color: var(--accent);
+}
+
+.scan-problem {
+  background: var(--accent);
+  color: var(--accent-ink);
+  outline: 3px double var(--accent-ink);
+  outline-offset: -8px;
+}
