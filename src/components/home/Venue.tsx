@@ -9,9 +9,9 @@ export function Venue() {
       <div className="flex flex-col gap-10">
         <div>
           <h3 className="display text-step-2">{venue.name}</h3>
-          {venue.address ? <p className="measure mt-3 text-muted">{venue.address}</p> : null}
+          <p className="measure mt-3 text-muted">{venue.address}</p>
           <p className="mt-4">
-            <a className="link" href={venue.mapsUrl} rel="noreferrer noopener" target="_blank">
+            <a className="link" href={venue.directionsUrl} rel="noreferrer noopener" target="_blank">
               Open in Google Maps
             </a>
           </p>

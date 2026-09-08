@@ -17,18 +17,17 @@ export const event = {
 
 export const venue: {
   name: string
-  address: string | null
-  mapsUrl: string
+  address: string
+  directionsUrl: string
 } = {
   name: 'Vidya Jyothi Institute of Technology',
+  address:
+    'Vidya Jyothi Institute of Technology, Aziznagar Village Road, Aziznagar, Hyderabad, Telangana 500075',
   /**
-   * TODO(vedant): the full postal address was not in the spec. Left null on
-   * purpose rather than guessed, because a wrong address on a public event page
-   * sends people to the wrong gate. The venue block hides this line until set.
+   * The authoritative pin, supplied by Vedant. Deliberately not a name search,
+   * which can resolve to a different campus and send people to the wrong gate.
    */
-  address: null,
-  mapsUrl:
-    'https://www.google.com/maps/search/?api=1&query=Vidya+Jyothi+Institute+of+Technology+Hyderabad',
+  directionsUrl: 'https://maps.app.goo.gl/PAPnu2YHVdWE2pvQ6',
 }
 
 /**
