@@ -1,6 +1,6 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb'
-import { outputs, required } from '@/lib/outputs'
+import { outputs, required } from '../outputs'
 
 // This module is server only. Importing it from a client component is a bug,
 // see SPEC.md section 7. Nothing here may ever be reachable from the browser.

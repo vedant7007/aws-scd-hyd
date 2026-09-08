@@ -2,8 +2,9 @@ import { defineBackend } from '@aws-amplify/backend'
 import { RemovalPolicy, Stack } from 'aws-cdk-lib'
 import { AttributeType, BillingMode, ProjectionType, Table } from 'aws-cdk-lib/aws-dynamodb'
 import { auth } from './auth/resource'
+import { reconcile } from './functions/reconcile/resource'
 
-const backend = defineBackend({ auth })
+const backend = defineBackend({ auth, reconcile })
 
 /**
  * Organisers only. Self sign up is off, so an account exists only because an
@@ -31,6 +32,9 @@ const table = new Table(data, 'ScdTable', {
   sortKey: { name: 'SK', type: AttributeType.STRING },
   billingMode: BillingMode.PAY_PER_REQUEST,
   pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: true },
+  // Rate limit counters carry expiresAt and clean themselves up. Nothing that
+  // matters ever gets a TTL, so attendee records are unaffected.
+  timeToLiveAttribute: 'expiresAt',
   removalPolicy: RemovalPolicy.RETAIN,
 })
 
@@ -49,6 +53,11 @@ backend.addOutput({
   },
 })
 
-// TODO: reconcile function and its hourly EventBridge schedule land in phase 3.
+// The reconcile Lambda is the only backend component that touches the table,
+// and it gets exactly the access it needs, nothing wider.
+table.grantReadWriteData(backend.reconcile.resources.lambda)
+backend.reconcile.addEnvironment('SCD_TABLE_NAME', table.tableName)
+backend.reconcile.addEnvironment('TICKETING_PROVIDER', process.env.TICKETING_PROVIDER ?? 'mock')
+
 // TODO: the Amplify SSR compute role needs read and write on this table plus
-// ses:SendEmail. That grant is wired when hosting is connected in phase 1.
+// ses:SendEmail. That grant is wired when hosting is connected in phase 4.

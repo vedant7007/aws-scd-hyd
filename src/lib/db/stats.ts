@@ -1,4 +1,4 @@
-import { halls as fallbackHalls, slots as fallbackSlots } from '@/content/event'
+import { halls as fallbackHalls, slots as fallbackSlots } from '../../content/event'
 import { getConfig, getReconcileSummary, getSessionsInSlot, listAttendees } from './queries'
 import type { Attendee, FoodPreference, Hall, ReconcileSummary, Slot, Tier } from './types'
 

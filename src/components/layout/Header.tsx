@@ -10,7 +10,21 @@ export function Header() {
         <Link href="/" className="display text-step-1 no-underline text-text">
           {event.shortName}
         </Link>
-        <ThemeToggle />
+
+        <div className="flex flex-wrap items-center gap-x-8 gap-y-2">
+          <nav aria-label="Main" className="flex flex-wrap gap-x-6 gap-y-2 text-step--1">
+            <Link className="link" href="/schedule">
+              Schedule
+            </Link>
+            <Link className="link" href="/speakers">
+              Speakers
+            </Link>
+            <Link className="link" href="/sponsors">
+              Sponsors
+            </Link>
+          </nav>
+          <ThemeToggle />
+        </div>
       </Container>
     </header>
   )

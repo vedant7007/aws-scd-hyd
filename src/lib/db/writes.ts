@@ -1,6 +1,6 @@
 import { ConditionalCheckFailedException } from '@aws-sdk/client-dynamodb'
 import { PutCommand, TransactWriteCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
-import type { TicketEvent } from '@/lib/tickets/provider'
+import type { TicketEvent } from '../tickets/provider'
 import { ddb, tableName } from './client'
 import { gsi1, keys, newPassToken, normaliseEmail } from './keys'
 import { getAttendeeWithSelections } from './queries'

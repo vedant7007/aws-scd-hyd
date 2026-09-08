@@ -7,7 +7,7 @@ import {
 import { CognitoJwtVerifier } from 'aws-jwt-verify'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { required } from '@/lib/outputs'
+import { required } from '../outputs'
 
 // Server only. SPEC.md section 7: no AWS SDK call ever runs in the browser, so
 // the whole sign in round trip happens here and the browser only ever holds an

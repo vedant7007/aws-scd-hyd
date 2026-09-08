@@ -449,3 +449,22 @@
   outline: 3px double var(--accent-ink);
   outline-offset: -8px;
 }
+
+/* Schedule. Time down and halls across on a wide screen, one list per hall on
+   a narrow one. Never a table that scrolls sideways on a phone. */
+.schedule-stack {
+  display: block;
+}
+
+.schedule-wide {
+  display: none;
+}
+
+@media (min-width: 60rem) {
+  .schedule-stack {
+    display: none;
+  }
+  .schedule-wide {
+    display: block;
+  }
+}

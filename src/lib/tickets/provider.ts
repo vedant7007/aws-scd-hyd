@@ -1,4 +1,4 @@
-import type { Attendee } from '@/lib/db/types'
+import type { Attendee } from '../db/types'
 import { mockProvider } from './mock'
 
 export type TicketEventType = 'registered' | 'cancelled' | 'refunded'
