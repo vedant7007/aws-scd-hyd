@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# committed with empty values, see SPEC.md section 5
+!.env.example
+
+# amplify gen 2
+/.amplify/
+amplify_outputs*.json
