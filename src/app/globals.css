@@ -1,26 +1,287 @@
+/* Fonts must be the first @import or the browser drops them. */
+@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700..800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap");
 @import "tailwindcss";
 
+/* ===========================================================================
+   THE ONLY FILE WITH VISUAL IDENTITY IN IT.  SPEC.md section 10.
+
+   Every colour, font, radius, shadow, duration and type step lives here.
+   A component that hardcodes any of them is a bug. The real theme lands from
+   the design team on 12 September and replacing it must stay a one-file edit,
+   so keep it that way.
+
+   `npm run check:tokens` fails the build if a literal leaks into a component.
+   =========================================================================== */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
+
+  /* palette, placeholder until 12 September */
+  --bg: #ffffff;
+  --surface: #f6f6f5;
+  --text: #0a0a0a;
+  --muted: #6b6b6b;
+  --border: #e4e4e3;
+  --accent: #ff9900;
+  --accent-ink: #0a0a0a;
+
+  /* type */
+  --font-display: "Bricolage Grotesque", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* geometry */
+  --radius: 2px;
+  --gutter: clamp(1.25rem, 4vw, 4rem);
+  --measure: 68ch;
+  --container: 90rem;
+  --hairline: 1px;
+
+  /* type scale, clamp throughout, no fixed sizes anywhere */
+  --step--1: clamp(0.8rem, 0.77rem + 0.15vw, 0.875rem);
+  --step-0: clamp(1rem, 0.96rem + 0.2vw, 1.0625rem);
+  --step-1: clamp(1.2rem, 1.1rem + 0.5vw, 1.5rem);
+  --step-2: clamp(1.6rem, 1.35rem + 1.25vw, 2.25rem);
+  --step-3: clamp(2.2rem, 1.6rem + 3vw, 3.75rem);
+  --step-4: clamp(3rem, 1.6rem + 6.5vw, 6.5rem);
+  --step-5: clamp(3.4rem, 0.9rem + 11.5vw, 10.5rem);
+
+  /* display type runs large and tight */
+  --display-weight: 800;
+  --display-tracking: -0.04em;
+  --display-leading: 0.9;
+
+  /* motion. every use is gated on prefers-reduced-motion below. */
+  --duration: 420ms;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --ticker-duration: 40s;
+
+  /* deliberately flat, see SPEC.md section 10 */
+  --shadow: none;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
+/* Dark is first class. No explicit choice means follow the OS. */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0a0a0a;
+    --surface: #141414;
+    --text: #fafafa;
+    --muted: #8a8a8a;
+    --border: #232323;
+    --accent: #ff9900;
+    --accent-ink: #0a0a0a;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* An explicit choice wins in both directions. The server writes this attribute
+   from the cookie, so the first paint is already correct and nothing flashes. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0a0a0a;
+  --surface: #141414;
+  --text: #fafafa;
+  --muted: #8a8a8a;
+  --border: #232323;
+  --accent: #ff9900;
+  --accent-ink: #0a0a0a;
+}
+
+/* Expose the tokens to Tailwind so utilities resolve to them and never to a
+   literal. bg-bg, text-muted, border-border, font-display, text-step-4. */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+  --font-mono: var(--font-mono);
+
+  --text-step--1: var(--step--1);
+  --text-step-0: var(--step-0);
+  --text-step-1: var(--step-1);
+  --text-step-2: var(--step-2);
+  --text-step-3: var(--step-3);
+  --text-step-4: var(--step-4);
+  --text-step-5: var(--step-5);
+
+  --radius-token: var(--radius);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: var(--step-0);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Visible focus everywhere, SPEC.md section 2 rule 7. */
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: var(--radius);
+  }
+
+  ::selection {
+    background: var(--accent);
+    color: var(--accent-ink);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Semantic classes. Components compose these instead of naming raw values.
+   --------------------------------------------------------------------------- */
+
+.gutter {
+  padding-inline: var(--gutter);
+}
+
+.measure {
+  max-width: var(--measure);
+}
+
+.container-x {
+  max-width: var(--container);
+  margin-inline: auto;
+}
+
+.display {
+  font-family: var(--font-display);
+  font-weight: var(--display-weight);
+  letter-spacing: var(--display-tracking);
+  line-height: var(--display-leading);
+  text-wrap: balance;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.rule {
+  border: 0;
+  border-top: var(--hairline) solid var(--border);
+}
+
+.link {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.25em;
+  text-decoration-thickness: var(--hairline);
+  text-decoration-color: var(--border);
+  transition: text-decoration-color var(--duration) var(--ease);
+}
+
+.link:hover {
+  text-decoration-color: var(--accent);
+}
+
+.cta {
+  display: inline-block;
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 0.75em 1.5em;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.cta-quiet {
+  display: inline-block;
+  border: var(--hairline) solid var(--border);
+  border-radius: var(--radius);
+  color: var(--muted);
+  padding: 0.75em 1.5em;
+}
+
+/* One orchestrated entrance per page, not a fade on every scroll. The stagger
+   lives here rather than as inline styles, so components stay free of values. */
+.enter > * {
+  animation: enter-rise var(--duration) var(--ease) both;
+}
+
+.enter > *:nth-child(1) { animation-delay: 0ms; }
+.enter > *:nth-child(2) { animation-delay: 90ms; }
+.enter > *:nth-child(3) { animation-delay: 180ms; }
+.enter > *:nth-child(4) { animation-delay: 270ms; }
+.enter > *:nth-child(5) { animation-delay: 360ms; }
+.enter > *:nth-child(n + 6) { animation-delay: 450ms; }
+
+@keyframes enter-rise {
+  from {
+    opacity: 0;
+    transform: translateY(0.6rem);
+  }
+}
+
+/* Ticker marquee. Two identical halves translated by half the track. */
+.ticker {
+  background: var(--accent);
+  color: var(--accent-ink);
+  overflow: hidden;
+}
+
+.ticker-track {
+  display: flex;
+  width: max-content;
+  animation: ticker-slide var(--ticker-duration) linear infinite;
+}
+
+@keyframes ticker-slide {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track {
+    animation: none;
+  }
+}
+
+/* Theme toggle shows the label for the theme it will switch TO. Driven by CSS
+   only, so the server and client markup are identical and nothing mismatches. */
+.on-dark {
+  display: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .on-dark {
+    display: inline;
+  }
+  :root:not([data-theme="light"]) .on-light {
+    display: none;
+  }
+}
+
+:root[data-theme="dark"] .on-dark {
+  display: inline;
+}
+
+:root[data-theme="dark"] .on-light {
+  display: none;
 }

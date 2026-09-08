@@ -36,4 +36,4 @@ export const slots: Slot[] = [
 ]
 
 /** TODO(vedant): flip when the registration open date is decided. */
-export const registrationOpen = false
+export const registrationOpen: boolean = false

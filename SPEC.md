@@ -406,20 +406,22 @@ Everything is code. Nothing is clicked in the console except the one-time bootst
 
 Kept current as work lands. Everything else in this file is the plan, this section is the fact.
 
-**Phase 0 code is written. Nothing is deployed.**
+**Phase 0 is deployed and verified. Phase 1 shell, hero, ticker and countdown are built and running locally.**
 
 | Thing | State |
 |---|---|
-| `amplify/` table and auth definitions | written |
-| `src/lib/db` | written |
-| `scripts/seed.ts` | written, not yet run |
-| CDK bootstrap in `ap-south-1` | **not done.** `CDKToolkit` stack does not exist |
-| `npx ampx sandbox` | never run, blocked on the bootstrap |
-| Items in DynamoDB | none, no table exists yet |
+| CDK bootstrap in `ap-south-1` | done |
+| `npx ampx sandbox` | deployed, table live |
+| Seeded data | config with 3 halls and 4 slots, 12 sessions, 50 attendees |
+| Table name resolution | `amplify_outputs.json` first, `SCD_TABLE_NAME` fallback, same path for scripts and app |
+| Design tokens | `src/app/globals.css`, placeholders until 12 September |
+| Theme toggle | cookie backed, server rendered, no flash, verified |
+| Landing page | hero, ticker, countdown. Tracks onward still to build |
+| Amplify Hosting | not connected, nothing deployed to a live URL |
 
-The local `scd` profile resolves to IAM user `claude-code-scd`. Two separate permission gaps, both on Vedant:
+### Known traps
 
-1. It is not an administrator, so it cannot run `cdk bootstrap` or `npx ampx sandbox`. Run the one-time bootstrap of `ap-south-1` as an admin principal.
-2. It has no DynamoDB permissions at all. `npm run seed` fails with `AccessDeniedException` on `dynamodb:BatchWriteItem`. Once the table exists, grant `claude-code-scd` read and write on it, or run the seed under an admin profile.
-
-Everything that does not need AWS has been verified: `npm run typecheck` and `eslint` are clean, and `scripts/seed.ts` builds the config item, the full session grid and 50 attendees and passes its own key and pass-token checks before it makes a single API call.
+- **Re-running the seed rotates every `passToken`.** Tokens come from `crypto.randomBytes` on each run, so any pass link handed out before a re-seed stops working. Fine while the data is fake. Before the Phase 5 rehearsal, either stop re-seeding or teach the seed to keep an existing attendee's token.
+- **`amplify/package.json` is load-bearing.** One line, `{"type": "module"}`. Without it `ampx` cannot resolve extensionless imports in `amplify/backend.ts` even though `tsc` passes.
+- **Fonts load from Google Fonts via `@import` in `globals.css`,** not `next/font`. That keeps every font name inside the one themeable file, at the cost of a third party request on first paint. Revisit when the real theme lands.
+- `npm run check:tokens` fails the build if a hex value, font name, radius or shadow appears anywhere in `src/` outside `globals.css`.

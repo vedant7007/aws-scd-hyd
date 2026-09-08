@@ -7,9 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "seed": "tsx scripts/seed.ts",
+    "seed": "tsx --env-file-if-exists=.env.local scripts/seed.ts",
     "sandbox": "ampx sandbox --profile scd",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "check:tokens": "node scripts/check-tokens.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "3.1127.0",
