@@ -60,3 +60,10 @@ export type Subscriber = Keyed & {
   email: string
   createdAt: string
 }
+
+/** Projection of a Session sent to the browser so the picker can show live seats. */
+export type SeatCount = {
+  sessionId: string
+  seatsTaken: number
+  capacity: number
+}

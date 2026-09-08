@@ -10,7 +10,8 @@
     "seed": "tsx --env-file-if-exists=.env.local scripts/seed.ts",
     "sandbox": "ampx sandbox --profile scd",
     "typecheck": "tsc --noEmit",
-    "check:tokens": "node scripts/check-tokens.mjs"
+    "check:tokens": "node scripts/check-tokens.mjs",
+    "race-test": "tsx --env-file-if-exists=.env.local scripts/race-test.ts"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "3.1127.0",

@@ -64,3 +64,15 @@ export const passes: Pass[] = [
     sessionsAllowed: null,
   },
 ]
+
+/**
+ * SPEC.md section 9. How many slots a tier may fill, read from here and never
+ * hardcoded at a call site.
+ *
+ * TODO(vedant): every tier is null, meaning undecided. Null is treated as no
+ * cap beyond the one-per-slot rule the table key already enforces. Set real
+ * numbers and the picker starts refusing extra slots with no other change.
+ */
+export function sessionsAllowedFor(tier: Tier): number | null {
+  return passes.find((p) => p.id === tier)?.sessionsAllowed ?? null
+}
