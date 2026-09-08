@@ -44,6 +44,7 @@ No student accounts, passwords, or sign-up. No payment processing, and we never 
 3. **No secrets in the repo.** `.env.local` is gitignored. `.env.example` is committed with empty values.
 4. **All AWS access is server-side.** No AWS SDK calls from client components, ever. No AWS credentials reach the browser.
 5. **All visual identity lives in `src/app/globals.css`.** If a component hardcodes a hex value, a font, a radius or a shadow, that is a bug. The theme is not final and changing it must be a one-file edit.
+   *Amended.* The intent is one-file theme swapping, not banning `next/font`. Loading a face needs a real module import, so `src/app/layout.tsx` may name font families, self host them with `next/font`, and expose them as `--font-*-face` CSS variables. `globals.css` composes the actual stack, fallbacks included, from those variables, so changing a family is still an edit to `globals.css` plus the one import line. `npm run check:tokens` enforces the rule and exempts only that file, only for font names.
 6. **TypeScript strict, no `any`.**
 7. **Keyboard reachable, visible focus rings, and all motion respects `prefers-reduced-motion`.**
 
@@ -134,7 +135,9 @@ TICKETING_WEBHOOK_SECRET=
 KONFHUB_API_KEY=
 KONFHUB_EVENT_ID=
 
-SES_FROM="AWS SCD Hyderabad <hello@awsscdhyd.in>"
+# Send only. There is no mailbox on awsscdhyd.in, so replies must go elsewhere.
+SES_FROM="AWS SBG VJIT <vjit@awsscdhyd.in>"
+SES_REPLY_TO=awssbgvjit@gmail.com
 ADMIN_EMAILS=
 CRON_SECRET=
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
@@ -352,7 +355,19 @@ SES, `ap-south-1`. Three templates, plain and mobile-legible.
 2. **Session reminder.** Sent to anyone who has not picked sessions, a week out.
 3. **Day before.** Timings, directions, the pass link again.
 
-Until SES production access is granted the account is sandboxed and can only send to verified addresses. Build against a `console.log` transport in development.
+### Addresses
+
+| Header | Value |
+|---|---|
+| `From` | `AWS SBG VJIT <vjit@awsscdhyd.in>` |
+| `Reply-To` | `awssbgvjit@gmail.com` |
+| Public contact on the site | `awssbgvjit@gmail.com` |
+
+**The domain is send only. There is no mailbox on `awsscdhyd.in`.** Nothing delivered to `vjit@awsscdhyd.in` is ever read, so every outbound message must set `Reply-To`, and the site never prints a domain address as a way to reach us. A student replying to a confirmation email has to land in the Gmail inbox, not in a black hole.
+
+Set `Reply-To` in the SES call itself, not in the template body. A template that says "write to us at" and an envelope that replies elsewhere will drift apart.
+
+Until SES production access is granted the account is sandboxed and can only send to verified addresses. Verify `awssbgvjit@gmail.com` first so the whole loop is testable before the domain is live. Build against a `console.log` transport in development.
 
 ---
 
@@ -406,7 +421,7 @@ Everything is code. Nothing is clicked in the console except the one-time bootst
 
 Kept current as work lands. Everything else in this file is the plan, this section is the fact.
 
-**Phase 0 is deployed and verified. Phase 1 shell, hero, ticker and countdown are built and running locally.**
+**Phase 0 is deployed and verified. The Phase 1 landing page is complete: hero, ticker, countdown, about, tracks, speakers, passes, sponsors, venue, FAQ and footer, plus /code-of-conduct.**
 
 | Thing | State |
 |---|---|
@@ -416,12 +431,14 @@ Kept current as work lands. Everything else in this file is the plan, this secti
 | Table name resolution | `amplify_outputs.json` first, `SCD_TABLE_NAME` fallback, same path for scripts and app |
 | Design tokens | `src/app/globals.css`, placeholders until 12 September |
 | Theme toggle | cookie backed, server rendered, no flash, verified |
-| Landing page | hero, ticker, countdown. Tracks onward still to build |
+| Landing page | all of section 11 built. Content is TODO(vedant) placeholders |
+| Fonts | self hosted by next/font in layout.tsx, no third party request |
+| Seed pass tokens | derived from ticketRef, stable across re-seeds |
 | Amplify Hosting | not connected, nothing deployed to a live URL |
 
 ### Known traps
 
-- **Re-running the seed rotates every `passToken`.** Tokens come from `crypto.randomBytes` on each run, so any pass link handed out before a re-seed stops working. Fine while the data is fake. Before the Phase 5 rehearsal, either stop re-seeding or teach the seed to keep an existing attendee's token.
+- **Seed pass tokens are derived, real ones are not.** `scripts/seed.ts` derives a token from the ticket ref with a fixed HMAC key so re-seeding is stable and a bookmarked pass link keeps working. Real attendees still get `crypto.randomBytes` through `newPassToken` in the webhook. Never use the derived path for a real attendee.
 - **`amplify/package.json` is load-bearing.** One line, `{"type": "module"}`. Without it `ampx` cannot resolve extensionless imports in `amplify/backend.ts` even though `tsc` passes.
-- **Fonts load from Google Fonts via `@import` in `globals.css`,** not `next/font`. That keeps every font name inside the one themeable file, at the cost of a third party request on first paint. Revisit when the real theme lands.
+- **`src/app/layout.tsx` is the only file allowed to name a font family.** It self hosts the three faces with `next/font` and exposes them as `--font-*-face`. `globals.css` composes the stacks and fallbacks. `check:tokens` exempts that one file for font names only.
 - `npm run check:tokens` fails the build if a hex value, font name, radius or shadow appears anywhere in `src/` outside `globals.css`.

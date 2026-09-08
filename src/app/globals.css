@@ -1,5 +1,3 @@
-/* Fonts must be the first @import or the browser drops them. */
-@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700..800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap");
 @import "tailwindcss";
 
 /* ===========================================================================
@@ -25,10 +23,12 @@
   --accent: #ff9900;
   --accent-ink: #0a0a0a;
 
-  /* type */
-  --font-display: "Bricolage Grotesque", system-ui, sans-serif;
-  --font-body: "Inter", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  /* type. The face itself is loaded and self hosted by next/font in layout.tsx
+     and handed over as --font-*-face. The stack, including every fallback, is
+     still composed here, so swapping a family stays a change to these lines. */
+  --font-display: var(--font-display-face), system-ui, sans-serif;
+  --font-body: var(--font-body-face), system-ui, sans-serif;
+  --font-mono: var(--font-mono-face), ui-monospace, monospace;
 
   /* geometry */
   --radius: 2px;
@@ -216,6 +216,42 @@
   border-radius: var(--radius);
   color: var(--muted);
   padding: 0.75em 1.5em;
+}
+
+.badge {
+  display: inline-block;
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-radius: var(--radius);
+  padding: 0.15em 0.6em;
+  font-size: var(--step--1);
+  font-weight: 600;
+}
+
+/* Native details and summary, so the accordion is keyboard operable and
+   announced correctly without a line of JavaScript. Only the marker is ours. */
+.faq summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding-block: 1.25rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.faq summary::-webkit-details-marker {
+  display: none;
+}
+
+.faq summary::after {
+  content: "+";
+  color: var(--muted);
+  font-family: var(--font-mono);
+}
+
+.faq details[open] summary::after {
+  content: "2";
 }
 
 /* One orchestrated entrance per page, not a fade on every scroll. The stagger

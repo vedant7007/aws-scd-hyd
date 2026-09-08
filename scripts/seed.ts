@@ -7,6 +7,7 @@
  * so it is safe to run against a sandbox table as often as you like. It refuses
  * to touch a table whose name does not look like a sandbox table.
  */
+import { createHmac } from 'node:crypto'
 import { BatchWriteCommand } from '@aws-sdk/lib-dynamodb'
 import { ddb, tableName } from '../src/lib/db/client'
 import { gsi1, keys, newPassToken, normaliseEmail } from '../src/lib/db/keys'
@@ -14,6 +15,19 @@ import type { Attendee, FoodPreference, Session, Tier, Track } from '../src/lib/
 import { halls, registrationOpen, slots } from '../src/content/event'
 
 const ATTENDEE_COUNT = 50
+
+/**
+ * Seed pass tokens are derived, not random, so re-seeding hands back the same
+ * links and a pass URL you bookmarked yesterday still opens today. This is for
+ * fake data only. Real attendees get crypto.randomBytes through newPassToken in
+ * the webhook, see SPEC.md section 7, and nothing here is ever used for them.
+ *
+ * Same shape as a real token: 12 bytes rendered as 16 url-safe characters.
+ */
+const SEED_TOKEN_SECRET = 'aws-scd-hyd-seed-v1'
+
+const seedPassToken = (ticketRef: string) =>
+  createHmac('sha256', SEED_TOKEN_SECRET).update(ticketRef).digest().subarray(0, 12).toString('base64url')
 
 const FIRST = ['Aarav', 'Diya', 'Rohan', 'Ananya', 'Kabir', 'Meera', 'Arjun', 'Sana', 'Vihaan', 'Ira']
 const LAST = ['Reddy', 'Rao', 'Sharma', 'Naidu', 'Iyer', 'Khan', 'Gupta', 'Menon', 'Das', 'Verma']
@@ -50,7 +64,7 @@ function buildAttendees(createdAt: string): Attendee[] {
   return Array.from({ length: ATTENDEE_COUNT }, (_, i) => {
     const ticketRef = `SEED-${String(i + 1).padStart(3, '0')}`
     const name = `${pick(FIRST, i)} ${pick(LAST, i * 3)}`
-    const passToken = newPassToken()
+    const passToken = seedPassToken(ticketRef)
     return {
       ...keys.attendee(ticketRef),
       ...gsi1.attendeeByToken(passToken),
@@ -86,9 +100,16 @@ async function batchPut(items: Record<string, unknown>[]): Promise<void> {
 }
 
 function selfCheck(): void {
+  // The real generator, used by the webhook, must stay random and well shaped.
   const token = newPassToken()
   if (!/^[A-Za-z0-9_-]{16}$/.test(token)) throw new Error(`pass token is not 16 url-safe chars: ${token}`)
   if (new Set(Array.from({ length: 500 }, newPassToken)).size !== 500) throw new Error('pass tokens collided')
+
+  // The seed generator must be the same shape but stable across runs.
+  const seeded = seedPassToken('SEED-001')
+  if (!/^[A-Za-z0-9_-]{16}$/.test(seeded)) throw new Error(`seed token is not 16 url-safe chars: ${seeded}`)
+  if (seedPassToken('SEED-001') !== seeded) throw new Error('seed token is not deterministic')
+  if (seedPassToken('SEED-002') === seeded) throw new Error('seed token does not vary by ticket ref')
   const sessions = buildSessions()
   if (sessions.length !== halls.length * slots.length) throw new Error('session grid is incomplete')
   if (new Set(sessions.map((s) => s.PK)).size !== sessions.length) throw new Error('duplicate session key')

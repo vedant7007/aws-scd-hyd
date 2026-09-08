@@ -1,5 +1,5 @@
 import { Container } from '@/components/layout/Container'
-import { event, registrationOpen } from '@/content/event'
+import { event, registrationOpen, venue } from '@/content/event'
 import { Countdown } from './Countdown'
 import { HeroBackground } from './HeroBackground'
 
@@ -28,7 +28,7 @@ export function Hero() {
           </div>
           <div>
             <dt className="text-step--1 text-muted">Venue</dt>
-            <dd>{event.venue.name}</dd>
+            <dd>{venue.name}</dd>
           </div>
         </dl>
 

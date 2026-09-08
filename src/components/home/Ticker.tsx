@@ -1,9 +1,9 @@
-import { event } from '@/content/event'
+import { event, venue } from '@/content/event'
 
 const ITEMS = [
   event.name,
   event.dateLabel,
-  event.venue.name,
+  venue.name,
   'AI and agents',
   'Cloud engineering',
   'Careers',

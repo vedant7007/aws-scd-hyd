@@ -7,15 +7,40 @@ export const event = {
   /** Doors, and what the landing page counts down to. */
   startsAt: '2026-10-30T09:00:00+05:30',
   dateLabel: 'Friday 30 October 2026',
-  venue: {
-    name: 'Vidya Jyothi Institute of Technology',
-    address: 'Aziz Nagar Gate, C.B. Post, Hyderabad, Telangana 500075',
-  },
   host: 'AWS Student Builders Group, VJIT',
-  contactEmail: 'hello@awsscdhyd.in',
+  // Public contact. Deliberately the Gmail address, not the domain: awsscdhyd.in
+  // is send only and has no mailbox, so a domain address here would lose replies.
+  contactEmail: 'awssbgvjit@gmail.com',
   /** Required on every page footer, wording is fixed. */
   disclaimer: 'AWS User Groups are run by independent volunteers and are not organized by AWS.',
 } as const
+
+export const venue: {
+  name: string
+  address: string | null
+  mapsUrl: string
+} = {
+  name: 'Vidya Jyothi Institute of Technology',
+  /**
+   * TODO(vedant): the full postal address was not in the spec. Left null on
+   * purpose rather than guessed, because a wrong address on a public event page
+   * sends people to the wrong gate. The venue block hides this line until set.
+   */
+  address: null,
+  mapsUrl:
+    'https://www.google.com/maps/search/?api=1&query=Vidya+Jyothi+Institute+of+Technology+Hyderabad',
+}
+
+/**
+ * TODO(vedant): none of these are confirmed. Each stays null until you supply
+ * it, and the venue block renders only the ones that are filled in.
+ */
+export const travel: { label: string; detail: string | null }[] = [
+  { label: 'Metro', detail: null },
+  { label: 'Bus', detail: null },
+  { label: 'Cab', detail: null },
+  { label: 'Parking', detail: null },
+]
 
 /**
  * TODO(vedant): hall count is 3 or 4 and unconfirmed, names and capacities are
@@ -37,3 +62,9 @@ export const slots: Slot[] = [
 
 /** TODO(vedant): flip when the registration open date is decided. */
 export const registrationOpen: boolean = false
+
+export const about = [
+  'A one day community conference put on by students, for students, in Hyderabad.',
+  'Three tracks run in parallel across the day: AI and agents, cloud engineering, and careers. You pick one session per slot and keep your seat.',
+  'It is run by volunteers from the AWS Student Builders Group at VJIT, and it is not an AWS event.',
+]
