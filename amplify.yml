@@ -1,0 +1,43 @@
+version: 1
+# Amplify's default build spec for a Gen 2 backend plus a Next.js SSR frontend,
+# with one deliberate change: npm install instead of npm ci, in both phases.
+#
+# Why. Two transitive packages, @aws-amplify/data-construct and
+# @aws-amplify/graphql-api-construct, each declare 144 bundledDependencies and
+# ship vendored node_modules inside their tarballs. npm install records that
+# vendored tree in package-lock.json, then npm ci recomputes the tree, disagrees
+# with what was recorded, and exits EUSAGE. Regenerating the lockfile does not
+# settle it, because the mismatch is produced fresh on every resolve. npm ci is
+# strict by design and correct to refuse; npm install reconciles and proceeds.
+#
+# The cost is that builds are no longer pinned strictly to the lockfile. Direct
+# dependencies are still exact, .npmrc sets save-exact=true, so the drift is
+# limited to transitive ranges. Revisit if npm fixes bundled dependency locking
+# or if Amplify drops those constructs, which we do not use. SPEC.md section 3
+# rules out Amplify Data and AppSync, they arrive only via @aws-amplify/backend.
+#
+# NOTE: this file overrides the build spec stored in the Amplify console. If the
+# console settings were customised beyond the defaults, fold those changes in
+# here, because the console copy is ignored once this file exists.
+backend:
+  phases:
+    build:
+      commands:
+        - npm install --cache .npm --prefer-offline
+        - npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm install --cache .npm --prefer-offline
+    build:
+      commands:
+        - npm run build
+  artifacts:
+    baseDirectory: .next
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - .next/cache/**/*
+      - .npm/**/*
