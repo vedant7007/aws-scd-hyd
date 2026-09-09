@@ -446,7 +446,7 @@ Production build, median of five warm requests, local:
 | `/admin/scan` | 20 ms, was 147 ms |
 | scan lookup round trip | 41 ms |
 
-Cognito `InitiateAuth` costs 135 ms from here and DynamoDB 26 to 40 ms, which is why the resolved session is cached for a minute.
+Cognito `InitiateAuth` costs 135 ms from here and DynamoDB 26 to 40 ms, which is why the resolved session is cached. The window is five seconds: it is the delay before an `ADMIN_EMAILS` removal bites, and on event day that has to be near immediate, so most of the latency win is given back on purpose.
 
 Landing page ships 186 KB of gzipped JS and CSS across 12 files.
 

@@ -51,13 +51,16 @@ export function isAllowed(email: string): boolean {
 
 /**
  * Resolving a session costs a round trip to Cognito, measured at 135ms against
- * ap-south-1, which dominated every admin request and every scan at the gate.
- * The result is held briefly in process so a burst of scans pays it once.
+ * ap-south-1. The result is held in process so a burst of scans at the gate
+ * pays it once rather than once per tap.
  *
- * The window is the delay before a removal from ADMIN_EMAILS takes effect, so
- * it is deliberately short. Sign out clears the entry immediately.
+ * Five seconds, not sixty. This window is the delay before a removal from
+ * ADMIN_EMAILS takes effect, and on event day pulling someone's access has to
+ * be immediate. A slower dashboard is a much cheaper problem than a revoked
+ * organiser who still has the roster for another minute. Sign out clears the
+ * entry outright.
  */
-const SESSION_TTL_MS = 60_000
+const SESSION_TTL_MS = 5_000
 const SESSION_CACHE_MAX = 100
 const sessionCache = new Map<string, { at: number; session: AdminSession }>()
 
