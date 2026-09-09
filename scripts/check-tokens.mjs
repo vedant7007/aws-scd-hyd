@@ -15,6 +15,18 @@ import { relative } from 'node:path'
 const THEME_FILE = 'src/app/globals.css'
 const FONT_DECLARATION_FILE = 'src/app/layout.tsx'
 
+/**
+ * Generated images and the pre stylesheet error page cannot use CSS custom
+ * properties: satori rasterises, and global-error renders before the app
+ * stylesheet exists. Their colours still come from the theme via ogTheme(), so
+ * only the font name rule is waived for them.
+ */
+const RASTER_FILES = [
+  'src/app/opengraph-image.tsx',
+  'src/app/api/pass/[token]/share/route.tsx',
+  'src/app/global-error.tsx',
+]
+
 const RULES = [
   { what: 'hex colour', re: /#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})\b/gi },
   { what: 'colour function', re: /\b(?:rgba?|hsla?|oklch|lab|color-mix)\s*\(/gi },
@@ -30,6 +42,7 @@ const RULES = [
 const EXEMPT = new Map([
   [THEME_FILE, '*'],
   [FONT_DECLARATION_FILE, new Set(['font name'])],
+  ...RASTER_FILES.map((f) => [f, new Set(['font name'])]),
 ])
 
 const normalise = (file) => relative('.', file).replace(/\\/g, '/')

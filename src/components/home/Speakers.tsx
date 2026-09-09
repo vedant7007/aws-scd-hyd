@@ -5,9 +5,9 @@ import { speakers } from '@/content/speakers'
  * Reads correctly with zero speakers, with one, and with many. No placeholder
  * silhouettes and no fake rows, see SPEC.md section 11 item 5.
  */
-export function Speakers() {
+export function Speakers({ headingLevel }: { headingLevel?: 1 | 2 } = {}) {
   return (
-    <Section id="speakers" title="Speakers">
+    <Section headingLevel={headingLevel} id="speakers" title="Speakers">
       {speakers.length === 0 ? (
         <p className="measure text-step-1 text-muted">
           The lineup is being confirmed. Names go up here as soon as each one is signed, rather than all at

@@ -8,5 +8,5 @@ export const metadata: Metadata = {
 }
 
 export default function SponsorsPage() {
-  return <Sponsors />
+  return <Sponsors headingLevel={1} />
 }

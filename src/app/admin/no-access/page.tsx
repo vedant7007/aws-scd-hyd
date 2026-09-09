@@ -30,8 +30,8 @@ export default async function NoAccessPage() {
         dashboard stays closed.
       </p>
       <p className="text-muted">
-        If that is wrong, ask Vedant to add it to ADMIN_EMAILS. Nothing here is cached, so it will work the
-        moment the list changes.
+        If that is wrong, ask Vedant to add it to ADMIN_EMAILS. It takes effect within a minute, or straight
+        away if you sign out and back in.
       </p>
       <form action={signOutAction}>
         <button type="submit" className="cta-quiet">

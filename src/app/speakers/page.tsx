@@ -8,5 +8,5 @@ export const metadata: Metadata = {
 }
 
 export default function SpeakersPage() {
-  return <Speakers />
+  return <Speakers headingLevel={1} />
 }

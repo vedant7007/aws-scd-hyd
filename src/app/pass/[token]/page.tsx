@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Container } from '@/components/layout/Container'
 import { QrPass } from '@/components/pass/QrPass'
@@ -74,6 +75,12 @@ export default async function PassPage({ params }: PageProps<'/pass/[token]'>) {
 
         <p className="measure text-muted">
           {event.dateLabel}, {venue.name}. Show this code at the gate.
+        </p>
+
+        <p>
+          <Link className="cta-quiet" href={`/pass/${token}/share`}>
+            Tell people you are going
+          </Link>
         </p>
       </header>
 

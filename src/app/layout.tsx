@@ -48,8 +48,15 @@ export default async function RootLayout({ children }: LayoutProps<'/'>) {
       className={`${display.variable} ${body.variable} ${mono.variable} h-full`}
     >
       <body className="flex min-h-full flex-col">
+        {/* First tab stop, so a keyboard user is not walked through the nav on
+            every page before reaching the content. */}
+        <a href="#main" className="skip-link">
+          Skip to content
+        </a>
         <Header />
-        <main className="flex-1">{children}</main>
+        <main id="main" className="flex-1">
+          {children}
+        </main>
         <Footer />
       </body>
     </html>

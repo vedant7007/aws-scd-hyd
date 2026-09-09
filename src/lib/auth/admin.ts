@@ -6,6 +6,7 @@ import {
 } from '@aws-sdk/client-cognito-identity-provider'
 import { CognitoJwtVerifier } from 'aws-jwt-verify'
 import { cookies } from 'next/headers'
+import { cache } from 'react'
 import { redirect } from 'next/navigation'
 import { required } from '../outputs'
 
@@ -48,6 +49,18 @@ export function isAllowed(email: string): boolean {
   return adminEmails().includes(email.trim().toLowerCase())
 }
 
+/**
+ * Resolving a session costs a round trip to Cognito, measured at 135ms against
+ * ap-south-1, which dominated every admin request and every scan at the gate.
+ * The result is held briefly in process so a burst of scans pays it once.
+ *
+ * The window is the delay before a removal from ADMIN_EMAILS takes effect, so
+ * it is deliberately short. Sign out clears the entry immediately.
+ */
+const SESSION_TTL_MS = 60_000
+const SESSION_CACHE_MAX = 100
+const sessionCache = new Map<string, { at: number; session: AdminSession }>()
+
 export type AdminSession =
   | { status: 'ok'; email: string }
   /** No usable session. Show the sign in form. */
@@ -61,10 +74,17 @@ export type AdminSession =
  * The cookie holds only a refresh token, so an id token is minted server side
  * per request and verified against the pool's JWKS. That means no hourly re
  * login on event day, and nothing long lived that the browser can read.
+ *
+ * Wrapped in React cache so one render resolves the session once. The layout
+ * and the page both need it, and without this every admin page load made two
+ * round trips to Cognito instead of one.
  */
-export async function currentAdmin(): Promise<AdminSession> {
+export const currentAdmin = cache(async (): Promise<AdminSession> => {
   const refreshToken = (await cookies()).get(REFRESH_COOKIE)?.value
   if (!refreshToken) return { status: 'signed-out' }
+
+  const hit = sessionCache.get(refreshToken)
+  if (hit && Date.now() - hit.at < SESSION_TTL_MS) return hit.session
 
   let idToken: string
   try {
@@ -91,8 +111,16 @@ export async function currentAdmin(): Promise<AdminSession> {
   }
 
   if (!email) return { status: 'signed-out' }
-  return isAllowed(email) ? { status: 'ok', email } : { status: 'refused', email }
-}
+
+  const session: AdminSession = isAllowed(email)
+    ? { status: 'ok', email }
+    : { status: 'refused', email }
+
+  // Only decided answers are cached. A signed out result is cheap anyway.
+  if (sessionCache.size >= SESSION_CACHE_MAX) sessionCache.clear()
+  sessionCache.set(refreshToken, { at: Date.now(), session })
+  return session
+})
 
 export type SignInResult = { ok: true; email: string } | { ok: false; message: string }
 
@@ -148,7 +176,12 @@ export async function signIn(email: string, password: string): Promise<SignInRes
 }
 
 export async function signOut(): Promise<void> {
-  ;(await cookies()).delete(REFRESH_COOKIE)
+  const store = await cookies()
+  const token = store.get(REFRESH_COOKIE)?.value
+  // Drop the cached decision too, so signing out is immediate rather than
+  // lasting until the TTL expires.
+  if (token) sessionCache.delete(token)
+  store.delete(REFRESH_COOKIE)
 }
 
 /**

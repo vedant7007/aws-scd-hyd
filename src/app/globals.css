@@ -133,10 +133,18 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  /* Visible focus everywhere, SPEC.md section 2 rule 7. */
+  /*
+    Visible focus everywhere, SPEC.md section 2 rule 7.
+
+    Drawn in --text, not --accent. Measured against the placeholder palette the
+    accent gives 2.14:1 on the light background, under the 3:1 that WCAG 2.1
+    requires of a focus indicator, while --text gives 19.8:1 light and 19.0:1
+    dark. Revisit when the real palette lands: if its accent clears 3:1 on both
+    backgrounds this can go back to the accent.
+  */
   :focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 3px;
+    outline: 3px solid var(--text);
+    outline-offset: 2px;
     border-radius: var(--radius);
   }
 
@@ -371,7 +379,9 @@
 .field {
   background: var(--bg);
   color: var(--text);
-  border: var(--hairline) solid var(--border);
+  /* --muted, not --border: a control boundary has to reach 3:1 and the hairline
+     colour is 1.27:1. Hairlines stay on --border, they are decorative. */
+  border: var(--hairline) solid var(--muted);
   border-radius: var(--radius);
   padding: 0.75em 1em;
   font: inherit;
@@ -467,4 +477,64 @@
   .schedule-wide {
     display: block;
   }
+}
+
+/* Loading skeletons. Shape only, no new colours. */
+.skeleton {
+  background: var(--surface);
+  border-radius: var(--radius);
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+.skeleton-title {
+  height: var(--step-4);
+  width: min(24rem, 80%);
+}
+
+.skeleton-line {
+  height: var(--step-1);
+  width: min(38rem, 100%);
+}
+
+@keyframes skeleton-pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}
+
+/* Share card previews. */
+.share-preview {
+  width: 100%;
+  height: auto;
+  border: var(--hairline) solid var(--border);
+  border-radius: var(--radius);
+}
+
+.share-story {
+  max-width: 20rem;
+}
+
+/* Skip link. Off screen until focused, then a normal looking control. */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 10;
+  background: var(--bg);
+  color: var(--text);
+  border: var(--hairline) solid var(--text);
+  border-radius: var(--radius);
+  padding: 0.75em 1.25em;
+  text-decoration: none;
+}
+
+.skip-link:focus-visible {
+  left: var(--gutter);
+  top: 0.5rem;
 }
