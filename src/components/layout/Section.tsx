@@ -1,31 +1,25 @@
 import type { ReactNode } from 'react'
 import { Container } from './Container'
 
+/**
+ * A landmark plus the page gutter, and nothing else. It carries no heading of
+ * its own so each section can choose its own type hierarchy, but it keeps the
+ * region landmark and the accessible name that a bare div would lose.
+ */
 export function Section({
   id,
-  title,
-  lead,
+  labelledBy,
+  className = '',
   children,
-  /** h2 inside the landing page, h1 when the section is a page of its own. */
-  headingLevel = 2,
 }: {
   id: string
-  title: string
-  lead?: string
+  labelledBy: string
+  className?: string
   children: ReactNode
-  headingLevel?: 1 | 2
 }) {
-  const Heading = headingLevel === 1 ? 'h1' : 'h2'
-
   return (
-    <section id={id} aria-labelledby={`${id}-heading`} className="border-t border-border">
-      <Container className="py-20 sm:py-28">
-        <Heading id={`${id}-heading`} className="display text-step-3">
-          {title}
-        </Heading>
-        {lead ? <p className="measure mt-6 text-step-1 text-muted">{lead}</p> : null}
-        <div className="mt-12">{children}</div>
-      </Container>
+    <section id={id} aria-labelledby={labelledBy} className={`cv-auto ${className}`}>
+      <Container>{children}</Container>
     </section>
   )
 }

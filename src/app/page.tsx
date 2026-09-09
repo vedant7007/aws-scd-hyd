@@ -9,7 +9,12 @@ import { Tracks } from '@/components/home/Tracks'
 import { Venue } from '@/components/home/Venue'
 import { eventJsonLd } from '@/lib/jsonld'
 
-/** Order is fixed by SPEC.md section 11. */
+/**
+ * Order is fixed by SPEC.md section 11. The rhythm is not: the hero runs full
+ * viewport, the ticker is a hard full bleed band with no padding at all, tracks
+ * take a tall pinned stage, and the remaining sections alternate between the
+ * tight and loose spacing tokens so scrolling has a beat rather than a metre.
+ */
 export default function HomePage() {
   return (
     <>
@@ -19,6 +24,7 @@ export default function HomePage() {
         // JSON.stringify output built from typed content, never user input.
         dangerouslySetInnerHTML={{ __html: eventJsonLd() }}
       />
+
       <Hero />
       <Ticker />
       <About />

@@ -4,6 +4,7 @@ import { cookies } from 'next/headers'
 import './globals.css'
 import { Footer } from '@/components/layout/Footer'
 import { Header } from '@/components/layout/Header'
+import { RevealRoot } from '@/components/motion/RevealRoot'
 import { event, venue } from '@/content/event'
 import { THEME_COOKIE, isTheme } from '@/lib/theme'
 
@@ -58,6 +59,7 @@ export default async function RootLayout({ children }: LayoutProps<'/'>) {
           {children}
         </main>
         <Footer />
+        <RevealRoot />
       </body>
     </html>
   )

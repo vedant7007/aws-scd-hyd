@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import type { CSSProperties } from 'react'
 import { Container } from '@/components/layout/Container'
 import { event, halls as fallbackHalls, slots as fallbackSlots } from '@/content/event'
 import { getConfig, getSessionsInSlot } from '@/lib/db/queries'
@@ -16,8 +17,8 @@ function Cell({ session }: { session: Session | undefined }) {
   if (!session) return <p className="text-muted">Nothing scheduled</p>
   return (
     <>
-      <p className="text-step-1">{session.title}</p>
-      <p className="text-step--1 text-muted">{session.speaker}</p>
+      <p className="agenda-title">{session.title}</p>
+      <p className="agenda-speaker">{session.speaker}</p>
     </>
   )
 }
@@ -39,10 +40,10 @@ export default async function SchedulePage() {
     })
 
   return (
-    <Container className="flex flex-col gap-12 py-16">
-      <div>
-        <h1 className="display text-step-4">Schedule</h1>
-        <p className="measure mt-4 text-step-1 text-muted">
+    <Container className="section-tight flex flex-col gap-12">
+      <div className="field-grid">
+        <h1 className="display text-step-4 col-span-full lg:col-span-7">Schedule</h1>
+        <p className="measure text-step-1 text-muted col-span-full lg:col-span-4 lg:col-start-9 lg:self-end">
           {event.dateLabel}. Times are IST. You pick one session per slot from your pass.
         </p>
       </div>
@@ -52,40 +53,53 @@ export default async function SchedulePage() {
       ) : (
         <>
           {/*
-            Wide screens: time down, halls across. Narrow screens: one vertical
-            list per hall. Two blocks rather than one scrolling table, because a
-            schedule that scrolls sideways on a phone is unusable at a venue.
+            Wide screens get the real agenda: time down the left, halls across,
+            each cell carrying a rail whose weight says which track it is.
+            Narrow screens get one vertical list per hall. Two blocks rather
+            than one table that scrolls sideways, which is unusable at a venue.
             Only one is ever displayed, so assistive tech sees one copy.
           */}
           <div className="schedule-wide">
-            <table className="data-table">
-              <caption className="sr-only">Sessions by time and hall</caption>
-              <thead>
-                <tr>
-                  <th scope="col">Time</th>
-                  {halls.map((hall) => (
-                    <th key={hall.id} scope="col">
-                      {hall.name}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {slots.map((slot, i) => (
-                  <tr key={slot.id}>
-                    <th scope="row" className="mono whitespace-nowrap">
-                      {time(slot.startsAt)}
-                      <span className="block text-muted">{time(slot.endsAt)}</span>
-                    </th>
-                    {halls.map((hall) => (
-                      <td key={hall.id}>
-                        <Cell session={at(i, hall.id)} />
-                      </td>
-                    ))}
-                  </tr>
+            <div
+              className="agenda"
+              style={{ '--hall-count': halls.length } as CSSProperties}
+              role="table"
+              aria-label="Sessions by time and hall"
+            >
+              <div role="row" style={{ display: 'contents' }}>
+                <span role="columnheader" className="agenda-head">
+                  Time
+                </span>
+                {halls.map((hall) => (
+                  <span role="columnheader" key={hall.id} className="agenda-head">
+                    {hall.name}
+                  </span>
                 ))}
-              </tbody>
-            </table>
+              </div>
+
+              {slots.map((slot, i) => (
+                <div role="row" key={slot.id} style={{ display: 'contents' }}>
+                  <span role="rowheader" className="agenda-time">
+                    {time(slot.startsAt)}
+                    <br />
+                    {time(slot.endsAt)}
+                  </span>
+                  {halls.map((hall) => {
+                    const session = at(i, hall.id)
+                    return (
+                      <div
+                        role="cell"
+                        key={hall.id}
+                        className="agenda-cell"
+                        data-track={session?.track}
+                      >
+                        <Cell session={session} />
+                      </div>
+                    )
+                  })}
+                </div>
+              ))}
+            </div>
           </div>
 
           <div className="schedule-stack flex flex-col gap-12">
@@ -95,16 +109,19 @@ export default async function SchedulePage() {
                   {hall.name}
                 </h2>
                 <ul className="mt-4">
-                  {slots.map((slot, i) => (
-                    <li key={slot.id} className="border-t border-border py-4">
-                      <p className="mono text-step--1 text-muted">
-                        {time(slot.startsAt)} to {time(slot.endsAt)}
-                      </p>
-                      <div className="mt-1">
-                        <Cell session={at(i, hall.id)} />
-                      </div>
-                    </li>
-                  ))}
+                  {slots.map((slot, i) => {
+                    const session = at(i, hall.id)
+                    return (
+                      <li key={slot.id} className="agenda-cell" data-track={session?.track}>
+                        <p className="numeral">
+                          {time(slot.startsAt)} to {time(slot.endsAt)}
+                        </p>
+                        <div className="mt-1">
+                          <Cell session={session} />
+                        </div>
+                      </li>
+                    )
+                  })}
                 </ul>
               </section>
             ))}

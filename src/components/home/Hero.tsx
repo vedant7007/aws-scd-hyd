@@ -3,40 +3,42 @@ import { event, registrationOpen, venue } from '@/content/event'
 import { Countdown } from './Countdown'
 import { HeroBackground } from './HeroBackground'
 
+/**
+ * Full viewport. The plate is a composed object sitting to the right, the
+ * headline breaks the container edge and overlaps it, and the countdown sits
+ * on the same baseline row as the date and venue rather than under everything.
+ */
 export function Hero() {
   return (
-    <section className="relative isolate overflow-hidden">
-      <HeroBackground />
+    <section className="hero">
+      <div className="hero-plate" aria-hidden="true">
+        <HeroBackground />
+      </div>
 
-      <Container className="enter flex flex-col gap-10 py-24 sm:py-32">
-        <p className="text-step--1 text-muted">
-          {event.host}
-        </p>
+      <Container className="hero-body enter">
+        <p className="hero-eyebrow eyebrow">{event.host}</p>
 
-        <h1 className="display text-step-5">
+        <h1 className="hero-title display">
           AWS Student
           <br />
           Community Day
           <br />
-          {event.city}
+          <span className="line-accent">{event.city}</span>
         </h1>
 
-        <dl className="flex flex-wrap gap-x-12 gap-y-4 text-step-1">
+        <div className="hero-meta">
           <div>
-            <dt className="text-step--1 text-muted">Date</dt>
-            <dd>{event.dateLabel}</dd>
+            <p className="eyebrow">Date</p>
+            <p className="text-step-1">{event.dateLabel}</p>
           </div>
           <div>
-            <dt className="text-step--1 text-muted">Venue</dt>
-            <dd>{venue.name}</dd>
+            <p className="eyebrow">Venue</p>
+            <p className="text-step-1">{venue.name}</p>
           </div>
-        </dl>
-
-        <div>
           <Countdown target={event.startsAt} label="Doors open in" />
         </div>
 
-        <div className="flex flex-wrap items-center gap-4">
+        <div className="hero-cta flex flex-wrap items-center gap-m">
           {registrationOpen ? (
             <a className="cta" href="#passes">
               Get a pass

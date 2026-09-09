@@ -59,6 +59,41 @@
   /* deliberately flat, see SPEC.md section 10 */
   --shadow: none;
 
+  /* ---------------------------------------------------------------------
+     Composition and motion. Added, not changed: no colour or font value in
+     this file was altered. The design team owns the palette, this owns rhythm.
+     --------------------------------------------------------------------- */
+
+  /* Spacing scale. One ratio, so vertical rhythm is a choice not an accident. */
+  --space-3xs: 0.25rem;
+  --space-2xs: 0.5rem;
+  --space-xs: 0.75rem;
+  --space-s: 1rem;
+  --space-m: 1.5rem;
+  --space-l: 2.5rem;
+  --space-xl: 4rem;
+  --space-2xl: clamp(4rem, 8vw, 7rem);
+  --space-3xl: clamp(6rem, 14vw, 12rem);
+
+  /* Section rhythm. Sections deliberately differ so scrolling is not metronomic. */
+  --section-tight: var(--space-2xl);
+  --section-loose: var(--space-3xl);
+
+  /* Layout. A 12 column field the whole page can align to. */
+  --cols: 12;
+  --col-gap: clamp(1rem, 2.5vw, 2rem);
+  --rule-weight: 1px;
+  --rule-heavy: 3px;
+
+  /* Motion. Durations short enough to feel like response, not performance. */
+  --dur-fast: 140ms;
+  --dur-base: 260ms;
+  --dur-slow: 620ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --lift: -2px;
+  --enter-shift: 1.25rem;
+
   /* The QR plate does NOT flip with the theme. A scanner reads dark modules on
      a light field, and an inverted QR fails on many phones. This has to work at
      a gate, in sunlight, on someone else's cheap handset. */
@@ -117,6 +152,16 @@
   --text-step-5: var(--step-5);
 
   --radius-token: var(--radius);
+
+  --spacing-3xs: var(--space-3xs);
+  --spacing-2xs: var(--space-2xs);
+  --spacing-xs: var(--space-xs);
+  --spacing-s: var(--space-s);
+  --spacing-m: var(--space-m);
+  --spacing-l: var(--space-l);
+  --spacing-xl: var(--space-xl);
+  --spacing-2xl: var(--space-2xl);
+  --spacing-3xl: var(--space-3xl);
 }
 
 @layer base {
@@ -271,20 +316,20 @@
 /* One orchestrated entrance per page, not a fade on every scroll. The stagger
    lives here rather than as inline styles, so components stay free of values. */
 .enter > * {
-  animation: enter-rise var(--duration) var(--ease) both;
+  animation: enter-rise var(--dur-slow) var(--ease-out) both;
 }
 
 .enter > *:nth-child(1) { animation-delay: 0ms; }
-.enter > *:nth-child(2) { animation-delay: 90ms; }
-.enter > *:nth-child(3) { animation-delay: 180ms; }
-.enter > *:nth-child(4) { animation-delay: 270ms; }
-.enter > *:nth-child(5) { animation-delay: 360ms; }
-.enter > *:nth-child(n + 6) { animation-delay: 450ms; }
+.enter > *:nth-child(2) { animation-delay: 70ms; }
+.enter > *:nth-child(3) { animation-delay: 140ms; }
+.enter > *:nth-child(4) { animation-delay: 210ms; }
+.enter > *:nth-child(5) { animation-delay: 280ms; }
+.enter > *:nth-child(n + 6) { animation-delay: 350ms; }
 
 @keyframes enter-rise {
   from {
     opacity: 0;
-    transform: translateY(0.6rem);
+    transform: translateY(var(--enter-shift));
   }
 }
 
@@ -537,4 +582,606 @@
 .skip-link:focus-visible {
   left: var(--gutter);
   top: 0.5rem;
+}
+
+/* ===========================================================================
+   COMPOSITION
+
+   A 12 column field, full bleed breakouts and two section rhythms, so the page
+   reads as a composition rather than a stack of centred blocks.
+   =========================================================================== */
+
+.field-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+  gap: var(--col-gap);
+}
+
+/* Escapes the container to the viewport edge without causing sideways scroll. */
+.bleed {
+  width: 100vw;
+  margin-inline: calc(50% - 50vw);
+}
+
+.section-tight { padding-block: var(--section-tight); }
+
+/* Off screen sections are skipped entirely by rendering, which is the single
+   cheapest scroll win available. auto keeps the last measured height so the
+   scrollbar does not jump, and it is never applied to the sticky tracks stage
+   because containment would break the pin. */
+.cv-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 40rem;
+}
+.section-loose { padding-block: var(--section-loose); }
+
+.rule-top { border-top: var(--rule-weight) solid var(--border); }
+
+.eyebrow {
+  font-size: var(--step--1);
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Numerals set as a design element rather than as body text. */
+.numeral {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+/* ===========================================================================
+   HEADER. Transparent over the hero, solid and condensed after.
+   Driven by one IntersectionObserver toggling data-stuck, not a scroll
+   listener: it fires twice in a page rather than sixty times a second.
+   =========================================================================== */
+
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  isolation: isolate;
+}
+
+/* The background is its own layer so it fades with opacity, which the
+   compositor handles, instead of animating background-color. */
+.site-header::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--bg);
+  border-bottom: var(--rule-weight) solid var(--border);
+  opacity: 0;
+  transition: opacity var(--dur-base) var(--ease-out);
+}
+
+.site-header[data-stuck="true"]::before { opacity: 1; }
+
+.header-inner {
+  transition: padding-block var(--dur-base) var(--ease-out);
+  padding-block: var(--space-m);
+}
+
+.site-header[data-stuck="true"] .header-inner { padding-block: var(--space-2xs); }
+
+.wordmark {
+  display: inline-block;
+  transform-origin: left center;
+  transition: transform var(--dur-base) var(--ease-out);
+}
+
+.site-header[data-stuck="true"] .wordmark { transform: scale(0.82); }
+
+/* ===========================================================================
+   HERO. Full viewport. The canvas plate is a composed object the headline
+   overlaps, not wallpaper behind text.
+   =========================================================================== */
+
+.hero {
+  position: relative;
+  min-height: 100svh;
+  display: grid;
+  align-content: center;
+  padding-block: var(--space-2xl) var(--space-xl);
+  overflow: clip;
+}
+
+.hero-plate {
+  display: none;
+}
+
+@media (min-width: 60rem) {
+  .hero-plate {
+    display: block;
+    position: absolute;
+    inset-block: 10%;
+    inset-inline-start: 46%;
+    inset-inline-end: calc(var(--gutter) * -1);
+    border: var(--rule-weight) solid var(--border);
+    background: var(--surface);
+    z-index: 0;
+  }
+}
+
+.hero-plate canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.hero-body {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: var(--space-l);
+}
+
+/* Breaks the container edge so the headline is not another centred block. */
+.hero-title {
+  font-size: var(--step-4);
+  margin-inline-start: calc(var(--gutter) * -0.4);
+  max-width: 13ch;
+}
+
+.hero-title .line-accent { color: var(--accent); }
+
+.hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-m) var(--space-xl);
+  align-items: end;
+}
+
+/* Countdown sits on the composition, not bolted underneath it. */
+.count-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-m);
+  align-items: baseline;
+}
+
+.count-unit {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3xs);
+}
+
+.count-value {
+  font-family: var(--font-display);
+  font-weight: var(--display-weight);
+  letter-spacing: var(--display-tracking);
+  font-size: var(--step-3);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.count-label {
+  font-size: var(--step--1);
+  color: var(--muted);
+}
+
+@media (min-width: 60rem) {
+  .hero-body {
+    grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+    align-items: end;
+  }
+  .hero-eyebrow { grid-column: 1 / span 6; }
+  .hero-title { grid-column: 1 / span 8; }
+  .hero-meta { grid-column: 1 / span 7; }
+  .hero-cta { grid-column: 9 / span 4; justify-self: start; }
+}
+
+/* ===========================================================================
+   TRACKS. The second largest moment on the page.
+   =========================================================================== */
+
+.track-item {
+  display: grid;
+  gap: var(--space-xs);
+  padding-block: var(--space-l);
+  border-top: var(--rule-weight) solid var(--border);
+}
+
+.track-item:first-child { border-top: 0; }
+
+.track-name {
+  font-family: var(--font-display);
+  font-weight: var(--display-weight);
+  letter-spacing: var(--display-tracking);
+  line-height: var(--display-leading);
+  font-size: var(--step-4);
+}
+
+.track-index {
+  font-family: var(--font-mono);
+  color: var(--muted);
+  font-size: var(--step--1);
+}
+
+/* ===========================================================================
+   PASSES. A comparison, not four boxes. The grid is built from the tier count
+   so it holds for any number, including none.
+   =========================================================================== */
+
+.tier-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--tier-count, 1), minmax(0, 1fr));
+  border-top: var(--rule-weight) solid var(--border);
+}
+
+.tier-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-s);
+  border-left: var(--rule-weight) solid var(--border);
+  padding: var(--space-m) var(--space-s);
+  transition: background var(--dur-base) var(--ease-out);
+}
+
+.tier-col:first-child { border-left: 0; }
+.tier-col:hover { background: var(--surface); }
+
+.tier-col[data-recommended="true"] {
+  background: var(--surface);
+  box-shadow: inset 0 var(--rule-heavy) 0 0 var(--accent);
+}
+
+.tier-name {
+  font-family: var(--font-display);
+  font-weight: var(--display-weight);
+  letter-spacing: var(--display-tracking);
+  font-size: var(--step-2);
+}
+
+.tier-price {
+  font-family: var(--font-mono);
+  font-size: var(--step-1);
+}
+
+.tier-price[data-pending="true"] { color: var(--muted); }
+
+/* Name, price and inclusions all start at the same height so the eye can read
+   across the columns. Only the meta block is pushed to the bottom, which is
+   what makes this a comparison rather than four independent cards. */
+.tier-list {
+  display: grid;
+  gap: var(--space-3xs);
+  font-size: var(--step--1);
+}
+
+.tier-meta {
+  display: grid;
+  margin-top: auto;
+  gap: var(--space-3xs);
+  font-size: var(--step--1);
+  color: var(--muted);
+  border-top: var(--rule-weight) solid var(--border);
+  padding-top: var(--space-2xs);
+}
+
+@media (max-width: 60rem) {
+  .tier-grid { grid-template-columns: minmax(0, 1fr); }
+  .tier-col {
+    border-left: 0;
+    border-top: var(--rule-weight) solid var(--border);
+  }
+  .tier-col:first-child { border-top: 0; }
+}
+
+/* ===========================================================================
+   EMPTY STATES. Live for weeks, so they are designed, not apologetic.
+   =========================================================================== */
+
+.awaiting {
+  display: grid;
+  gap: var(--space-m);
+  padding-block: var(--space-xl);
+  border-top: var(--rule-weight) solid var(--border);
+  border-bottom: var(--rule-weight) solid var(--border);
+}
+
+.awaiting-head {
+  font-family: var(--font-display);
+  font-weight: var(--display-weight);
+  letter-spacing: var(--display-tracking);
+  line-height: var(--display-leading);
+  font-size: var(--step-4);
+  color: var(--muted);
+}
+
+.awaiting-head em {
+  font-style: normal;
+  color: var(--text);
+}
+
+/* Reserved space, read as slots rather than as fake people or fake logos. */
+.slot-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2xs);
+}
+
+.slot {
+  flex: 1 1 6rem;
+  height: var(--space-2xs);
+  background: var(--border);
+}
+
+/* ===========================================================================
+   PASS OBJECT. The thing students screenshot, so it reads as an object.
+   =========================================================================== */
+
+.ticket {
+  border: var(--rule-weight) solid var(--border);
+  background: var(--surface);
+  display: grid;
+  gap: var(--space-m);
+  padding: var(--space-l) var(--space-m);
+  max-width: 30rem;
+}
+
+.ticket-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-s);
+}
+
+.ticket-name {
+  font-family: var(--font-display);
+  font-weight: var(--display-weight);
+  letter-spacing: var(--display-tracking);
+  line-height: var(--display-leading);
+  font-size: var(--step-3);
+}
+
+/* The tear line, drawn rather than imaged. */
+.ticket-tear {
+  border-top: var(--rule-weight) dashed var(--border);
+}
+
+.ticket-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-s);
+}
+
+.ticket-fact dt {
+  font-size: var(--step--1);
+  color: var(--muted);
+}
+
+.ticket-fact dd {
+  font-size: var(--step-1);
+}
+
+/* ===========================================================================
+   SCHEDULE. Reads as an agenda: time down the side, halls across, and each
+   track carries a different weight so the grid is scannable.
+   =========================================================================== */
+
+.agenda {
+  display: grid;
+  grid-template-columns: max-content repeat(var(--hall-count, 1), minmax(0, 1fr));
+  border-top: var(--rule-weight) solid var(--border);
+}
+
+.agenda-head {
+  font-size: var(--step--1);
+  color: var(--muted);
+  padding: var(--space-2xs) var(--space-s) var(--space-2xs) 0;
+  border-bottom: var(--rule-weight) solid var(--border);
+}
+
+.agenda-time {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--step--1);
+  color: var(--muted);
+  padding: var(--space-m) var(--space-m) var(--space-m) 0;
+  border-bottom: var(--rule-weight) solid var(--border);
+  white-space: nowrap;
+}
+
+.agenda-cell {
+  padding: var(--space-m) var(--space-s);
+  border-bottom: var(--rule-weight) solid var(--border);
+  border-left: var(--rule-weight) solid var(--border);
+  transition: background var(--dur-fast) linear;
+}
+
+.agenda-cell:hover { background: var(--surface); }
+
+/* Track weight without new colours: the rail differs in weight and style.
+   TODO(vedant): the design team can assign a colour per track on 12 September,
+   at which point these become three accents rather than three rail styles. */
+.agenda-cell[data-track="ai"] { border-left: var(--rule-heavy) solid var(--accent); }
+.agenda-cell[data-track="cloud"] { border-left: var(--rule-heavy) solid var(--text); }
+.agenda-cell[data-track="career"] { border-left: var(--rule-heavy) dotted var(--muted); }
+
+.agenda-title { font-size: var(--step-1); }
+
+.agenda-speaker {
+  font-size: var(--step--1);
+  color: var(--muted);
+}
+
+/* ===========================================================================
+   MICRO INTERACTIONS. Authored hover and focus on everything interactive, and
+   none of them move layout.
+   =========================================================================== */
+
+.link {
+  background-image: linear-gradient(var(--accent), var(--accent));
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  background-size: 0% var(--rule-weight);
+  text-decoration: none;
+  transition: background-size var(--dur-base) var(--ease-out);
+}
+
+.link:hover,
+.link:focus-visible {
+  background-size: 100% var(--rule-weight);
+}
+
+.cta {
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+
+.cta:hover { transform: translateY(var(--lift)); }
+.cta:active { transform: translateY(0); }
+
+.cta-quiet {
+  transition:
+    border-color var(--dur-base) var(--ease-out),
+    color var(--dur-base) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+
+.cta-quiet:hover {
+  border-color: var(--accent);
+  color: var(--text);
+  transform: translateY(var(--lift));
+}
+
+.faq summary { transition: color var(--dur-fast) linear; }
+.faq summary:hover { color: var(--accent); }
+.faq summary::after { transition: transform var(--dur-base) var(--ease-out); }
+.faq details[open] summary::after { transform: rotate(180deg); }
+
+.pick { transition: background var(--dur-fast) linear; }
+.pick:hover:not(:disabled) { background: var(--surface); }
+
+.row-hover { transition: background var(--dur-fast) linear; }
+.row-hover:hover { background: var(--surface); }
+
+/* ===========================================================================
+   SCROLL CHOREOGRAPHY
+
+   One idea applied once per section: content arrives as its section enters.
+
+   This was built on animation-timeline first and measured badly. Chrome ticked
+   those timelines on the main thread, not the compositor, costing 18 long tasks
+   and a 76ms p95 frame on a throttled scroll. It is now driven by one
+   IntersectionObserver that fires once per element and then stops watching, so
+   a scroll frame runs no JavaScript at all.
+   =========================================================================== */
+
+@keyframes reveal-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--enter-shift));
+  }
+}
+
+/* Entrance, triggered once by RevealRoot rather than coupled to scroll.
+   Nothing is hidden in the server HTML, so with no JavaScript the page is
+   simply the finished layout. */
+@media (prefers-reduced-motion: no-preference) {
+  [data-reveal][data-visible="true"],
+  [data-reveal-stagger][data-visible="true"] > * {
+    animation: reveal-in var(--dur-slow) var(--ease-out) both;
+  }
+
+  [data-reveal-stagger][data-visible="true"] > *:nth-child(1) { animation-delay: 0ms; }
+  [data-reveal-stagger][data-visible="true"] > *:nth-child(2) { animation-delay: 80ms; }
+  [data-reveal-stagger][data-visible="true"] > *:nth-child(3) { animation-delay: 160ms; }
+  [data-reveal-stagger][data-visible="true"] > *:nth-child(4) { animation-delay: 240ms; }
+  [data-reveal-stagger][data-visible="true"] > *:nth-child(n + 5) { animation-delay: 320ms; }
+}
+
+/* The pinned stage. Markers divide the stage into equal bands so one
+   observer can say which track is showing. They render nothing. */
+.tracks-stage { position: relative; }
+
+.tracks-markers {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-auto-rows: 1fr;
+  pointer-events: none;
+}
+
+/* data-ready is only set once the observer is wired, so a browser with no
+   JavaScript keeps every track visible as an ordinary list. */
+@media (prefers-reduced-motion: no-preference) {
+  .tracks-stage[data-ready="true"][data-count="2"] { height: 200vh; }
+  .tracks-stage[data-ready="true"][data-count="3"] { height: 300vh; }
+  .tracks-stage[data-ready="true"][data-count="4"] { height: 400vh; }
+
+  .tracks-stage[data-ready="true"][data-count="2"] .tracks-pin,
+  .tracks-stage[data-ready="true"][data-count="3"] .tracks-pin,
+  .tracks-stage[data-ready="true"][data-count="4"] .tracks-pin {
+    position: sticky;
+    top: 0;
+    height: 100svh;
+    display: grid;
+    align-content: center;
+  }
+
+  .tracks-stage[data-ready="true"][data-count="2"] .track-item,
+  .tracks-stage[data-ready="true"][data-count="3"] .track-item,
+  .tracks-stage[data-ready="true"][data-count="4"] .track-item {
+    grid-area: 1 / 1;
+    border-top: 0;
+    opacity: 0;
+    transform: translateY(1.5rem);
+    transition:
+      opacity var(--dur-base) var(--ease-out),
+      transform var(--dur-base) var(--ease-out);
+  }
+
+  .tracks-stage[data-ready="true"][data-active="0"] .track-item:nth-child(1),
+  .tracks-stage[data-ready="true"][data-active="1"] .track-item:nth-child(2),
+  .tracks-stage[data-ready="true"][data-active="2"] .track-item:nth-child(3),
+  .tracks-stage[data-ready="true"][data-active="3"] .track-item:nth-child(4) {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ===========================================================================
+   REDUCED MOTION. Everything off, including the scroll driven timelines and
+   every transition, in one place. Nothing is left half animated.
+   =========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    animation-timeline: auto !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Anything that would have arrived by animation must be visible without it. */
+  .enter > *,
+  [data-reveal],
+  [data-reveal-stagger] > *,
+  .track-item,
+  .hero-plate {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  /* The pinned stage becomes an ordinary list. */
+  .tracks-stage,
+  .tracks-markers {
+    height: auto !important;
+    display: block !important;
+  }
+
+  .tracks-pin {
+    position: static !important;
+    height: auto !important;
+  }
+
+  .tracks-stage .track-item {
+    grid-area: auto !important;
+    border-top: var(--rule-weight) solid var(--border);
+  }
 }

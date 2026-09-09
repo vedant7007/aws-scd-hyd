@@ -1,16 +1,28 @@
-import { Container } from '@/components/layout/Container'
+import { Section } from '@/components/layout/Section'
 import { about } from '@/content/event'
 
+/**
+ * Asymmetric on purpose: a small label held left against a wide lead, with the
+ * first sentence set large and the rest quiet underneath it. The hierarchy is
+ * carried by size contrast rather than by another centred column of body text.
+ */
 export function About() {
+  const [lead, ...rest] = about
+
   return (
-    <section id="about" className="border-t border-border">
-      <Container className="py-20 sm:py-28">
-        <div className="measure flex flex-col gap-6 text-step-1">
-          {about.map((line) => (
-            <p key={line}>{line}</p>
-          ))}
+    <Section id="about" labelledBy="about-h" className="section-tight">
+      <div className="field-grid" data-reveal-stagger>
+        <h2 id="about-h" className="eyebrow col-span-full lg:col-span-3">What this is</h2>
+
+        <div className="col-span-full lg:col-span-8 lg:col-start-5">
+          {lead ? <p className="text-step-2 display">{lead}</p> : null}
+          <div className="measure mt-8 flex flex-col gap-4 text-muted">
+            {rest.map((line) => (
+              <p key={line}>{line}</p>
+            ))}
+          </div>
         </div>
-      </Container>
-    </section>
+      </div>
+    </Section>
   )
 }

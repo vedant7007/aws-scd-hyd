@@ -49,42 +49,52 @@ export default async function PassPage({ params }: PageProps<'/pass/[token]'>) {
   const initialSelections = Object.fromEntries(selections.map((s) => [s.slotId, s.sessionId]))
 
   return (
-    <Container className="flex flex-col gap-16 py-16">
-      <header className="flex flex-col gap-8">
-        <div>
-          <p className="text-step--1 text-muted">{event.shortName}</p>
-          <h1 className="display text-step-4">{attendee.name}</h1>
+    <Container className="section-tight flex flex-col gap-16">
+      {/*
+        Built as an object rather than a page header, because this is the thing
+        students screenshot: a bordered ticket with a tear line, the code on a
+        fixed light plate, and the facts set as a row you can read at a glance.
+      */}
+      <article className="ticket enter">
+        <div className="ticket-head">
+          <div>
+            <p className="eyebrow">{event.shortName}</p>
+            <h1 className="ticket-name mt-1">{attendee.name}</h1>
+          </div>
+          <span className="badge">{attendee.tier}</span>
         </div>
 
         <QrPass ticketRef={attendee.ticketRef} />
 
-        <dl className="flex flex-wrap gap-x-12 gap-y-4">
-          <div>
-            <dt className="text-step--1 text-muted">Pass</dt>
-            <dd className="text-step-1">{attendee.tier}</dd>
+        <div className="ticket-tear" />
+
+        <dl className="ticket-facts">
+          <div className="ticket-fact">
+            <dt>Ticket</dt>
+            <dd className="numeral">{attendee.ticketRef}</dd>
           </div>
-          <div>
-            <dt className="text-step--1 text-muted">Ticket</dt>
-            <dd className="mono text-step-1">{attendee.ticketRef}</dd>
+          <div className="ticket-fact">
+            <dt>Food</dt>
+            <dd>{attendee.foodPreference}</dd>
           </div>
-          <div>
-            <dt className="text-step--1 text-muted">Food</dt>
-            <dd className="text-step-1">{attendee.foodPreference}</dd>
+          <div className="ticket-fact">
+            <dt>Date</dt>
+            <dd>{event.dateLabel}</dd>
           </div>
         </dl>
 
-        <p className="measure text-muted">
-          {event.dateLabel}, {venue.name}. Show this code at the gate.
+        <p className="text-step--1 text-muted">
+          {venue.name}. Show this code at the gate.
         </p>
+      </article>
 
-        <p>
-          <Link className="cta-quiet" href={`/pass/${token}/share`}>
-            Tell people you are going
-          </Link>
-        </p>
-      </header>
+      <p>
+        <Link className="cta-quiet" href={`/pass/${token}/share`}>
+          Tell people you are going
+        </Link>
+      </p>
 
-      <section aria-labelledby="picker-heading" className="border-t border-border pt-12">
+      <section aria-labelledby="picker-heading" className="rule-top pt-12">
         <h2 id="picker-heading" className="display text-step-3">
           Your sessions
         </h2>

@@ -1,13 +1,14 @@
 import Link from 'next/link'
 import { event } from '@/content/event'
 import { Container } from './Container'
+import { StickyHeader } from './StickyHeader'
 import { ThemeToggle } from './ThemeToggle'
 
 export function Header() {
   return (
-    <header className="border-b border-border">
-      <Container className="flex items-center justify-between gap-6 py-4">
-        <Link href="/" className="display text-step-1 no-underline text-text">
+    <StickyHeader>
+      <Container className="header-inner flex flex-wrap items-center justify-between gap-x-8 gap-y-3">
+        <Link href="/" className="wordmark display text-step-1 text-text no-underline">
           {event.shortName}
         </Link>
 
@@ -26,6 +27,6 @@ export function Header() {
           <ThemeToggle />
         </div>
       </Container>
-    </header>
+    </StickyHeader>
   )
 }

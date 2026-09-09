@@ -3,14 +3,21 @@
 import { useEffect, useRef } from 'react'
 
 /**
- * TODO(vedant): the actual visual is undecided. This is the swappable slot for
+ * The centrepiece of the hero, not wallpaper: a pointer reactive field that
+ * fills the composed plate the headline overlaps.
+ *
+ * TODO(vedant): the final visual is undecided. This is the swappable slot for
  * it, see SPEC.md section 11 item 1. Replace the body of draw() and nothing
  * else in the hero has to change.
  *
- * Colours are read from the design tokens at runtime rather than written here,
- * so a theme change in globals.css moves the canvas too.
+ * Performance, because this has to hold 60fps on a mid range Android:
+ * - the loop only runs while the plate is on screen, watched by an observer
+ * - device pixel ratio is capped at 2, so a 3x phone does not render 9x pixels
+ * - the dot count is bounded by adapting spacing to the plate size
+ * - colours come from the design tokens, re-read only when the theme changes
  */
-const SPACING = 34
+const TARGET_DOTS = 900
+const MIN_SPACING = 26
 const REACH = 150
 
 export function HeroBackground() {
@@ -18,7 +25,7 @@ export function HeroBackground() {
 
   useEffect(() => {
     const canvas = ref.current
-    const ctx = canvas?.getContext('2d')
+    const ctx = canvas?.getContext('2d', { alpha: true })
     if (!canvas || !ctx) return
 
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)')
@@ -28,12 +35,14 @@ export function HeroBackground() {
     let hot = ''
     const readTokens = () => {
       const style = getComputedStyle(document.documentElement)
-      dot = style.getPropertyValue('--border').trim()
+      dot = style.getPropertyValue('--muted').trim()
       hot = style.getPropertyValue('--accent').trim()
     }
 
     let width = 0
     let height = 0
+    let spacing = MIN_SPACING
+
     const resize = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2)
       const rect = canvas.getBoundingClientRect()
@@ -42,23 +51,24 @@ export function HeroBackground() {
       canvas.width = Math.round(width * dpr)
       canvas.height = Math.round(height * dpr)
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+      // Keep the dot count roughly constant whatever the plate size, so a wide
+      // desktop does not quietly cost ten times a phone.
+      spacing = Math.max(MIN_SPACING, Math.sqrt((width * height) / TARGET_DOTS))
     }
 
-    // Parked off canvas until the pointer actually arrives.
     let px = -9999
     let py = -9999
 
     const draw = (time: number) => {
       ctx.clearRect(0, 0, width, height)
 
-      // With no fine pointer the field breathes on its own instead of sitting dead.
       if (coarse.matches && !reduced.matches) {
-        px = width * (0.5 + 0.35 * Math.sin(time / 4200))
-        py = height * (0.5 + 0.25 * Math.cos(time / 5600))
+        px = width * (0.5 + 0.32 * Math.sin(time / 4200))
+        py = height * (0.5 + 0.24 * Math.cos(time / 5600))
       }
 
-      for (let x = SPACING / 2; x < width; x += SPACING) {
-        for (let y = SPACING / 2; y < height; y += SPACING) {
+      for (let x = spacing / 2; x < width; x += spacing) {
+        for (let y = spacing / 2; y < height; y += spacing) {
           const dx = px - x
           const dy = py - y
           const distance = Math.hypot(dx, dy)
@@ -66,8 +76,8 @@ export function HeroBackground() {
 
           ctx.beginPath()
           ctx.fillStyle = pull > 0 ? hot : dot
-          ctx.globalAlpha = 0.35 + pull * 0.65
-          ctx.arc(x + dx * pull * 0.18, y + dy * pull * 0.18, 1 + pull * 2.2, 0, Math.PI * 2)
+          ctx.globalAlpha = 0.22 + pull * 0.78
+          ctx.arc(x + dx * pull * 0.18, y + dy * pull * 0.18, 1 + pull * 2.4, 0, Math.PI * 2)
           ctx.fill()
         }
       }
@@ -75,16 +85,44 @@ export function HeroBackground() {
     }
 
     let frame = 0
+    let running = false
+    let lastDraw = 0
+
+    // The ambient drift is slow, so it does not need a frame every 16ms. Half
+    // rate is indistinguishable here and halves the work on a phone, which is
+    // exactly where the budget is tight.
+    const MIN_FRAME_MS = 32
+
     const loop = (time: number) => {
-      draw(time)
+      if (time - lastDraw >= MIN_FRAME_MS) {
+        lastDraw = time
+        draw(time)
+      }
       frame = requestAnimationFrame(loop)
     }
 
     const start = () => {
-      cancelAnimationFrame(frame)
-      if (reduced.matches) draw(0)
-      else frame = requestAnimationFrame(loop)
+      if (running) return
+      running = true
+      if (reduced.matches) {
+        draw(0)
+        running = false
+        return
+      }
+      frame = requestAnimationFrame(loop)
     }
+
+    const stop = () => {
+      cancelAnimationFrame(frame)
+      running = false
+    }
+
+    // Off screen costs nothing. Scrolling past the hero stops the loop dead.
+    const visibility = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) start()
+      else stop()
+    })
+    visibility.observe(canvas)
 
     const onPointer = (e: PointerEvent) => {
       const rect = canvas.getBoundingClientRect()
@@ -96,7 +134,6 @@ export function HeroBackground() {
       py = -9999
     }
 
-    // A theme swap changes the custom properties, so re-read and repaint.
     const onTheme = () => {
       readTokens()
       if (reduced.matches) draw(0)
@@ -112,24 +149,24 @@ export function HeroBackground() {
 
     readTokens()
     resize()
-    start()
 
     window.addEventListener('resize', onResize)
     window.addEventListener('pointermove', onPointer, { passive: true })
     window.addEventListener('pointerleave', onLeave)
     themeQuery.addEventListener('change', onTheme)
-    reduced.addEventListener('change', start)
+    reduced.addEventListener('change', onResize)
 
     return () => {
-      cancelAnimationFrame(frame)
+      stop()
+      visibility.disconnect()
       observer.disconnect()
       window.removeEventListener('resize', onResize)
       window.removeEventListener('pointermove', onPointer)
       window.removeEventListener('pointerleave', onLeave)
       themeQuery.removeEventListener('change', onTheme)
-      reduced.removeEventListener('change', start)
+      reduced.removeEventListener('change', onResize)
     }
   }, [])
 
-  return <canvas ref={ref} aria-hidden="true" className="absolute inset-0 -z-10 h-full w-full" />
+  return <canvas ref={ref} aria-hidden="true" />
 }

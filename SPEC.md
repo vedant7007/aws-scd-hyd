@@ -450,6 +450,16 @@ Cognito `InitiateAuth` costs 135 ms from here and DynamoDB 26 to 40 ms, which is
 
 Landing page ships 186 KB of gzipped JS and CSS across 12 files.
 
+Scroll frame timing on the landing page, Chrome at 412x915 and 2.6x with the CPU throttled through CDP, median of three passes over an eight second scroll of the whole page:
+
+| CPU | p95 frame | frames over 16.7 ms | frames over 32 ms | long tasks |
+|---|---|---|---|---|
+| 4x slower | 13.9 ms | 2.0% | 0.6% | 2 |
+| 6x slower | 27.7 ms | 16.0% | 3.5% | 6 |
+| unthrottled | 7.1 ms | 0.2% | 0% | 0 |
+
+Throttling slows the main thread only. It does not emulate a slower GPU or thermal limits, so it is a proxy for a mid range Android and not a substitute for testing on one.
+
 Contrast, computed from the tokens: text 19.80:1 light and 18.97:1 dark, muted 5.33:1 and 5.73:1, focus ring 19.80:1 and 18.97:1.
 
 ### Known gaps

@@ -16,7 +16,8 @@ const UNITS = [
  * wherever the visitor is. Nothing here needs a timezone library.
  *
  * Renders a stable placeholder until it has mounted, because the server cannot
- * know the visitor's clock and a guess would mismatch on hydration.
+ * know the visitor's clock and a guess would mismatch on hydration. The digits
+ * are tabular so the row never reflows as they tick.
  */
 export function Countdown({ target, label }: { target: string; label: string }) {
   const [remaining, setRemaining] = useState<number | null>(null)
@@ -30,7 +31,7 @@ export function Countdown({ target, label }: { target: string; label: string }) 
   }, [target])
 
   if (remaining !== null && remaining <= 0) {
-    return <p className="display text-step-2">Happening now.</p>
+    return <p className="count-value">Happening now.</p>
   }
 
   const total = Math.max(0, remaining ?? 0)
@@ -41,13 +42,13 @@ export function Countdown({ target, label }: { target: string; label: string }) 
 
   return (
     <div>
-      <p className="text-step--1 text-muted">{label}</p>
-      <dl className="mono mt-2 flex flex-wrap gap-x-8 gap-y-2" aria-live="off">
+      <p className="eyebrow">{label}</p>
+      <dl className="count-row mt-2">
         {parts.map(({ name, value }) => (
-          <div key={name} className="flex items-baseline gap-2">
+          <div key={name} className="count-unit">
             <dt className="sr-only">{name}</dt>
-            <dd className="display text-step-3">{value === null ? '--' : String(value).padStart(2, '0')}</dd>
-            <dd className="text-step--1 text-muted">{name}</dd>
+            <dd className="count-value">{value === null ? '––' : String(value).padStart(2, '0')}</dd>
+            <dd className="count-label">{name}</dd>
           </div>
         ))}
       </dl>

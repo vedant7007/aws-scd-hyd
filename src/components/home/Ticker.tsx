@@ -15,7 +15,7 @@ function Half() {
       {ITEMS.map((item) => (
         <li key={item} className="flex items-center gap-8 px-8 py-3 text-step--1 font-medium whitespace-nowrap">
           <span>{item}</span>
-          <span>/</span>
+          <span aria-hidden="true">/</span>
         </li>
       ))}
     </ul>
@@ -23,12 +23,13 @@ function Half() {
 }
 
 /**
- * Decorative. Everything it says is stated properly in the hero, so it is
- * hidden from assistive tech rather than read out twice.
+ * Full bleed band. Decorative: everything it says is stated properly in the
+ * hero, so it is hidden from assistive tech rather than read out twice. The
+ * marquee is a transform animation, so it runs on the compositor.
  */
 export function Ticker() {
   return (
-    <div className="ticker" aria-hidden="true">
+    <div className="ticker bleed" aria-hidden="true">
       <div className="ticker-track">
         <Half />
         <Half />
