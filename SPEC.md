@@ -421,24 +421,43 @@ Everything is code. Nothing is clicked in the console except the one-time bootst
 
 Kept current as work lands. Everything else in this file is the plan, this section is the fact.
 
-**Phase 0 is deployed and verified. The Phase 1 landing page is complete: hero, ticker, countdown, about, tracks, speakers, passes, sponsors, venue, FAQ and footer, plus /code-of-conduct.**
+**Phases 0 to 3 are built and deployed to the sandbox. Phase 4 is content and paperwork, which is on Vedant.**
 
 | Thing | State |
 |---|---|
-| CDK bootstrap in `ap-south-1` | done |
-| `npx ampx sandbox` | deployed, table live |
-| Seeded data | config with 3 halls and 4 slots, 12 sessions, 50 attendees |
-| Table name resolution | `amplify_outputs.json` first, `SCD_TABLE_NAME` fallback, same path for scripts and app |
-| Design tokens | `src/app/globals.css`, placeholders until 12 September |
-| Theme toggle | cookie backed, server rendered, no flash, verified |
-| Landing page | all of section 11 built. Content is TODO(vedant) placeholders |
-| Fonts | self hosted by next/font in layout.tsx, no third party request |
-| Seed pass tokens | derived from ticketRef, stable across re-seeds |
-| Amplify Hosting | not connected, nothing deployed to a live URL |
+| Sandbox backend | deployed: table, Cognito pool, reconcile Lambda, hourly schedule |
+| Amplify Hosting | building from `main` |
+| Landing page, schedule, speakers, sponsors, code of conduct | built |
+| Pass page, QR, session picker, seat transaction | built, race test passes |
+| Ticketing | mock only, by design. No konfhub.ts, no razorpay.ts |
+| Organiser auth, dashboard, scanner | built, gated on ADMIN_EMAILS |
+| Reconcile | hourly, verified to report and repair a deleted record |
+| Email | not built. SES sandboxed and no domain, SPEC.md section 15 |
+| Theme | placeholder tokens, awaiting 12 September |
 
-### Known traps
+### Verified numbers
 
-- **Seed pass tokens are derived, real ones are not.** `scripts/seed.ts` derives a token from the ticket ref with a fixed HMAC key so re-seeding is stable and a bookmarked pass link keeps working. Real attendees still get `crypto.randomBytes` through `newPassToken` in the webhook. Never use the derived path for a real attendee.
-- **`amplify/package.json` is load-bearing.** One line, `{"type": "module"}`. Without it `ampx` cannot resolve extensionless imports in `amplify/backend.ts` even though `tsc` passes.
-- **`src/app/layout.tsx` is the only file allowed to name a font family.** It self hosts the three faces with `next/font` and exposes them as `--font-*-face`. `globals.css` composes the stacks and fallbacks. `check:tokens` exempts that one file for font names only.
-- `npm run check:tokens` fails the build if a hex value, font name, radius or shadow appears anywhere in `src/` outside `globals.css`.
+Production build, median of five warm requests, local:
+
+| Route | TTFB |
+|---|---|
+| public pages | 14 to 21 ms |
+| `/admin` | 30 ms, was 186 ms before the session cache |
+| `/admin/scan` | 20 ms, was 147 ms |
+| scan lookup round trip | 41 ms |
+
+Cognito `InitiateAuth` costs 135 ms from here and DynamoDB 26 to 40 ms, which is why the resolved session is cached for a minute.
+
+Landing page ships 186 KB of gzipped JS and CSS across 12 files.
+
+Contrast, computed from the tokens: text 19.80:1 light and 18.97:1 dark, muted 5.33:1 and 5.73:1, focus ring 19.80:1 and 18.97:1.
+
+### Known gaps
+
+- **The camera path has never been run against a real camera.** The decode loop and the jsQR fallback are unverified end to end. Test on the actual gate phones before 30 October.
+- **The offline queue was proven in unit tests, not in a browser.** Corrupt storage, duplicate intent, offline survival, drop on 4xx and drain on reconnect all pass. Walking a real device onto a dead network was not done.
+- `lambda:InvokeFunction` and `scheduler:*` are denied to the `scd` CLI user, so the deployed Lambda was never invoked directly. Its handler was run against the real table instead, and the function and its schedule were confirmed through CloudFormation.
+- **The mock provider reports three tickets, so reconcile inserts MOCK-001 to MOCK-003 every hour.** That is the mock behaving correctly. They disappear when a real provider is wired.
+- The `accent` colour fails the 3:1 contrast a focus indicator needs on the light background, at 2.14:1. The ring uses `--text` instead. Worth raising with the design team on 12 September.
+- **`amplify/package.json` is load bearing.** One line, `{"type": "module"}`, without which `ampx` cannot resolve extensionless imports.
+- **Re-running the seed rotates nothing.** Seed pass tokens are derived from the ticket ref, so a bookmarked pass link keeps working.
