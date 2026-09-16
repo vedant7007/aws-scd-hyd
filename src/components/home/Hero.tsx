@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { Container } from '@/components/layout/Container'
-import { event, registrationOpen, venue } from '@/content/event'
+import { event, venue } from '@/content/event'
+import { registrationIsOpen } from '@/lib/tickets/launch'
 import { Countdown } from './Countdown'
 import { HeroBackground } from './HeroBackground'
 
@@ -40,7 +41,7 @@ export function Hero() {
         </div>
 
         <div className="hero-cta flex flex-wrap items-center gap-m">
-          {registrationOpen ? (
+          {registrationIsOpen() ? (
             <Link className="cta" href="/register">
               Get a pass
             </Link>

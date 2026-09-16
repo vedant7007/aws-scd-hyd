@@ -1,9 +1,10 @@
 import type { Metadata } from 'next'
 import { Container } from '@/components/layout/Container'
 import { RegisterForm, type TierOption } from '@/components/register/RegisterForm'
-import { event, registrationOpen, venue } from '@/content/event'
+import { event, venue } from '@/content/event'
 import { ALWAYS_INCLUDED, formatInr, passes, tierIds } from '@/content/passes'
 import type { Tier } from '@/lib/db/types'
+import { registrationIsOpen } from '@/lib/tickets/launch'
 import { placeholderPaise } from '@/lib/tickets/pricing'
 
 export const metadata: Metadata = {
@@ -17,7 +18,7 @@ export const metadata: Metadata = {
  * validated again on the server and the amount is never sent from here.
  */
 export default async function RegisterPage({ searchParams }: PageProps<'/register'>) {
-  if (!registrationOpen) {
+  if (!registrationIsOpen()) {
     return (
       <Container className="section-loose">
         <p className="eyebrow">Register</p>

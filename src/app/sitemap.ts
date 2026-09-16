@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next'
-import { registrationOpen } from '@/content/event'
+import { registrationIsOpen } from '@/lib/tickets/launch'
 import { absolute } from '@/lib/site'
 
 /**
@@ -10,7 +10,7 @@ const PUBLIC_ROUTES = ['/', '/schedule', '/speakers', '/sponsors', '/code-of-con
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const lastModified = new Date()
-  return PUBLIC_ROUTES.filter((route) => route !== '/register' || registrationOpen).map((route) => ({
+  return PUBLIC_ROUTES.filter((route) => route !== '/register' || registrationIsOpen()).map((route) => ({
     url: absolute(route),
     lastModified,
     changeFrequency: route === '/' ? 'weekly' : 'monthly',

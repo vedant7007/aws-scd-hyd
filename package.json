@@ -13,6 +13,7 @@
     "check:tokens": "node scripts/check-tokens.mjs",
     "race-test": "tsx --env-file-if-exists=.env.local scripts/race-test.ts",
     "check:queue": "tsx scripts/check-scan-queue.ts",
+    "check:launch": "tsx --env-file-if-exists=.env.local scripts/launch-check.ts",
     "measure": "node scripts/measure-scroll.mjs"
   },
   "dependencies": {

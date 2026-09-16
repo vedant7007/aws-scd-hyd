@@ -1,8 +1,8 @@
 import Link from 'next/link'
 import type { CSSProperties } from 'react'
 import { Section } from '@/components/layout/Section'
-import { registrationOpen } from '@/content/event'
 import { ALWAYS_INCLUDED, earlyBirdEndsAt, formatInr, passes } from '@/content/passes'
+import { registrationIsOpen } from '@/lib/tickets/launch'
 
 /**
  * Four tiers read as one comparison rather than four boxes: a single grid,
@@ -67,7 +67,7 @@ export function Passes() {
               </div>
             </dl>
 
-            {registrationOpen ? (
+            {registrationIsOpen() ? (
               <Link className="cta-quiet mt-auto self-start" href={`/register?tier=${pass.id}`}>
                 Get {pass.name}
               </Link>

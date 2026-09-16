@@ -1,5 +1,6 @@
 import Link from 'next/link'
-import { event, registrationOpen } from '@/content/event'
+import { event } from '@/content/event'
+import { registrationIsOpen } from '@/lib/tickets/launch'
 import { Container } from './Container'
 import { StickyHeader } from './StickyHeader'
 import { ThemeToggle } from './ThemeToggle'
@@ -23,7 +24,7 @@ export function Header() {
             <Link className="link" href="/sponsors">
               Sponsors
             </Link>
-            {registrationOpen ? (
+            {registrationIsOpen() ? (
               <Link className="link" href="/register">
                 Register
               </Link>

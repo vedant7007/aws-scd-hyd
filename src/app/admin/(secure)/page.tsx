@@ -2,6 +2,7 @@ import { AttendeeTable, type AttendeeRow } from '@/components/admin/AttendeeTabl
 import { Container } from '@/components/layout/Container'
 import { requireAdmin } from '@/lib/auth/admin'
 import { loadDashboard } from '@/lib/db/stats'
+import { launchStatus } from '@/lib/tickets/launch'
 
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
@@ -16,6 +17,7 @@ export default async function AdminDashboardPage() {
   // Guard first. Nothing below runs for a refused or signed out caller.
   await requireAdmin()
   const d = await loadDashboard()
+  const launch = launchStatus()
 
   const rows: AttendeeRow[] = d.attendees.map((a) => ({
     ticketRef: a.ticketRef,
@@ -35,6 +37,39 @@ export default async function AdminDashboardPage() {
         <h1 className="display text-step-3">Dashboard</h1>
         <p className="mt-2 text-step--1 text-muted">Live from the table on every load, nothing cached.</p>
       </div>
+
+      {/*
+        First, because it is the one thing that must be right before anything
+        else on this page matters: can the site take real money, and if not, why.
+      */}
+      <section aria-labelledby="launch">
+        <h2 id="launch" className="display text-step-2">
+          Selling
+        </h2>
+        <dl className="mt-6 grid gap-6 sm:grid-cols-3">
+          <Stat label="registrationOpen (content)" value={launch.registrationOpen ? 'true' : 'false'} />
+          <Stat label="Checkout" value={launch.open ? 'accepting' : 'refusing'} />
+          <Stat label="Launch blockers" value={launch.blockers.length} />
+        </dl>
+        {launch.blockers.length ? (
+          <div className="notice mt-6" role="status">
+            <p className="font-semibold">
+              {launch.enforced
+                ? 'Selling is blocked. registrationOpen alone cannot open it while any of these hold.'
+                : 'Development: these would block selling in production.'}
+            </p>
+            <ul className="text-step--1">
+              {launch.blockers.map((b) => (
+                <li key={b.code}>{b.detail}</li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <p className="mt-6 text-step--1 text-muted">
+            Live key, every tier priced, no test amount in the environment. Nothing stands between registrationOpen and real customers.
+          </p>
+        )}
+      </section>
 
       <section aria-labelledby="totals">
         <h2 id="totals" className="display text-step-2">

@@ -196,7 +196,8 @@ The Scan is deliberate. At a few thousand items it costs a fraction of a rupee a
 - `/api/webhook/razorpay` verifies `X-Razorpay-Signature` against `RAZORPAY_WEBHOOK_SECRET` **before parsing the body**. Unverified requests get a 401 and the body is not logged. The secret is never logged anywhere.
 - `/api/checkout` accepts exactly the registration fields and nothing else. **The amount is never a parameter.** It is computed on the server from `content/passes.ts`, sent to Razorpay, and stored on the record; the webhook then checks the captured amount against it.
 - The browser's payment success callback is UX only. Nothing it sends can mark a record paid. `/api/checkout/status` reads state, it never writes it, and it needs the checkout token handed to the browser that created the record.
-- `/api/checkout` is rate limited to ten per IP per hour.
+- `/api/checkout` is rate limited **per email**, five an hour, because the audience is students on college wifi with hundreds behind one NATed address. A per-IP ceiling of 500 an hour exists only against abuse. Both 429s say plainly what happened and that nothing was charged.
+- Selling is guarded independently of `registrationOpen`, see section 8.
 - `/api/subscribe` validates the email server-side and rate limits to 5 per IP per hour.
 - The reconcile Lambda is invoked by EventBridge and is not publicly reachable.
 - `/pass/[token]` sets `noindex`. Pass URLs never appear in the sitemap.
@@ -246,6 +247,16 @@ The amount condition is defence in depth: a captured payment that does not match
 
 Stay pending. The same person can register again with the same email: the record key is the ticket reference, not the address, so nothing collides. Pending records are counted on the dashboard so abandonment is visible. They are not cleaned up; they are small and they are evidence.
 
+### The launch guard
+
+`registrationOpen` is one edit in a content file, so it is not allowed to be the only thing between test configuration and real customers. `src/lib/tickets/launch.ts` refuses to sell, in production, while any of these hold:
+
+1. `RAZORPAY_KEY_ID` is not a live key (test, malformed, or unset)
+2. any tier on sale has `pricePaise: null`
+3. `RAZORPAY_TEST_AMOUNT_PAISE` is set at all, even to nothing
+
+Every entry point asks `registrationIsOpen()`, which is `registrationOpen` **and** no enforced blocker: the checkout route (503, and a loud `[checkout] REFUSED` log line naming each blocker), `/register`, the hero, the pass grid, the nav, the sitemap. The admin dashboard's first panel lists the blockers in plain words. Enforcement is keyed on `NODE_ENV === 'production'`, which the runtime sets and no env file can override; development is exempt so the flow can be exercised against test mode at all. Consequence: a live dry run with test keys is impossible by design. `npm run check:launch` proves each condition blocks on its own.
+
 ### Pricing placeholder, REMOVE BEFORE LAUNCH
 
 Every tier in `content/passes.ts` still has `pricePaise: null`. Until each one is set, `lib/tickets/pricing.ts` charges `RAZORPAY_TEST_AMOUNT_PAISE`, default 100, one rupee, warns on every order, and the form labels every tier "Test price, placeholder". With live keys and this still in force, passes sell for one rupee. Setting `pricePaise` on every tier makes the fallback unreachable.
@@ -260,6 +271,8 @@ Lambda in `amplify/functions/reconcile`, hourly.
 4. Write a summary item and surface the last run plus mismatch count on the admin dashboard.
 
 Razorpay's order list can lag a capture by a few seconds, so a reconcile run right after a payment may not see it. The next run does.
+
+Razorpay rate limits order creation and answers a burst with 429. Ten concurrent checkouts in test mode lost eleven of forty to it. The client retries 429 and 5xx up to four times with backoff, after which forty concurrent checkouts from one address succeed. Creating an order is safe to retry; a duplicate is an unpaid order nobody can reach.
 
 ### Webhook registration
 
@@ -448,7 +461,7 @@ Kept current as work lands. Everything else in this file is the plan, this secti
 | Amplify Hosting | building from `main`, live at https://awsscdhyd.in with a compute role and production env vars attached |
 | Landing page, schedule, speakers, sponsors, code of conduct | built |
 | Pass page, QR, session picker, seat transaction | built, race test passes |
-| Payments | Razorpay, test keys. Our form at `/register`, order + pending record, webhook the only writer, reconcile hourly. Verified in test mode: capture, replay x3, tamper, wrong amount, failure, refund, lost webhook. Registration stays closed until `registrationOpen` flips. **Prices are a Rs 1 placeholder.** |
+| Payments | Razorpay, test keys. Our form at `/register`, order + pending record, webhook the only writer, reconcile hourly. Verified in test mode: capture, replay x3, tamper, wrong amount, failure, refund, lost webhook. Registration stays closed until `registrationOpen` flips, and the launch guard refuses to sell in production on a test key, an unpriced tier, or `RAZORPAY_TEST_AMOUNT_PAISE` being set, each verified to block alone. **Prices are a Rs 1 placeholder.** |
 | Organiser auth, dashboard, scanner | built, gated on ADMIN_EMAILS |
 | Reconcile | hourly, verified to report and repair a deleted record |
 | Email | built. Confirmation on create, reconcile retries what fails, bounces and complaints recorded and suppressed, counts on the dashboard |
