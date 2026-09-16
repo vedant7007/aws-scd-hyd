@@ -1,10 +1,12 @@
 import { defineBackend } from '@aws-amplify/backend'
-import { RemovalPolicy, Stack } from 'aws-cdk-lib'
+import { Duration, RemovalPolicy, Stack } from 'aws-cdk-lib'
 import { AttributeType, BillingMode, ProjectionType, Table } from 'aws-cdk-lib/aws-dynamodb'
 import { PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam'
+import { HostedZone, MxRecord, TxtRecord } from 'aws-cdk-lib/aws-route53'
 import { ConfigurationSet, ConfigurationSetEventDestination, EmailSendingEvent, EventDestination } from 'aws-cdk-lib/aws-ses'
 import { Topic } from 'aws-cdk-lib/aws-sns'
 import { LambdaSubscription } from 'aws-cdk-lib/aws-sns-subscriptions'
+import { AwsCustomResource, AwsCustomResourcePolicy, PhysicalResourceId } from 'aws-cdk-lib/custom-resources'
 import { auth } from './auth/resource'
 import { emailEvents } from './functions/email-events/resource'
 import { reconcile } from './functions/reconcile/resource'
@@ -141,6 +143,102 @@ const ssrCompute = new Role(mail, 'SsrCompute', {
 })
 table.grantReadWriteData(ssrCompute)
 ssrCompute.addToPolicy(sesSend)
+
+/* ---------------------------------------------------------------------------
+   Deliverability. DMARC, and a custom MAIL FROM so SPF aligns with the From
+   domain instead of the Return-Path sitting at amazonses.com.
+
+   These are facts about the account, not about an environment: one hosted
+   zone, one SES identity. Only one stack may own them or the second would
+   fail on a duplicate record set, so they are created only where
+   SCD_MANAGE_DNS is set, which is the production build and nowhere else.
+   A sandbox never touches public DNS.
+   --------------------------------------------------------------------------- */
+
+const DOMAIN = 'awsscdhyd.in'
+const MAIL_FROM = `mail.${DOMAIN}`
+const HOSTED_ZONE_ID = 'Z099191220F3K13R283RC'
+
+if (process.env.SCD_MANAGE_DNS === 'true') {
+  const dns = backend.createStack('scd-dns')
+
+  // Attributes, not a lookup: a lookup runs an API call at synth time under
+  // whatever credentials are deploying, and this must synthesize identically
+  // everywhere.
+  const zone = HostedZone.fromHostedZoneAttributes(dns, 'Zone', {
+    hostedZoneId: HOSTED_ZONE_ID,
+    zoneName: DOMAIN,
+  })
+
+  /**
+   * DMARC at p=none: monitor only, nothing is rejected or quarantined.
+   * Aggregate reports arrive at the rua address as XML attachments, which is
+   * expected. Tighten to quarantine, then reject, once the reports show every
+   * legitimate source aligning.
+   */
+  new TxtRecord(dns, 'Dmarc', {
+    zone,
+    recordName: '_dmarc',
+    values: [`v=DMARC1; p=none; rua=mailto:${process.env.SES_REPLY_TO ?? 'awssbgvjit@gmail.com'}`],
+    ttl: Duration.seconds(300),
+  })
+
+  /**
+   * Custom MAIL FROM. SES needs an MX pointing at its feedback host for the
+   * region and an SPF record authorising amazonses.com on that subdomain.
+   * With these in place the envelope sender is @mail.awsscdhyd.in, which is
+   * organisationally aligned with the From domain, so SPF passes DMARC too.
+   */
+  new MxRecord(dns, 'MailFromMx', {
+    zone,
+    recordName: 'mail',
+    values: [{ priority: 10, hostName: `feedback-smtp.${Stack.of(dns).region}.amazonses.com` }],
+    ttl: Duration.seconds(300),
+  })
+
+  new TxtRecord(dns, 'MailFromSpf', {
+    zone,
+    recordName: 'mail',
+    values: ['v=spf1 include:amazonses.com ~all'],
+    ttl: Duration.seconds(300),
+  })
+
+  /**
+   * The identity was verified by hand and is not a CDK resource, so its MAIL
+   * FROM attributes are set through an SDK call. USE_DEFAULT_VALUE, not
+   * REJECT_MESSAGE: if the MX record ever fails to resolve, SES falls back to
+   * its own envelope domain and mail still goes out, rather than stopping.
+   * No onDelete, so tearing down the stack leaves the identity as it is.
+   */
+  new AwsCustomResource(dns, 'MailFrom', {
+    resourceType: 'Custom::SesMailFrom',
+    onCreate: {
+      service: '@aws-sdk/client-sesv2',
+      action: 'PutEmailIdentityMailFromAttributes',
+      parameters: {
+        EmailIdentity: DOMAIN,
+        MailFromDomain: MAIL_FROM,
+        BehaviorOnMxFailure: 'USE_DEFAULT_VALUE',
+      },
+      physicalResourceId: PhysicalResourceId.of(`mail-from-${DOMAIN}`),
+    },
+    onUpdate: {
+      service: '@aws-sdk/client-sesv2',
+      action: 'PutEmailIdentityMailFromAttributes',
+      parameters: {
+        EmailIdentity: DOMAIN,
+        MailFromDomain: MAIL_FROM,
+        BehaviorOnMxFailure: 'USE_DEFAULT_VALUE',
+      },
+      physicalResourceId: PhysicalResourceId.of(`mail-from-${DOMAIN}`),
+    },
+    policy: AwsCustomResourcePolicy.fromSdkCalls({
+      resources: [
+        Stack.of(dns).formatArn({ service: 'ses', resource: 'identity', resourceName: DOMAIN }),
+      ],
+    }),
+  })
+}
 
 // Copy these out of amplify_outputs.json: scdTableName into SCD_TABLE_NAME,
 // sesConfigurationSet into SES_CONFIGURATION_SET, and ssrComputeRoleArn onto
