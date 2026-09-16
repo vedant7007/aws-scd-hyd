@@ -83,3 +83,24 @@ export type ReconcileSummary = Keyed & {
   ok: boolean
   error?: string
 }
+
+export type EmailEventType = 'bounce' | 'complaint'
+
+/**
+ * One bounce or complaint, as delivered by SES through SNS. Kept per address
+ * under EMAIL#<address>, and listed by type through GSI1 for the dashboard.
+ */
+export type EmailEvent = Keyed & {
+  type: EmailEventType
+  /** Permanent or Transient for bounces, the feedback type for complaints. */
+  subType: string
+  address: string
+  messageId: string
+  feedbackId: string
+  occurredAt: string
+  recordedAt: string
+  /** True when the address was added to the SES suppression list as a result. */
+  suppressed: boolean
+  /** Why suppression was not attempted, when it was not. */
+  note?: string
+}

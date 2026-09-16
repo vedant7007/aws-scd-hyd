@@ -8,6 +8,10 @@ export const keys = {
   config: () => ({ PK: 'CONFIG', SK: 'EVENT' }),
   reconcile: () => ({ PK: 'RECONCILE', SK: 'LATEST' }),
   subscriber: (email: string) => ({ PK: `SUB#${normaliseEmail(email)}`, SK: 'PROFILE' }),
+  emailEvent: (email: string, occurredAt: string, type: string) => ({
+    PK: `EMAIL#${normaliseEmail(email)}`,
+    SK: `EVENT#${occurredAt}#${type}`,
+  }),
 }
 
 /** GSI1 keys, only for the items that are queried through the index. */
@@ -18,6 +22,10 @@ export const gsi1 = {
     GSI1SK: `SESSION#${sessionId}`,
   }),
   subscriberByDate: (createdAt: string) => ({ GSI1PK: 'SUBS', GSI1SK: createdAt }),
+  emailEventByType: (type: string, occurredAt: string) => ({
+    GSI1PK: `EMAILEVENT#${type}`,
+    GSI1SK: occurredAt,
+  }),
 }
 
 export const normaliseEmail = (email: string) => email.trim().toLowerCase()

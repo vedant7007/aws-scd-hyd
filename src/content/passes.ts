@@ -1,4 +1,4 @@
-import type { Tier } from '@/lib/db/types'
+import type { Tier } from '../lib/db/types'
 
 export type Pass = {
   id: Tier

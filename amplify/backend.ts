@@ -1,10 +1,15 @@
 import { defineBackend } from '@aws-amplify/backend'
 import { RemovalPolicy, Stack } from 'aws-cdk-lib'
 import { AttributeType, BillingMode, ProjectionType, Table } from 'aws-cdk-lib/aws-dynamodb'
+import { PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam'
+import { ConfigurationSet, ConfigurationSetEventDestination, EmailSendingEvent, EventDestination } from 'aws-cdk-lib/aws-ses'
+import { Topic } from 'aws-cdk-lib/aws-sns'
+import { LambdaSubscription } from 'aws-cdk-lib/aws-sns-subscriptions'
 import { auth } from './auth/resource'
+import { emailEvents } from './functions/email-events/resource'
 import { reconcile } from './functions/reconcile/resource'
 
-const backend = defineBackend({ auth, reconcile })
+const backend = defineBackend({ auth, reconcile, emailEvents })
 
 /**
  * Organisers only. Self sign up is off, so an account exists only because an
@@ -45,19 +50,106 @@ table.addGlobalSecondaryIndex({
   projectionType: ProjectionType.ALL,
 })
 
-// Copy scdTableName out of amplify_outputs.json into SCD_TABLE_NAME.
+/* ---------------------------------------------------------------------------
+   Email. SPEC.md section 12, and the bounce handling committed to AWS Support.
+   --------------------------------------------------------------------------- */
+
+const mail = backend.createStack('scd-mail')
+
+/**
+ * Every email the site sends goes through this configuration set, which is
+ * what turns a bounce or a complaint into an SNS event we can act on. The
+ * identity itself, awsscdhyd.in, was verified by hand and is not managed here.
+ */
+const outbound = new ConfigurationSet(mail, 'Outbound', {
+  reputationMetrics: true,
+})
+
+const bounces = new Topic(mail, 'Bounces', { displayName: 'SES bounces, awsscdhyd.in' })
+const complaints = new Topic(mail, 'Complaints', { displayName: 'SES complaints, awsscdhyd.in' })
+
+// CDK adds the topic policy that lets ses.amazonaws.com publish, scoped to
+// this configuration set, so nothing else can post into these topics.
+new ConfigurationSetEventDestination(mail, 'BouncesToSns', {
+  configurationSet: outbound,
+  destination: EventDestination.snsTopic(bounces),
+  events: [EmailSendingEvent.BOUNCE],
+})
+
+new ConfigurationSetEventDestination(mail, 'ComplaintsToSns', {
+  configurationSet: outbound,
+  destination: EventDestination.snsTopic(complaints),
+  events: [EmailSendingEvent.COMPLAINT],
+})
+
+// One handler for both. It records the event and suppresses the address.
+const eventsLambda = backend.emailEvents.resources.lambda
+bounces.addSubscription(new LambdaSubscription(eventsLambda))
+complaints.addSubscription(new LambdaSubscription(eventsLambda))
+table.grantReadWriteData(eventsLambda)
+eventsLambda.addToRolePolicy(
+  new PolicyStatement({
+    actions: ['ses:PutSuppressedDestination'],
+    resources: ['*'],
+  }),
+)
+backend.emailEvents.addEnvironment('SCD_TABLE_NAME', table.tableName)
+
+/**
+ * Sending. The From and Reply-To are fixed by SPEC.md section 12 and are not
+ * secrets, so they default here and can still be overridden from the build
+ * environment. NEXT_PUBLIC_SITE_URL has no safe default: the pass link in every
+ * email is built from it, and the send layer refuses a localhost origin.
+ */
+const sesSend = new PolicyStatement({
+  actions: ['ses:SendEmail', 'ses:SendRawEmail'],
+  resources: ['*'],
+})
+
+const emailEnv = {
+  EMAIL_TRANSPORT: 'ses',
+  SES_FROM: process.env.SES_FROM ?? 'AWS SBG VJIT <vjit@awsscdhyd.in>',
+  SES_REPLY_TO: process.env.SES_REPLY_TO ?? 'awssbgvjit@gmail.com',
+  SES_CONFIGURATION_SET: outbound.configurationSetName,
+  NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL ?? '',
+}
+
+/* ---------------------------------------------------------------------------
+   Grants.
+   --------------------------------------------------------------------------- */
+
+// The reconcile Lambda reads and writes the table, and sends the confirmation
+// for any attendee it inserts or finds owed one.
+const reconcileLambda = backend.reconcile.resources.lambda
+table.grantReadWriteData(reconcileLambda)
+reconcileLambda.addToRolePolicy(sesSend)
+backend.reconcile.addEnvironment('SCD_TABLE_NAME', table.tableName)
+backend.reconcile.addEnvironment('TICKETING_PROVIDER', process.env.TICKETING_PROVIDER ?? 'mock')
+for (const [key, value] of Object.entries(emailEnv)) backend.reconcile.addEnvironment(key, value)
+
+/**
+ * The role the Next.js server runs as in Amplify Hosting. SPEC.md section 13.
+ *
+ * Hosting does not attach one on its own. Without it every page that reads
+ * the table hangs at its loading state in production, which is exactly what
+ * the live site was doing. The role is defined here so its permissions are
+ * code, and its ARN is output so it can be attached to the branch.
+ */
+const ssrCompute = new Role(mail, 'SsrCompute', {
+  assumedBy: new ServicePrincipal('amplify.amazonaws.com'),
+  description: 'Amplify Hosting compute role for the aws-scd-hyd Next.js server',
+})
+table.grantReadWriteData(ssrCompute)
+ssrCompute.addToPolicy(sesSend)
+
+// Copy these out of amplify_outputs.json: scdTableName into SCD_TABLE_NAME,
+// sesConfigurationSet into SES_CONFIGURATION_SET, and ssrComputeRoleArn onto
+// the Hosting branch as its compute role.
 backend.addOutput({
   custom: {
     scdTableName: table.tableName,
     scdRegion: Stack.of(table).region,
+    sesConfigurationSet: outbound.configurationSetName,
+    ssrComputeRoleArn: ssrCompute.roleArn,
   },
 })
-
-// The reconcile Lambda is the only backend component that touches the table,
-// and it gets exactly the access it needs, nothing wider.
-table.grantReadWriteData(backend.reconcile.resources.lambda)
-backend.reconcile.addEnvironment('SCD_TABLE_NAME', table.tableName)
-backend.reconcile.addEnvironment('TICKETING_PROVIDER', process.env.TICKETING_PROVIDER ?? 'mock')
-
-// TODO: the Amplify SSR compute role needs read and write on this table plus
-// ses:SendEmail. That grant is wired when hosting is connected in phase 4.

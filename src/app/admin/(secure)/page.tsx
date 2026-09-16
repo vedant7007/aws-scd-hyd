@@ -114,11 +114,12 @@ export default async function AdminDashboardPage() {
           Reconciliation
         </h2>
         {d.reconcile ? (
-          <dl className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <dl className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
             <Stat label="Last run" value={new Date(d.reconcile.ranAt).toUTCString()} />
             <Stat label="Mismatches" value={d.reconcile.mismatches} />
             <Stat label="Inserted" value={d.reconcile.inserted} />
             <Stat label="Deactivated" value={d.reconcile.deactivated} />
+            <Stat label="Emails sent" value={d.reconcile.emailed ?? 0} />
           </dl>
         ) : (
           <p className="mt-4 text-muted">
@@ -131,6 +132,53 @@ export default async function AdminDashboardPage() {
             The last run failed: {d.reconcile.error ?? 'no detail recorded'}
           </p>
         ) : null}
+      </section>
+
+      <section aria-labelledby="email">
+        <h2 id="email" className="display text-step-2">
+          Email
+        </h2>
+        <dl className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <Stat label="Bounces" value={d.email.bounces} />
+          <Stat label="Complaints" value={d.email.complaints} />
+          <Stat label="Not suppressed" value={d.email.unsuppressed} />
+          <Stat label="Confirmations owed" value={d.email.confirmationsOwed} />
+        </dl>
+        {d.email.unsuppressed > 0 ? (
+          <p role="alert" className="mt-4 text-accent">
+            {d.email.unsuppressed} address(es) bounced or complained but could not be added to the suppression list.
+            Add them by hand in the SES console.
+          </p>
+        ) : null}
+        {d.email.recent.length > 0 ? (
+          <div className="scroll-x mt-6">
+            <table className="data-table">
+              <caption className="sr-only">Recent bounces and complaints</caption>
+              <thead>
+                <tr>
+                  <th scope="col">When</th>
+                  <th scope="col">Type</th>
+                  <th scope="col">Detail</th>
+                  <th scope="col">Address</th>
+                  <th scope="col">Suppressed</th>
+                </tr>
+              </thead>
+              <tbody>
+                {d.email.recent.map((e) => (
+                  <tr key={`${e.address}-${e.occurredAt}-${e.type}`}>
+                    <td className="mono">{new Date(e.occurredAt).toUTCString()}</td>
+                    <td>{e.type}</td>
+                    <td>{e.subType}</td>
+                    <td className="mono">{e.address}</td>
+                    <td>{e.suppressed ? 'yes' : e.note ? e.note : 'NO'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="mt-4 text-step--1 text-muted">No bounces or complaints recorded.</p>
+        )}
       </section>
 
       <section aria-labelledby="attendees">

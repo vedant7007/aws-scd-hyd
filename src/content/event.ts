@@ -1,4 +1,4 @@
-import type { Hall, Slot } from '@/lib/db/types'
+import type { Hall, Slot } from '../lib/db/types'
 
 export const event = {
   name: 'AWS Student Community Day Hyderabad',

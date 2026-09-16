@@ -2,7 +2,7 @@ import { GetCommand, QueryCommand, ScanCommand } from '@aws-sdk/lib-dynamodb'
 import type { QueryCommandInput, ScanCommandInput } from '@aws-sdk/lib-dynamodb'
 import { ddb, tableName } from './client'
 import { gsi1, keys } from './keys'
-import type { Attendee, EventConfig, ReconcileSummary, Selection, Session, Subscriber } from './types'
+import type { Attendee, EmailEvent, EmailEventType, EventConfig, ReconcileSummary, Selection, Session, Subscriber } from './types'
 
 /**
  * Drain every page. DynamoDB truncates at 1 MB regardless of how few items
@@ -106,4 +106,15 @@ export function listAttendees(): Promise<Attendee[]> {
 export async function getReconcileSummary(): Promise<ReconcileSummary | null> {
   const res = await ddb.send(new GetCommand({ TableName: tableName(), Key: keys.reconcile() }))
   return (res.Item as ReconcileSummary | undefined) ?? null
+}
+
+/** Every bounce or complaint of one type, newest first. GSI1 keyed by type. */
+export function listEmailEvents(type: EmailEventType): Promise<EmailEvent[]> {
+  return queryAll<EmailEvent>({
+    TableName: tableName(),
+    IndexName: 'GSI1',
+    KeyConditionExpression: 'GSI1PK = :pk',
+    ExpressionAttributeValues: { ':pk': gsi1.emailEventByType(type, '').GSI1PK },
+    ScanIndexForward: false,
+  })
 }

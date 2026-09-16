@@ -1,4 +1,4 @@
-import type { Track } from '@/lib/db/types'
+import type { Track } from '../lib/db/types'
 
 export type Speaker = {
   name: string
