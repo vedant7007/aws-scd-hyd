@@ -1,15 +1,16 @@
 import type { MetadataRoute } from 'next'
+import { registrationOpen } from '@/content/event'
 import { absolute } from '@/lib/site'
 
 /**
  * Public pages only. /pass/* is a private link per attendee and /admin/* is not
  * public at all, so neither ever appears here, see SPEC.md section 7.
  */
-const PUBLIC_ROUTES = ['/', '/schedule', '/speakers', '/sponsors', '/code-of-conduct'] as const
+const PUBLIC_ROUTES = ['/', '/schedule', '/speakers', '/sponsors', '/code-of-conduct', '/register'] as const
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const lastModified = new Date()
-  return PUBLIC_ROUTES.map((route) => ({
+  return PUBLIC_ROUTES.filter((route) => route !== '/register' || registrationOpen).map((route) => ({
     url: absolute(route),
     lastModified,
     changeFrequency: route === '/' ? 'weekly' : 'monthly',

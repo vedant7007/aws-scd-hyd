@@ -871,6 +871,263 @@
 }
 
 /* ===========================================================================
+   REGISTRATION. Our form, the gateway only takes the money. Same vocabulary
+   as the pass grid: hairlines, an accent rule for the chosen thing, no boxes.
+   =========================================================================== */
+
+.reg-grid {
+  display: grid;
+  gap: var(--space-xl);
+  align-items: start;
+}
+
+@media (min-width: 60rem) {
+  .reg-grid {
+    grid-template-columns: minmax(0, 7fr) minmax(0, 4fr);
+    column-gap: var(--space-2xl);
+  }
+  .reg-aside {
+    position: sticky;
+    top: var(--space-l);
+  }
+}
+
+.reg-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+  min-width: 0;
+}
+
+.reg-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-m);
+  border: 0;
+  border-top: var(--rule-weight) solid var(--border);
+  padding: var(--space-m) 0 0;
+  margin: 0;
+  min-width: 0;
+}
+
+.reg-block > legend {
+  padding: 0;
+  float: left;
+  width: 100%;
+}
+
+.reg-block:disabled {
+  color: var(--muted);
+}
+
+.reg-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+}
+
+.reg-field > label {
+  font-size: var(--step--1);
+  color: var(--muted);
+}
+
+.reg-two {
+  display: grid;
+  gap: var(--space-m);
+}
+
+@media (min-width: 40rem) {
+  .reg-two { grid-template-columns: 1fr 1fr; }
+}
+
+.reg-hint {
+  font-size: var(--step--1);
+  color: var(--muted);
+}
+
+/* Errors and flags use --text on --surface with the accent rule, never a red
+   that the theme does not define. The rule is the signal, the words say why. */
+.reg-error {
+  font-size: var(--step--1);
+  color: var(--text);
+  border-left: var(--rule-heavy) solid var(--accent);
+  padding-left: var(--space-xs);
+}
+
+.field[aria-invalid="true"] {
+  border-color: var(--accent);
+}
+
+.reg-notice {
+  display: grid;
+  gap: var(--space-2xs);
+  background: var(--surface);
+  border-left: var(--rule-heavy) solid var(--accent);
+  padding: var(--space-s) var(--space-m);
+}
+
+.reg-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-m);
+}
+
+.reg-summary {
+  border-top: var(--rule-heavy) solid var(--text);
+  padding-top: var(--space-m);
+}
+
+.reg-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-m);
+  margin-top: var(--space-m);
+  padding-top: var(--space-s);
+  border-top: var(--hairline) solid var(--border);
+  font-size: var(--step-1);
+  font-weight: 600;
+}
+
+.reg-flag {
+  margin-top: var(--space-m);
+  font-size: var(--step--1);
+  color: var(--text);
+  background: var(--surface);
+  border-left: var(--rule-heavy) solid var(--accent);
+  padding: var(--space-xs) var(--space-s);
+}
+
+.reg-result {
+  display: grid;
+  gap: var(--space-m);
+  padding-block: var(--space-xl);
+  border-top: var(--rule-weight) solid var(--border);
+  border-bottom: var(--rule-weight) solid var(--border);
+  outline: none;
+}
+
+/* A radio that looks like a row in the pass grid. The native input stays in
+   the tree for keyboard and screen readers; the row is its visible label. */
+.choice-list {
+  display: flex;
+  flex-direction: column;
+  border-top: var(--hairline) solid var(--border);
+}
+
+.choice {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-m);
+  border-bottom: var(--hairline) solid var(--border);
+  padding: var(--space-s) 0 var(--space-s) var(--space-xs);
+  border-left: var(--rule-heavy) solid transparent;
+  cursor: pointer;
+  transition:
+    background var(--dur-fast) linear,
+    border-color var(--dur-fast) linear;
+}
+
+.choice:hover { background: var(--surface); }
+
+.choice[data-checked="true"] {
+  border-left-color: var(--accent);
+  background: var(--surface);
+}
+
+.choice:focus-within {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
+.choice-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.choice-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3xs);
+  min-width: 0;
+}
+
+.choice-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2xs);
+}
+
+.choice-name {
+  font-family: var(--font-display);
+  font-weight: var(--display-weight);
+  font-size: var(--step-1);
+  letter-spacing: var(--display-tracking);
+}
+
+.choice-detail {
+  font-size: var(--step--1);
+  color: var(--muted);
+}
+
+.choice-price {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-3xs);
+  text-align: right;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.choice-flag {
+  font-size: var(--step--1);
+  font-weight: 500;
+  color: var(--accent-ink);
+  background: var(--accent);
+  border-radius: var(--radius);
+  padding: 0.1em 0.5em;
+}
+
+.choice-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+
+.chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  border: var(--hairline) solid var(--muted);
+  border-radius: var(--radius);
+  padding: 0.6em 1.2em;
+  cursor: pointer;
+  transition:
+    border-color var(--dur-fast) linear,
+    background var(--dur-fast) linear;
+}
+
+.chip:hover { background: var(--surface); }
+
+.chip[data-checked="true"] {
+  background: var(--text);
+  color: var(--bg);
+  border-color: var(--text);
+}
+
+.chip:focus-within {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
+/* ===========================================================================
    EMPTY STATES. Live for weeks, so they are designed, not apologetic.
    =========================================================================== */
 

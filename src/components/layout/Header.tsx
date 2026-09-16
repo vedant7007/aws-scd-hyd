@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { event } from '@/content/event'
+import { event, registrationOpen } from '@/content/event'
 import { Container } from './Container'
 import { StickyHeader } from './StickyHeader'
 import { ThemeToggle } from './ThemeToggle'
@@ -23,6 +23,11 @@ export function Header() {
             <Link className="link" href="/sponsors">
               Sponsors
             </Link>
+            {registrationOpen ? (
+              <Link className="link" href="/register">
+                Register
+              </Link>
+            ) : null}
           </nav>
           <ThemeToggle />
         </div>
