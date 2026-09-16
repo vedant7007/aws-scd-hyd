@@ -431,6 +431,7 @@ Kept current as work lands. Everything else in this file is the plan, this secti
 | Organiser auth, dashboard, scanner | built, gated on ADMIN_EMAILS |
 | Reconcile | hourly, verified to report and repair a deleted record |
 | Email | built. Confirmation on create, reconcile retries what fails, bounces and complaints recorded and suppressed, counts on the dashboard |
+| Deliverability | DKIM, SPF via custom MAIL FROM `mail.awsscdhyd.in`, DMARC at `p=none` reporting to awssbgvjit@gmail.com. Records are CDK in `amplify/backend.ts`, created only by the build that carries `SCD_MANAGE_DNS=true`, which is the production Amplify app and nothing else |
 | Theme | placeholder tokens, awaiting 12 September |
 
 ### Verified numbers
