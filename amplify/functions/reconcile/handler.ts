@@ -3,7 +3,9 @@ import { ddb, tableName } from '../../../src/lib/db/client'
 import { keys } from '../../../src/lib/db/keys'
 import { listAttendees } from '../../../src/lib/db/queries'
 import type { ReconcileSummary } from '../../../src/lib/db/types'
-import { deactivateAttendee, upsertAttendeeFromTicket } from '../../../src/lib/db/writes'
+import { deactivateAttendee, markConfirmationSent, upsertAttendeeFromTicket } from '../../../src/lib/db/writes'
+import { isReservedAddress, sendEmail } from '../../../src/lib/email/send'
+import { confirmation } from '../../../src/lib/email/templates'
 import { getTicketingProvider } from '../../../src/lib/tickets/provider'
 
 /**
@@ -16,8 +18,8 @@ import { getTicketingProvider } from '../../../src/lib/tickets/provider'
  * 4. Write a summary so the dashboard can show the last run and the mismatch
  *    count, because a reconciliation nobody looks at is not a safety net.
  *
- * The confirmation email for an inserted record is deliberately not sent yet:
- * SES is sandboxed and the domain is not attached, SPEC.md section 15.
+ * An inserted record gets its confirmation email, since that is the student
+ * whose webhook was lost. A send failure never fails the run.
  */
 export const handler = async (): Promise<ReconcileSummary> => {
   const ranAt = new Date().toISOString()
@@ -30,6 +32,7 @@ export const handler = async (): Promise<ReconcileSummary> => {
     checked: 0,
     inserted: 0,
     deactivated: 0,
+    emailed: 0,
     mismatches: 0,
     ok: true,
   }
@@ -50,12 +53,29 @@ export const handler = async (): Promise<ReconcileSummary> => {
       const existing = ourByRef.get(ticket.ticketRef)
       if (existing) continue
 
-      const { created } = await upsertAttendeeFromTicket(ticket)
+      const { created, attendee } = await upsertAttendeeFromTicket(ticket)
       if (created) {
         summary.inserted++
         summary.mismatches++
+        ours.push(attendee)
         console.info(`[reconcile] inserted ${ticket.ticketRef} that was missing locally`)
-        // TODO(phase 4): send the confirmation email once SES is out of sandbox.
+      }
+    }
+
+    // Anyone paid who has never been sent a confirmation gets one now. That
+    // covers a record inserted just above, and a webhook whose SES call failed
+    // after the record was written. Seeded and mock attendees carry reserved
+    // addresses and are skipped rather than retried forever.
+    for (const attendee of ours) {
+      if (attendee.paymentStatus !== 'paid' || attendee.confirmationSentAt) continue
+      if (isReservedAddress(attendee.email)) continue
+      try {
+        await sendEmail({ to: attendee.email, ...confirmation(attendee) })
+        await markConfirmationSent(attendee.ticketRef)
+        summary.emailed++
+        console.info(`[reconcile] confirmation sent to ${attendee.ticketRef}`)
+      } catch (err) {
+        console.error('[reconcile] confirmation email failed, will retry next run', { ticketRef: attendee.ticketRef, err })
       }
     }
 
@@ -82,7 +102,7 @@ export const handler = async (): Promise<ReconcileSummary> => {
   await ddb.send(new PutCommand({ TableName: tableName(), Item: summary }))
 
   console.info(
-    `[reconcile] checked ${summary.checked}, inserted ${summary.inserted}, deactivated ${summary.deactivated}`,
+    `[reconcile] checked ${summary.checked}, inserted ${summary.inserted}, deactivated ${summary.deactivated}, emailed ${summary.emailed}`,
   )
   return summary
 }

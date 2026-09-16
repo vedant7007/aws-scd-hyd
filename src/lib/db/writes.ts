@@ -122,3 +122,20 @@ export async function deactivateAttendee(
 
   return { seatsReleased: selections.length }
 }
+
+/** Records that the confirmation email was accepted. First write wins. */
+export async function markConfirmationSent(ticketRef: string): Promise<void> {
+  try {
+    await ddb.send(
+      new UpdateCommand({
+        TableName: tableName(),
+        Key: keys.attendee(ticketRef),
+        UpdateExpression: 'SET confirmationSentAt = :now',
+        ConditionExpression: 'attribute_not_exists(confirmationSentAt)',
+        ExpressionAttributeValues: { ':now': new Date().toISOString() },
+      }),
+    )
+  } catch (err) {
+    if (!(err instanceof ConditionalCheckFailedException)) throw err
+  }
+}

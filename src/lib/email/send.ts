@@ -30,6 +30,9 @@ const REGION = process.env.AWS_REGION ?? 'ap-south-1'
 /** Reserved by RFC 2606. Nothing at these domains can be a real person. */
 const NEVER_SEND = /@(?:example\.(?:test|com|net|org)|test|invalid|localhost)$/i
 
+/** True for seeded and mock attendees, so a retry loop can skip them quietly. */
+export const isReservedAddress = (address: string) => NEVER_SEND.test(address.trim())
+
 function transport(): Transport {
   const forced = process.env.EMAIL_TRANSPORT
   if (forced === 'ses' || forced === 'console') return forced

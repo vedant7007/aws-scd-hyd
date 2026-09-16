@@ -25,6 +25,8 @@ export type Attendee = Keyed & {
   paymentStatus: PaymentStatus
   checkedInAt?: string
   swagIssuedAt?: string
+  /** Set once the confirmation email is accepted by SES. Absent means owed. */
+  confirmationSentAt?: string
   source: AttendeeSource
   createdAt: string
 }
@@ -75,6 +77,8 @@ export type ReconcileSummary = Keyed & {
   checked: number
   inserted: number
   deactivated: number
+  /** Confirmations sent on this run, whether for inserts or for earlier failures. */
+  emailed: number
   mismatches: number
   ok: boolean
   error?: string

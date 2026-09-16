@@ -79,6 +79,8 @@ function buildAttendees(createdAt: string): Attendee[] {
       paymentStatus: 'paid',
       source: 'manual',
       createdAt,
+      // Fake people are never emailed. Marked as sent so they never read as owed.
+      confirmationSentAt: createdAt,
     } satisfies Attendee
   })
 }

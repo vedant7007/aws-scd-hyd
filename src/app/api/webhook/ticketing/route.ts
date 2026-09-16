@@ -1,4 +1,6 @@
-import { deactivateAttendee, upsertAttendeeFromTicket } from '@/lib/db/writes'
+import { deactivateAttendee, markConfirmationSent, upsertAttendeeFromTicket } from '@/lib/db/writes'
+import { sendEmail } from '@/lib/email/send'
+import { confirmation } from '@/lib/email/templates'
 import { getTicketingProvider } from '@/lib/tickets/provider'
 
 /**
@@ -29,10 +31,22 @@ export async function POST(req: Request): Promise<Response> {
 
   try {
     if (event.type === 'registered') {
-      const { created } = await upsertAttendeeFromTicket(event)
+      const { created, attendee } = await upsertAttendeeFromTicket(event)
       console.info(`[webhook] ${event.ticketRef} ${created ? 'created' : 'already existed, updated'}`)
-      // TODO(phase 3): on created, send the confirmation email carrying the
-      // pass link via SES. Blocked on SES production access, SPEC.md section 15.
+
+      // SPEC.md section 8 step 4. Only on create, so a provider retry does not
+      // send the same person the same email twice. Sending is never allowed to
+      // fail the webhook: the record is already written, and if SES is down
+      // confirmationSentAt stays unset, so the hourly reconcile run sends it.
+      if (created) {
+        try {
+          const { messageId } = await sendEmail({ to: attendee.email, ...confirmation(attendee) })
+          await markConfirmationSent(event.ticketRef)
+          console.info(`[webhook] ${event.ticketRef} confirmation sent, ${messageId}`)
+        } catch (err) {
+          console.error('[webhook] confirmation email failed, record kept', { ticketRef: event.ticketRef, err })
+        }
+      }
     } else {
       const { seatsReleased } = await deactivateAttendee(event.ticketRef, event.type)
       console.info(`[webhook] ${event.ticketRef} ${event.type}, released ${seatsReleased} seat(s)`)
