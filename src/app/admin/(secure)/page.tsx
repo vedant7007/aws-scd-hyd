@@ -40,9 +40,10 @@ export default async function AdminDashboardPage() {
         <h2 id="totals" className="display text-step-2">
           Registrations
         </h2>
-        <dl className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <dl className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
           <Stat label="Total records" value={d.total} />
           <Stat label="Paid and coming" value={d.paid} />
+          <Stat label="Pending checkouts" value={d.pending} />
           <Stat label="Checked in" value={d.checkedIn} />
           <Stat label="Swag issued" value={d.swagIssued} />
         </dl>

@@ -27,7 +27,7 @@ When `/init` generates `CLAUDE.md`, have it point here rather than duplicating t
 A public event website with four jobs.
 
 1. **Sell the event.** Landing page, tracks, speakers, schedule, venue, FAQ. This is most of the site and most of the work.
-2. **Sell tickets.** Four paid tiers. Payment happens on an external provider's infrastructure, never in our code.
+2. **Sell tickets.** Four paid tiers. We own the registration form; the money moves on Razorpay's infrastructure, never in our code. Card details never touch our server.
 3. **Give each attendee a pass.** A tokenised link from their confirmation email opens their QR pass and their session picker. **There is no student login anywhere.**
 4. **Run the day.** An organiser dashboard for check-in scanning, live counts, food totals and swag issuance.
 
@@ -98,7 +98,9 @@ aws-scd-hyd/
 │  │  │  └─ scan/page.tsx
 │  │  └─ api/
 │  │     ├─ subscribe/route.ts
-│  │     ├─ webhook/ticketing/route.ts
+│  │     ├─ checkout/route.ts            # order + pending record
+│  │     ├─ checkout/status/route.ts     # what the browser polls
+│  │     ├─ webhook/razorpay/route.ts    # the only thing that marks paid
 │  │     └─ pass/[token]/sessions/route.ts
 │  ├─ components/
 │  │  ├─ layout/              # Header, Footer, ThemeToggle, Container
@@ -111,7 +113,7 @@ aws-scd-hyd/
 │  │  ├─ passes.ts  ├─ sponsors.ts ├─ faq.ts ├─ schedule.ts
 │  └─ lib/
 │     ├─ db/       ├─ client.ts ├─ keys.ts ├─ types.ts ├─ queries.ts
-│     ├─ tickets/  ├─ provider.ts ├─ mock.ts ├─ konfhub.ts ├─ razorpay.ts
+│     ├─ tickets/  ├─ razorpay.ts ├─ settle.ts ├─ pricing.ts
 │     ├─ email/    └─ send.ts
 │     └─ utils.ts
 ├─ scripts/seed.ts
@@ -129,11 +131,12 @@ aws-scd-hyd/
 AWS_REGION=ap-south-1
 SCD_TABLE_NAME=
 
-# "mock" for all local development until payments are decided
-TICKETING_PROVIDER=mock
-TICKETING_WEBHOOK_SECRET=
-KONFHUB_API_KEY=
-KONFHUB_EVENT_ID=
+# Razorpay. Test keys locally, live keys only on the production app.
+RAZORPAY_KEY_ID=
+RAZORPAY_KEY_SECRET=
+RAZORPAY_WEBHOOK_SECRET=
+# PLACEHOLDER, REMOVE BEFORE LAUNCH. See section 8.
+RAZORPAY_TEST_AMOUNT_PAISE=100
 
 # Send only. There is no mailbox on awsscdhyd.in, so replies must go elsewhere.
 SES_FROM="AWS SBG VJIT <vjit@awsscdhyd.in>"
@@ -145,7 +148,7 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 
 Locally, credentials come from the `scd` CLI profile, so set `AWS_PROFILE=scd` rather than putting keys in `.env.local`. In Amplify Hosting, the SSR compute role supplies credentials automatically and there are no keys at all.
 
-`TICKETING_PROVIDER=mock` is what lets the entire flow be built and tested before the domain, SES access or a merchant account exist. Nothing waits on paperwork.
+Razorpay test mode is what lets the whole payment flow be exercised with no money moving. Test keys and live keys are the same code path; only the key pair differs.
 
 ---
 
@@ -190,7 +193,10 @@ The Scan is deliberate. At a few thousand items it costs a fraction of a rupee a
 
 - **Nothing client-side ever touches AWS.** All reads and writes happen in server components, route handlers, or Lambdas.
 - `passToken` is 16 url-safe chars from `crypto.randomBytes`. Never `Math.random`, never derived from email or ticket ref.
-- `/api/webhook/ticketing` verifies the provider signature against `TICKETING_WEBHOOK_SECRET` **before parsing the body**. Unverified requests get a 401 and the body is not logged.
+- `/api/webhook/razorpay` verifies `X-Razorpay-Signature` against `RAZORPAY_WEBHOOK_SECRET` **before parsing the body**. Unverified requests get a 401 and the body is not logged. The secret is never logged anywhere.
+- `/api/checkout` accepts exactly the registration fields and nothing else. **The amount is never a parameter.** It is computed on the server from `content/passes.ts`, sent to Razorpay, and stored on the record; the webhook then checks the captured amount against it.
+- The browser's payment success callback is UX only. Nothing it sends can mark a record paid. `/api/checkout/status` reads state, it never writes it, and it needs the checkout token handed to the browser that created the record.
+- `/api/checkout` is rate limited to ten per IP per hour.
 - `/api/subscribe` validates the email server-side and rate limits to 5 per IP per hour.
 - The reconcile Lambda is invoked by EventBridge and is not publicly reachable.
 - `/pass/[token]` sets `noindex`. Pass URLs never appear in the sitemap.
@@ -198,50 +204,66 @@ The Scan is deliberate. At a few thousand items it costs a fraction of a rupee a
 
 ---
 
-## 8. Ticketing abstraction
+## 8. Payments
 
-The payment provider is undecided. **No provider-specific code exists outside `src/lib/tickets/`.**
+The provider is Razorpay, and nothing about Razorpay exists outside `src/lib/tickets/`.
+
+Razorpay is a payment gateway, not a ticketing platform. That changed the shape of this section: a hosted platform owns the form and tells us about a sale after the fact, whereas here **we own the form, we create the order, and the provider only tells us whether the money moved.** The record exists before any payment does.
 
 ```ts
-export type TicketEvent = {
-  type: 'registered' | 'cancelled' | 'refunded'
-  ticketRef: string
-  name: string
-  email: string
-  phone: string
-  college: string
-  tier: Attendee['tier']
-  foodPreference: Attendee['foodPreference']
-}
+// src/lib/tickets/razorpay.ts, the whole boundary
+createOrder({ ticketRef, amountPaise, tier }): Promise<{ orderId, amountPaise, currency, keyId }>
+verifyAndParse(req: Request): Promise<PaymentEvent | null>   // signature over the raw body first
+listSettled(from: Date): Promise<PaymentEvent[]>              // for reconcile
 
-export interface TicketingProvider {
-  checkoutUrl(tierId: string): string
-  verifyAndParse(req: Request): Promise<TicketEvent | null>
-  listAll(): Promise<TicketEvent[]>
-}
+type PaymentEvent =
+  | { type: 'captured'; orderId; paymentId; amountPaise }
+  | { type: 'refunded'; orderId; paymentId; amountPaise; full }
+  | { type: 'failed';   orderId; paymentId; reason }
 ```
 
-Implementations: `mock.ts`, `konfhub.ts`, `razorpay.ts`. Chosen at runtime from `TICKETING_PROVIDER`. Switching providers must be one env var change. If it is not, the abstraction is wrong.
+`settle(event)` in `src/lib/tickets/settle.ts` is the one place a `PaymentEvent` changes state. The webhook and the reconcile run both call it, so a lost webhook and a delivered one end in the same state by the same code.
 
-### Webhook flow
+### Flow
 
-1. Verify signature, else 401.
-2. Parse to `TicketEvent`.
-3. `PutItem` with `ConditionExpression: attribute_not_exists(PK)`. On `ConditionalCheckFailedException`, update the existing item instead. **Providers retry webhooks, and duplicate attendees are the single most likely bug in this system.**
-4. On create, generate `passToken`, write, then send the confirmation email via SES.
-5. On `cancelled` or `refunded`, set `paymentStatus` and delete their selections inside a `TransactWriteItems` that decrements each affected session's `seatsTaken`.
-6. **Always return 200 to a verified request**, even on internal failure. Log the failure. A non-200 makes the provider retry indefinitely.
+1. `/register` collects name, email, phone, college, tier and food preference. Ours, styled like the rest of the site.
+2. `POST /api/checkout` validates every field on the server, computes the amount from `content/passes.ts`, creates a Razorpay order for that amount with the ticket reference as its receipt, and writes the attendee as `paymentStatus: 'pending'` with **no passToken**, plus an `ORDER#<id>` pointer back to the record. Both in one transaction.
+3. The browser opens Razorpay Checkout with the returned order id. The amount it displays comes from the order, which the server created; the browser never sends one.
+4. `POST /api/webhook/razorpay` is the only source of truth. On `payment.captured`, `settle` runs a conditional update, pending to paid, minting the passToken in the same write, and sends the confirmation through `sendEmail`. On `refund.processed` for the full amount, the record is refunded and its seats released. On `payment.failed`, nothing changes.
+5. The browser's success callback only switches the page to a confirming state, which polls `/api/checkout/status` until the webhook has landed. It marks nothing.
+
+### Why a pending record cannot leak
+
+Every consumer already filters on `paymentStatus === 'paid'`: the scanner, the session picker, the food CSV, the dashboard counts, the reconcile run. A pending record also has no passToken, so no pass URL can ever resolve to it. It is inert by construction, not by a check someone has to remember.
+
+### Idempotency
+
+`markPaid` is `UpdateItem` with `ConditionExpression: paymentStatus = :pending AND amountPaise = :amount`. A replay loses the condition, returns `settled: false`, sends nothing, and the passToken already in someone's inbox is untouched. **Replaying a captured webhook three times gives one paid record, one token, one email.** Verified.
+
+The amount condition is defence in depth: a captured payment that does not match the order the record was created for never marks anyone paid, whatever else was signed.
+
+### Failed and abandoned payments
+
+Stay pending. The same person can register again with the same email: the record key is the ticket reference, not the address, so nothing collides. Pending records are counted on the dashboard so abandonment is visible. They are not cleaned up; they are small and they are evidence.
+
+### Pricing placeholder, REMOVE BEFORE LAUNCH
+
+Every tier in `content/passes.ts` still has `pricePaise: null`. Until each one is set, `lib/tickets/pricing.ts` charges `RAZORPAY_TEST_AMOUNT_PAISE`, default 100, one rupee, warns on every order, and the form labels every tier "Test price, placeholder". With live keys and this still in force, passes sell for one rupee. Setting `pricePaise` on every tier makes the fallback unreachable.
 
 ### Reconciliation, not optional
 
-Lambda in `amplify/functions/reconcile`, triggered hourly by EventBridge Scheduler.
+Lambda in `amplify/functions/reconcile`, hourly.
 
-1. `listAll()` from the provider.
-2. Anything present there and missing here gets inserted with `source: 'reconcile'` and its email sent.
-3. Anything marked paid here but cancelled there gets deactivated and its seats freed.
+1. `listSettled(now - 3 days)`: every paid order with its captured payment, every processed refund, as `PaymentEvent`s.
+2. Each goes through `settle`. A record still pending here for a captured payment there is a webhook that never arrived; it is now paid, tokened and emailed, and counted as a mismatch.
+3. Anyone paid with no `confirmationSentAt` gets the email now.
 4. Write a summary item and surface the last run plus mismatch count on the admin dashboard.
 
-Without this, one failed webhook means a student arrives on 30 October holding a valid ticket that we have no record of.
+Razorpay's order list can lag a capture by a few seconds, so a reconcile run right after a payment may not see it. The next run does.
+
+### Webhook registration
+
+Dashboard, Settings, Webhooks: URL `https://awsscdhyd.in/api/webhook/razorpay`, events `payment.captured`, `payment.failed`, `refund.processed`, with the secret set as `RAZORPAY_WEBHOOK_SECRET` on the Amplify app. Razorpay retries a non-2xx for a day, so a verified request always gets a 200 even when applying it fails.
 
 ---
 
@@ -389,11 +411,11 @@ Everything is code. Nothing is clicked in the console except the one-time bootst
 
 **Phase 1.** Design tokens, layout shell, theme toggle with no flash. Then hero, ticker, countdown, tracks. Deploy to Amplify Hosting and confirm the live URL works.
 
-**Phase 2.** Mock ticketing provider, webhook route with idempotency, pass page, session picker with the transaction, and the two-window race test. All against seeded data, no real provider.
+**Phase 2.** Webhook route with idempotency, pass page, session picker with the transaction, and the two-window race test. Built first against a mock provider, since replaced by Razorpay.
 
 **Phase 3.** Cognito, admin dashboard, scanner with offline queueing. Reconcile Lambda and schedule.
 
-**Phase 4.** Real content as it arrives from the team on 12 September. Theme replacement. Real ticketing provider once payments are decided. SES production access. Domain attached.
+**Phase 4.** Real content as it arrives from the team on 12 September. Theme replacement. SES production access. Domain attached. Razorpay wired.
 
 **Phase 5, week of 21 October.** Content freeze. Rehearse check-in with 50 fake passes on real campus wifi. Take a manual DynamoDB backup the night before.
 
@@ -410,7 +432,6 @@ Done since this was written: `awsscdhyd.in` is registered, attached to Hosting a
 | Confirmed hall count, names, capacities | Config item, schedule page |
 | Registration open date and early bird expiry | Countdown and urgency copy |
 | Final theme (due 12 Sept) | Section 10 |
-| Payment provider | `konfhub.ts` or `razorpay.ts` |
 | Speaker list, sponsor tiers, FAQ, code of conduct copy | Content files |
 
 ---
@@ -427,7 +448,7 @@ Kept current as work lands. Everything else in this file is the plan, this secti
 | Amplify Hosting | building from `main`, live at https://awsscdhyd.in with a compute role and production env vars attached |
 | Landing page, schedule, speakers, sponsors, code of conduct | built |
 | Pass page, QR, session picker, seat transaction | built, race test passes |
-| Ticketing | mock only, by design. No konfhub.ts, no razorpay.ts |
+| Payments | Razorpay, test keys. Our form at `/register`, order + pending record, webhook the only writer, reconcile hourly. Verified in test mode: capture, replay x3, tamper, wrong amount, failure, refund, lost webhook. Registration stays closed until `registrationOpen` flips. **Prices are a Rs 1 placeholder.** |
 | Organiser auth, dashboard, scanner | built, gated on ADMIN_EMAILS |
 | Reconcile | hourly, verified to report and repair a deleted record |
 | Email | built. Confirmation on create, reconcile retries what fails, bounces and complaints recorded and suppressed, counts on the dashboard |
@@ -466,7 +487,8 @@ Contrast, computed from the tokens: text 19.80:1 light and 18.97:1 dark, muted 5
 - **The camera path has never been run against a real camera.** The decode loop and the jsQR fallback are unverified end to end. Test on the actual gate phones before 30 October.
 - **The offline queue was proven in unit tests, not in a browser.** Corrupt storage, duplicate intent, offline survival, drop on 4xx and drain on reconnect all pass. Walking a real device onto a dead network was not done.
 - `lambda:InvokeFunction` and `scheduler:*` are denied to the `scd` CLI user, so the deployed Lambda was never invoked directly. Its handler was run against the real table instead, and the function and its schedule were confirmed through CloudFormation.
-- **The mock provider reports three tickets, so reconcile inserts MOCK-001 to MOCK-003 every hour.** That is the mock behaving correctly. They disappear when a real provider is wired.
+- **Razorpay's own webhook delivery to the live site has not been observed.** Every webhook in testing was constructed from a real test-mode payment entity and signed with the same scheme, because Razorpay cannot reach localhost. The dashboard webhook and its secret are Vedant's to create; the first live delivery is the remaining check.
+- **Razorpay's order list can lag a capture by seconds.** One reconcile run missed a payment captured twenty seconds earlier and the next run applied it. Hourly makes this irrelevant, but do not read one run as the final word.
 - The `accent` colour fails the 3:1 contrast a focus indicator needs on the light background, at 2.14:1. The ring uses `--text` instead. Worth raising with the design team on 12 September.
 - **`amplify/package.json` is load bearing.** One line, `{"type": "module"}`, without which `ampx` cannot resolve extensionless imports.
 - **Re-running the seed rotates nothing.** Seed pass tokens are derived from the ticket ref, so a bookmarked pass link keeps working.

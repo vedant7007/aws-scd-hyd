@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Bundled Lambda output from a sandbox deploy, not source.
+    ".amplify/**",
   ]),
 ]);
 
