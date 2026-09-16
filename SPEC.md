@@ -401,12 +401,10 @@ Everything is code. Nothing is clicked in the console except the one-time bootst
 
 ## 15. Blocked on Vedant
 
+Done since this was written: `awsscdhyd.in` is registered, attached to Hosting and verified in SES with DKIM; SES has production access at 50,000 a day; the region is bootstrapped; Amplify builds `main` on push.
+
 | Item | Blocks |
 |---|---|
-| Register `awsscdhyd.in` | SES verification, domain attachment |
-| SES production access | All real email. Longest lead time |
-| One-time CDK bootstrap as admin | The first sandbox deploy |
-| Connect Amplify to GitHub | Automatic deploys |
 | Pass tier names, prices, inclusions, swag levels | Section 11 item 6 |
 | Sessions allowed per tier | Section 9 |
 | Confirmed hall count, names, capacities | Config item, schedule page |
@@ -426,13 +424,13 @@ Kept current as work lands. Everything else in this file is the plan, this secti
 | Thing | State |
 |---|---|
 | Sandbox backend | deployed: table, Cognito pool, reconcile Lambda, hourly schedule |
-| Amplify Hosting | building from `main` |
+| Amplify Hosting | building from `main`, live at https://awsscdhyd.in with a compute role and production env vars attached |
 | Landing page, schedule, speakers, sponsors, code of conduct | built |
 | Pass page, QR, session picker, seat transaction | built, race test passes |
 | Ticketing | mock only, by design. No konfhub.ts, no razorpay.ts |
 | Organiser auth, dashboard, scanner | built, gated on ADMIN_EMAILS |
 | Reconcile | hourly, verified to report and repair a deleted record |
-| Email | not built. SES sandboxed and no domain, SPEC.md section 15 |
+| Email | built. Confirmation on create, reconcile retries what fails, bounces and complaints recorded and suppressed, counts on the dashboard |
 | Theme | placeholder tokens, awaiting 12 September |
 
 ### Verified numbers
