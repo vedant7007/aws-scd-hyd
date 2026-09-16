@@ -92,6 +92,8 @@ export function RegisterForm({
   const [food, setFood] = useState<FoodPreference | ''>('')
   const [phase, setPhase] = useState<Phase>({ kind: 'form' })
   const [error, setError] = useState<{ field?: string; message: string } | null>(null)
+  // A limit was hit. Not an error in what they typed, so it is told, not flagged.
+  const [notice, setNotice] = useState<string | null>(null)
   const formRef = useRef<HTMLFormElement>(null)
   const resultRef = useRef<HTMLDivElement>(null)
   const ids = useId()
@@ -175,6 +177,7 @@ export function RegisterForm({
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError(null)
+    setNotice(null)
 
     // Same order, same record, when they only closed the window.
     if (phase.kind === 'dismissed' || phase.kind === 'failed') return openCheckout(phase.checkout)
@@ -204,6 +207,11 @@ export function RegisterForm({
     }
 
     const data = (await res.json().catch(() => ({}))) as Partial<Checkout> & { ok?: boolean; field?: string; message?: string }
+    if (res.status === 429) {
+      setNotice(data.message ?? 'Too many registrations right now. Nothing was charged. Try again in a while.')
+      setPhase({ kind: 'form' })
+      return
+    }
     if (!res.ok || !data.ok || !data.orderId) {
       setError({ field: data.field, message: data.message ?? 'Something went wrong. Nothing was charged.' })
       setPhase({ kind: 'form' })
@@ -398,8 +406,15 @@ export function RegisterForm({
           </p>
         ) : null}
 
+        {notice ? (
+          <div role="alert" className="notice">
+            <p className="font-semibold">This registration was not started.</p>
+            <p className="text-step--1 text-muted">{notice}</p>
+          </div>
+        ) : null}
+
         {phase.kind === 'failed' ? (
-          <div ref={resultRef} tabIndex={-1} role="alert" className="reg-notice">
+          <div ref={resultRef} tabIndex={-1} role="alert" className="notice">
             <p className="font-semibold">The payment did not go through.</p>
             <p className="text-step--1 text-muted">
               {phase.reason} Nothing was charged. You can try again with the same details.

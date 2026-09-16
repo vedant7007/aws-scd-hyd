@@ -32,18 +32,34 @@ function required(name: string): string {
   return value
 }
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+/**
+ * Razorpay rate limits order creation and answers a burst with 429. A campus
+ * registering at once is a burst, so a 429 or a 5xx is retried a few times
+ * with backoff before it becomes the visitor's problem. Creating an order is
+ * safe to retry: a duplicate is an unpaid order nobody can reach.
+ */
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const auth = Buffer.from(`${required('RAZORPAY_KEY_ID')}:${required('RAZORPAY_KEY_SECRET')}`).toString('base64')
-  const res = await fetch(`${API}${path}`, {
-    ...init,
-    headers: { authorization: `Basic ${auth}`, 'content-type': 'application/json', ...init?.headers },
-  })
-  if (!res.ok) {
+  const attempts = 4
+  for (let attempt = 1; ; attempt++) {
+    const res = await fetch(`${API}${path}`, {
+      ...init,
+      headers: { authorization: `Basic ${auth}`, 'content-type': 'application/json', ...init?.headers },
+    })
+    if (res.ok) return (await res.json()) as T
+
+    const retryable = res.status === 429 || res.status >= 500
+    if (retryable && attempt < attempts) {
+      const hinted = Number(res.headers.get('retry-after')) * 1000
+      await sleep(hinted > 0 ? hinted : 300 * attempt + Math.random() * 300)
+      continue
+    }
     // The error body names the field, never the key. Safe to surface.
     const detail = await res.text().catch(() => '')
-    throw new Error(`Razorpay ${init?.method ?? 'GET'} ${path} failed with ${res.status}: ${detail.slice(0, 300)}`)
+    throw new Error(`Razorpay ${init?.method ?? 'GET'} ${path} failed with ${res.status} after ${attempt} attempt(s): ${detail.slice(0, 300)}`)
   }
-  return (await res.json()) as T
 }
 
 type RzpPayment = {

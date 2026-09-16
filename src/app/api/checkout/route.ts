@@ -1,9 +1,9 @@
-import { registrationOpen } from '@/content/event'
 import { tierIds } from '@/content/passes'
 import { callerIp, withinRateLimit } from '@/lib/db/rate-limit'
 import type { FoodPreference, Tier } from '@/lib/db/types'
 import { newTicketRef } from '@/lib/db/keys'
 import { createPendingAttendee, type Registration } from '@/lib/db/writes'
+import { launchStatus } from '@/lib/tickets/launch'
 import { amountFor } from '@/lib/tickets/pricing'
 import { createOrder } from '@/lib/tickets/razorpay'
 
@@ -15,8 +15,16 @@ import { createOrder } from '@/lib/tickets/razorpay'
  *
  * The body is allowed to contain exactly the registration fields. Anything
  * else, an amount above all, is a 400: the price is not a parameter.
+ *
+ * Rate limits. The audience is students on college wifi, hundreds behind one
+ * NATed address, so a per-IP limit tight enough to matter would 429 a whole
+ * campus on launch morning. The limit that protects people is per email: one
+ * person retrying a few times is fine, a script cycling one address is not.
+ * The per-IP ceiling is only there so one connection cannot mint thousands
+ * of orders, and it sits far above anything a campus produces in an hour.
  */
-const LIMIT_PER_HOUR = 10
+const PER_EMAIL_PER_HOUR = 5
+const PER_IP_PER_HOUR = 500
 
 const FIELDS = ['name', 'email', 'phone', 'college', 'tier', 'foodPreference'] as const
 const FOODS: FoodPreference[] = ['veg', 'nonveg', 'jain']
@@ -82,14 +90,39 @@ function validate(body: unknown): { reg: Registration } | { error: Invalid } {
 }
 
 export async function POST(req: Request): Promise<Response> {
-  if (!registrationOpen) return json(403, { ok: false, message: 'Registration is not open yet.' })
+  const launch = launchStatus()
+  if (!launch.registrationOpen) return json(403, { ok: false, message: 'Registration is not open yet.' })
+
+  // The guard. registrationOpen is true and the configuration would sell
+  // one rupee passes through test keys. Refuse, say why in the log, and tell
+  // the visitor nothing about the configuration.
+  if (launch.enforced && launch.blockers.length) {
+    console.error(
+      `[checkout] REFUSED. registrationOpen is true but selling is blocked: ${launch.blockers.map((b) => b.detail).join(' | ')}`,
+    )
+    return json(503, { ok: false, message: 'Registration is paused for a moment. Nothing was charged. Try again later.' })
+  }
 
   const body: unknown = await req.json().catch(() => null)
   const v = validate(body)
   if ('error' in v) return json(400, { ok: false, ...v.error })
 
-  if (!(await withinRateLimit(callerIp(req), 'CHK', LIMIT_PER_HOUR))) {
-    return json(429, { ok: false, message: 'Too many attempts from one connection. Try again in an hour.' })
+  // Per email first, since that is the one a person can hit honestly.
+  if (!(await withinRateLimit(`email:${v.reg.email.toLowerCase()}`, 'CHK', PER_EMAIL_PER_HOUR))) {
+    return json(429, {
+      ok: false,
+      field: 'email',
+      reason: 'email',
+      message: `${v.reg.email} has started ${PER_EMAIL_PER_HOUR} registrations in the last hour, so this one was not started. If one of them was paid, the pass is already in that inbox. Otherwise wait an hour and try again; nothing was charged.`,
+    })
+  }
+
+  if (!(await withinRateLimit(callerIp(req), 'CHK', PER_IP_PER_HOUR))) {
+    return json(429, {
+      ok: false,
+      reason: 'network',
+      message: `More than ${PER_IP_PER_HOUR} registrations have come from this network in the last hour, which is the ceiling we keep against abuse, so this one was not started. Nothing was charged. Try again a little later, or from a different connection.`,
+    })
   }
 
   // The amount comes from content, full stop. It is computed here, sent to the
