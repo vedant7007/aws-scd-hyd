@@ -23,6 +23,8 @@ export type Dashboard = {
   attendees: Attendee[]
   total: number
   paid: number
+  /** Checkouts started and not paid: abandoned, failed, or a webhook still in flight. */
+  pending: number
   byTier: { tier: Tier; count: number }[]
   byFood: { food: FoodPreference; count: number }[]
   checkedIn: number
@@ -93,6 +95,7 @@ export async function loadDashboard(): Promise<Dashboard> {
     attendees,
     total: attendees.length,
     paid: paidOnly.length,
+    pending: attendees.filter((a) => a.paymentStatus === 'pending').length,
     byTier: TIERS.map((tier) => ({ tier, count: paidOnly.filter((a) => a.tier === tier).length })),
     // Caterer numbers count people who are actually coming, not refunds.
     byFood: FOODS.map((food) => ({

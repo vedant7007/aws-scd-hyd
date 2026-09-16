@@ -2,7 +2,7 @@ import { GetCommand, QueryCommand, ScanCommand } from '@aws-sdk/lib-dynamodb'
 import type { QueryCommandInput, ScanCommandInput } from '@aws-sdk/lib-dynamodb'
 import { ddb, tableName } from './client'
 import { gsi1, keys } from './keys'
-import type { Attendee, EmailEvent, EmailEventType, EventConfig, ReconcileSummary, Selection, Session, Subscriber } from './types'
+import type { Attendee, EmailEvent, EmailEventType, EventConfig, OrderPointer, ReconcileSummary, Selection, Session, Subscriber } from './types'
 
 /**
  * Drain every page. DynamoDB truncates at 1 MB regardless of how few items
@@ -42,6 +42,22 @@ export async function getAttendeeByToken(passToken: string): Promise<Attendee | 
     }),
   )
   return (page.Items?.[0] as Attendee | undefined) ?? null
+}
+
+export async function getAttendee(ticketRef: string): Promise<Attendee | null> {
+  const res = await ddb.send(new GetCommand({ TableName: tableName(), Key: keys.attendee(ticketRef) }))
+  return (res.Item as Attendee | undefined) ?? null
+}
+
+/**
+ * The webhook knows an order id and nothing else about us. The pointer item
+ * written at checkout resolves it. Null means we never created that order,
+ * which is the first thing a forged or misrouted event fails on.
+ */
+export async function getAttendeeByOrder(orderId: string): Promise<Attendee | null> {
+  const res = await ddb.send(new GetCommand({ TableName: tableName(), Key: keys.order(orderId) }))
+  const pointer = res.Item as OrderPointer | undefined
+  return pointer ? getAttendee(pointer.ticketRef) : null
 }
 
 /** One query returns the profile and every slot selection in the same partition. */

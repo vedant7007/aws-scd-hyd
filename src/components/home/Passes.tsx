@@ -1,6 +1,8 @@
+import Link from 'next/link'
 import type { CSSProperties } from 'react'
 import { Section } from '@/components/layout/Section'
-import { ALWAYS_INCLUDED, earlyBirdEndsAt, passes } from '@/content/passes'
+import { registrationOpen } from '@/content/event'
+import { ALWAYS_INCLUDED, earlyBirdEndsAt, formatInr, passes } from '@/content/passes'
 
 /**
  * Four tiers read as one comparison rather than four boxes: a single grid,
@@ -44,8 +46,8 @@ export function Passes() {
             </div>
 
             {/* Never invent a price. Pending reads as pending. */}
-            <p className="tier-price" data-pending={pass.price ? undefined : 'true'}>
-              {pass.price ?? 'Announced soon'}
+            <p className="tier-price" data-pending={pass.pricePaise === null ? 'true' : undefined}>
+              {pass.pricePaise === null ? 'Announced soon' : formatInr(pass.pricePaise)}
             </p>
 
             <ul className="tier-list">
@@ -64,6 +66,12 @@ export function Passes() {
                 <dd>{pass.sessionsAllowed === null ? 'To be confirmed' : pass.sessionsAllowed}</dd>
               </div>
             </dl>
+
+            {registrationOpen ? (
+              <Link className="cta-quiet mt-auto self-start" href={`/register?tier=${pass.id}`}>
+                Get {pass.name}
+              </Link>
+            ) : null}
           </div>
         ))}
       </div>

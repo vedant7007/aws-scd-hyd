@@ -3,8 +3,12 @@ import type { Tier } from '../lib/db/types'
 export type Pass = {
   id: Tier
   name: string
-  /** TODO(vedant): null until prices are set. Never guess a price. */
-  price: string | null
+  /**
+   * TODO(vedant): null until prices are set. Never guess a price.
+   * In paise, the unit the gateway bills in, so the amount charged and the
+   * amount displayed can never disagree. 49900 is Rs 499.
+   */
+  pricePaise: number | null
   /** Tier specific inclusions. Lunch is added to every tier, see ALWAYS_INCLUDED. */
   includes: string[]
   /** TODO(vedant): swag levels unconfirmed. */
@@ -33,7 +37,7 @@ export const passes: Pass[] = [
   {
     id: 'basic',
     name: 'Basic',
-    price: null,
+    pricePaise: null,
     includes: ['Entry to all three tracks'],
     swag: null,
     sessionsAllowed: null,
@@ -41,7 +45,7 @@ export const passes: Pass[] = [
   {
     id: 'premium',
     name: 'Premium',
-    price: null,
+    pricePaise: null,
     includes: ['Entry to all three tracks', 'Reserved seating'],
     swag: null,
     sessionsAllowed: null,
@@ -50,7 +54,7 @@ export const passes: Pass[] = [
   {
     id: 'ultra',
     name: 'Ultra',
-    price: null,
+    pricePaise: null,
     includes: ['Entry to all three tracks', 'Reserved seating', 'Workshop access'],
     swag: null,
     sessionsAllowed: null,
@@ -58,12 +62,23 @@ export const passes: Pass[] = [
   {
     id: 'vip',
     name: 'VIP',
-    price: null,
+    pricePaise: null,
     includes: ['Entry to all three tracks', 'Reserved seating', 'Workshop access', 'Speaker dinner'],
     swag: null,
     sessionsAllowed: null,
   },
 ]
+
+/** Rs 499, not 499.00: student pricing is whole rupees and the .00 is noise. */
+export const formatInr = (paise: number) =>
+  new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: paise % 100 ? 2 : 0 }).format(
+    paise / 100,
+  )
+
+/** The tier ids that exist, for validation. Read from the data, never listed twice. */
+export const tierIds = passes.map((p) => p.id)
+
+export const passFor = (tier: Tier): Pass | undefined => passes.find((p) => p.id === tier)
 
 /**
  * SPEC.md section 9. How many slots a tier may fill, read from here and never

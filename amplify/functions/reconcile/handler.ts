@@ -2,33 +2,39 @@ import { PutCommand } from '@aws-sdk/lib-dynamodb'
 import { ddb, tableName } from '../../../src/lib/db/client'
 import { keys } from '../../../src/lib/db/keys'
 import { listAttendees } from '../../../src/lib/db/queries'
-import type { ReconcileSummary } from '../../../src/lib/db/types'
-import { deactivateAttendee, markConfirmationSent, upsertAttendeeFromTicket } from '../../../src/lib/db/writes'
+import type { PaidAttendee, ReconcileSummary } from '../../../src/lib/db/types'
+import { markConfirmationSent } from '../../../src/lib/db/writes'
 import { isReservedAddress, sendEmail } from '../../../src/lib/email/send'
 import { confirmation } from '../../../src/lib/email/templates'
-import { getTicketingProvider } from '../../../src/lib/tickets/provider'
+import { listSettled } from '../../../src/lib/tickets/razorpay'
+import { settle } from '../../../src/lib/tickets/settle'
 
 /**
  * SPEC.md section 8. Runs hourly.
  *
- * 1. Ask the provider what it thinks it sold.
- * 2. Anything it has that we do not gets inserted, marked source reconcile.
- * 3. Anything we have as paid that it has cancelled gets deactivated and its
- *    seats freed.
+ * 1. Ask the provider what settled in the window: captured payments and
+ *    processed refunds, as the same events the webhook would have carried.
+ * 2. Apply every one through settle(), which is idempotent. Anything that was
+ *    still pending here is a webhook that never arrived; it is now paid and
+ *    the confirmation goes out. Anything refunded there is released here.
+ * 3. Anyone paid who has never been sent a confirmation gets one now, which
+ *    covers a webhook whose SES call failed after the record was written.
  * 4. Write a summary so the dashboard can show the last run and the mismatch
  *    count, because a reconciliation nobody looks at is not a safety net.
  *
- * An inserted record gets its confirmation email, since that is the student
- * whose webhook was lost. A send failure never fails the run.
+ * A send failure never fails the run.
  */
+
+/** Wide enough that a payment made just before a long outage is still found. */
+const WINDOW_MS = 3 * 24 * 60 * 60 * 1000
+
 export const handler = async (): Promise<ReconcileSummary> => {
   const ranAt = new Date().toISOString()
-  const providerName = process.env.TICKETING_PROVIDER ?? 'mock'
 
   const summary: ReconcileSummary = {
     ...keys.reconcile(),
     ranAt,
-    provider: providerName,
+    provider: 'razorpay',
     checked: 0,
     inserted: 0,
     deactivated: 0,
@@ -38,58 +44,53 @@ export const handler = async (): Promise<ReconcileSummary> => {
   }
 
   try {
-    const provider = getTicketingProvider()
-    const [theirs, ours] = await Promise.all([provider.listAll(), listAttendees()])
+    const events = await listSettled(new Date(Date.now() - WINDOW_MS))
+    summary.checked = events.length
 
-    summary.checked = theirs.length
-
-    const ourByRef = new Map(ours.map((a) => [a.ticketRef, a]))
-    const theirByRef = new Map(theirs.map((t) => [t.ticketRef, t]))
-
-    // Present at the provider, missing here. This is the case that matters:
-    // a student with a real ticket and no record.
-    for (const ticket of theirs) {
-      if (ticket.type !== 'registered') continue
-      const existing = ourByRef.get(ticket.ticketRef)
-      if (existing) continue
-
-      const { created, attendee } = await upsertAttendeeFromTicket(ticket)
-      if (created) {
-        summary.inserted++
-        summary.mismatches++
-        ours.push(attendee)
-        console.info(`[reconcile] inserted ${ticket.ticketRef} that was missing locally`)
+    for (const event of events) {
+      const result = await settle(event)
+      switch (result.outcome) {
+        case 'paid':
+          // The webhook should have done this. That it did not is the mismatch.
+          summary.inserted++
+          summary.mismatches++
+          if (result.emailed) summary.emailed++
+          console.info(`[reconcile] ${result.ticketRef} was pending, provider says paid, applied`)
+          break
+        case 'refunded':
+          summary.deactivated++
+          summary.mismatches++
+          console.info(`[reconcile] ${result.ticketRef} refunded at provider, released ${result.seatsReleased} seat(s)`)
+          break
+        case 'amount-mismatch':
+          summary.mismatches++
+          console.error(`[reconcile] ${result.ticketRef} amount mismatch, order ${result.expected}, paid ${result.got}, NOT applied`)
+          break
+        case 'unknown-order':
+          // An order on the account that this table never created. Test mode
+          // noise, or a dashboard created order. Counted so it is visible.
+          summary.mismatches++
+          console.warn(`[reconcile] provider has order ${result.orderId} with no record here`)
+          break
+        default:
+          // already-settled, partial-refund, failed: nothing to do.
+          break
       }
     }
 
-    // Anyone paid who has never been sent a confirmation gets one now. That
-    // covers a record inserted just above, and a webhook whose SES call failed
-    // after the record was written. Seeded and mock attendees carry reserved
-    // addresses and are skipped rather than retried forever.
-    for (const attendee of ours) {
-      if (attendee.paymentStatus !== 'paid' || attendee.confirmationSentAt) continue
+    // Owed confirmations. Seeded attendees carry reserved addresses and are
+    // skipped rather than retried forever.
+    for (const attendee of await listAttendees()) {
+      if (attendee.paymentStatus !== 'paid' || attendee.confirmationSentAt || !attendee.passToken) continue
       if (isReservedAddress(attendee.email)) continue
       try {
-        await sendEmail({ to: attendee.email, ...confirmation(attendee) })
+        await sendEmail({ to: attendee.email, ...confirmation(attendee as PaidAttendee) })
         await markConfirmationSent(attendee.ticketRef)
         summary.emailed++
         console.info(`[reconcile] confirmation sent to ${attendee.ticketRef}`)
       } catch (err) {
         console.error('[reconcile] confirmation email failed, will retry next run', { ticketRef: attendee.ticketRef, err })
       }
-    }
-
-    // Paid here, cancelled or absent at the provider.
-    for (const attendee of ours) {
-      if (attendee.paymentStatus !== 'paid') continue
-      const theirTicket = theirByRef.get(attendee.ticketRef)
-      if (theirTicket && theirTicket.type === 'registered') continue
-      if (!theirTicket) continue // Not sold by this provider, leave manual records alone.
-
-      await deactivateAttendee(attendee.ticketRef, theirTicket.type === 'refunded' ? 'refunded' : 'cancelled')
-      summary.deactivated++
-      summary.mismatches++
-      console.info(`[reconcile] deactivated ${attendee.ticketRef}, provider says ${theirTicket.type}`)
     }
   } catch (err) {
     summary.ok = false
@@ -102,7 +103,7 @@ export const handler = async (): Promise<ReconcileSummary> => {
   await ddb.send(new PutCommand({ TableName: tableName(), Item: summary }))
 
   console.info(
-    `[reconcile] checked ${summary.checked}, inserted ${summary.inserted}, deactivated ${summary.deactivated}, emailed ${summary.emailed}`,
+    `[reconcile] checked ${summary.checked}, applied ${summary.inserted}, deactivated ${summary.deactivated}, emailed ${summary.emailed}`,
   )
   return summary
 }

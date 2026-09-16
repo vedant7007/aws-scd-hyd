@@ -1,78 +1,118 @@
 import { ConditionalCheckFailedException } from '@aws-sdk/client-dynamodb'
-import { PutCommand, TransactWriteCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
-import type { TicketEvent } from '../tickets/provider'
+import { TransactWriteCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import { ddb, tableName } from './client'
-import { gsi1, keys, newPassToken, normaliseEmail } from './keys'
-import { getAttendeeWithSelections } from './queries'
-import type { Attendee } from './types'
+import { gsi1, keys, newPassToken, newToken, normaliseEmail } from './keys'
+import { getAttendee, getAttendeeWithSelections } from './queries'
+import type { Attendee, OrderPointer } from './types'
+
+export type Registration = {
+  name: string
+  email: string
+  phone: string
+  college: string
+  tier: Attendee['tier']
+  foodPreference: Attendee['foodPreference']
+}
 
 /**
- * Providers retry webhooks. A duplicate attendee is the single most likely bug
- * in this system, see SPEC.md section 8, so creation is a conditional put and
- * a losing put falls back to updating the row that is already there.
+ * The record behind an order, written before any money moves. It is pending,
+ * has no passToken and so cannot open a pass, and carries the amount the
+ * server decided on so the webhook can check what was actually paid.
  *
- * passToken and createdAt are written once and never overwritten, otherwise a
- * retry would silently invalidate a pass link already sitting in an inbox.
+ * The order pointer goes in the same transaction: an order that exists at the
+ * provider with no way back to a record here is the one that would get lost.
+ * The put is conditional on the ticket reference being new, so a collision in
+ * the six random characters fails loudly rather than overwriting someone.
  */
-export async function upsertAttendeeFromTicket(
-  event: TicketEvent,
-): Promise<{ created: boolean; attendee: Attendee }> {
+export async function createPendingAttendee(
+  ticketRef: string,
+  reg: Registration,
+  order: { orderId: string; amountPaise: number },
+): Promise<Attendee> {
   const table = tableName()
-  const passToken = newPassToken()
   const now = new Date().toISOString()
 
   const item: Attendee = {
-    ...keys.attendee(event.ticketRef),
-    ...gsi1.attendeeByToken(passToken),
-    ticketRef: event.ticketRef,
-    passToken,
-    name: event.name,
-    email: normaliseEmail(event.email),
-    phone: event.phone,
-    college: event.college,
-    tier: event.tier,
-    foodPreference: event.foodPreference,
-    paymentStatus: 'paid',
-    source: 'webhook',
+    ...keys.attendee(ticketRef),
+    ticketRef,
+    name: reg.name,
+    email: normaliseEmail(reg.email),
+    phone: reg.phone,
+    college: reg.college,
+    tier: reg.tier,
+    foodPreference: reg.foodPreference,
+    paymentStatus: 'pending',
+    orderId: order.orderId,
+    amountPaise: order.amountPaise,
+    checkoutToken: newToken(),
+    source: 'checkout',
     createdAt: now,
   }
 
+  const pointer: OrderPointer = { ...keys.order(order.orderId), orderId: order.orderId, ticketRef }
+
+  await ddb.send(
+    new TransactWriteCommand({
+      TransactItems: [
+        { Put: { TableName: table, Item: item, ConditionExpression: 'attribute_not_exists(PK)' } },
+        { Put: { TableName: table, Item: pointer, ConditionExpression: 'attribute_not_exists(PK)' } },
+      ],
+    }),
+  )
+
+  return item
+}
+
+/**
+ * pending to paid, exactly once. SPEC.md section 8 step 3, reshaped for a
+ * gateway: the record already exists, so idempotency is a conditional update
+ * on the status rather than a conditional put.
+ *
+ * The passToken is minted here and only here. A replayed webhook loses the
+ * condition, gets settled: false, and the token already in someone's inbox is
+ * left alone. The amount is checked against what the order was created for,
+ * so a payment for the wrong sum, however it came about, never marks anyone
+ * paid.
+ */
+export async function markPaid(
+  ticketRef: string,
+  payment: { paymentId: string; amountPaise: number },
+): Promise<{ settled: boolean; attendee: Attendee }> {
+  const table = tableName()
+  const passToken = newPassToken()
+  const token = gsi1.attendeeByToken(passToken)
+  const now = new Date().toISOString()
+
   try {
-    await ddb.send(
-      new PutCommand({
+    const res = await ddb.send(
+      new UpdateCommand({
         TableName: table,
-        Item: item,
-        ConditionExpression: 'attribute_not_exists(PK)',
+        Key: keys.attendee(ticketRef),
+        UpdateExpression:
+          'SET paymentStatus = :paid, passToken = :token, GSI1PK = :g1pk, GSI1SK = :g1sk, paymentId = :pid, paidAt = :now',
+        ConditionExpression: 'paymentStatus = :pending AND amountPaise = :amount',
+        ExpressionAttributeValues: {
+          ':paid': 'paid',
+          ':pending': 'pending',
+          ':token': passToken,
+          ':g1pk': token.GSI1PK,
+          ':g1sk': token.GSI1SK,
+          ':pid': payment.paymentId,
+          ':now': now,
+          ':amount': payment.amountPaise,
+        },
+        ReturnValues: 'ALL_NEW',
       }),
     )
-    return { created: true, attendee: item }
+    return { settled: true, attendee: res.Attributes as Attendee }
   } catch (err) {
     if (!(err instanceof ConditionalCheckFailedException)) throw err
   }
 
-  // Already there. Refresh only the fields the provider owns.
-  const updated = await ddb.send(
-    new UpdateCommand({
-      TableName: table,
-      Key: keys.attendee(event.ticketRef),
-      UpdateExpression:
-        'SET #name = :name, email = :email, phone = :phone, college = :college, tier = :tier, foodPreference = :food, paymentStatus = :paid, #src = :src',
-      ExpressionAttributeNames: { '#name': 'name', '#src': 'source' },
-      ExpressionAttributeValues: {
-        ':name': event.name,
-        ':email': normaliseEmail(event.email),
-        ':phone': event.phone,
-        ':college': event.college,
-        ':tier': event.tier,
-        ':food': event.foodPreference,
-        ':paid': 'paid',
-        ':src': 'webhook',
-      },
-      ReturnValues: 'ALL_NEW',
-    }),
-  )
-
-  return { created: false, attendee: updated.Attributes as Attendee }
+  // Already settled, or the amount did not match. The caller tells them apart.
+  const existing = await getAttendee(ticketRef)
+  if (!existing) throw new Error(`markPaid: ${ticketRef} vanished between the update and the read`)
+  return { settled: false, attendee: existing }
 }
 
 /**

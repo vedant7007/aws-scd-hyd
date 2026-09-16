@@ -120,14 +120,24 @@ const emailEnv = {
    Grants.
    --------------------------------------------------------------------------- */
 
-// The reconcile Lambda reads and writes the table, and sends the confirmation
-// for any attendee it inserts or finds owed one.
+// The reconcile Lambda reads and writes the table, asks Razorpay what settled,
+// and sends the confirmation for anything it applies or finds owed.
 const reconcileLambda = backend.reconcile.resources.lambda
 table.grantReadWriteData(reconcileLambda)
 reconcileLambda.addToRolePolicy(sesSend)
 backend.reconcile.addEnvironment('SCD_TABLE_NAME', table.tableName)
-backend.reconcile.addEnvironment('TICKETING_PROVIDER', process.env.TICKETING_PROVIDER ?? 'mock')
 for (const [key, value] of Object.entries(emailEnv)) backend.reconcile.addEnvironment(key, value)
+
+/**
+ * Razorpay API keys, passed through from the deploying environment: the
+ * Amplify app's variables in production, the shell for a sandbox. Absent means
+ * the reconcile run fails loudly on its first API call and says which key is
+ * missing, which the dashboard then shows. The webhook secret is not needed
+ * here; only the Hosting server receives webhooks.
+ */
+for (const key of ['RAZORPAY_KEY_ID', 'RAZORPAY_KEY_SECRET'] as const) {
+  backend.reconcile.addEnvironment(key, process.env[key] ?? '')
+}
 
 /**
  * The role the Next.js server runs as in Amplify Hosting. SPEC.md section 13.

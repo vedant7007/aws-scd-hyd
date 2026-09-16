@@ -7,6 +7,7 @@ export const keys = {
   session: (sessionId: string) => ({ PK: `SESSION#${sessionId}`, SK: 'META' }),
   config: () => ({ PK: 'CONFIG', SK: 'EVENT' }),
   reconcile: () => ({ PK: 'RECONCILE', SK: 'LATEST' }),
+  order: (orderId: string) => ({ PK: `ORDER#${orderId}`, SK: 'ATT' }),
   subscriber: (email: string) => ({ PK: `SUB#${normaliseEmail(email)}`, SK: 'PROFILE' }),
   emailEvent: (email: string, occurredAt: string, type: string) => ({
     PK: `EMAIL#${normaliseEmail(email)}`,
@@ -31,4 +32,18 @@ export const gsi1 = {
 export const normaliseEmail = (email: string) => email.trim().toLowerCase()
 
 /** 12 random bytes base64url encode to exactly 16 url-safe chars with no padding. */
-export const newPassToken = () => randomBytes(12).toString('base64url')
+export const newToken = () => randomBytes(12).toString('base64url')
+export const newPassToken = newToken
+
+/**
+ * Ticket references are read aloud at a gate and typed into a scanner by hand
+ * when a camera fails, so the alphabet drops 0, O, 1, I and L. Six characters
+ * give 30^6 possibilities. A collision is caught by the conditional put.
+ */
+const REF_ALPHABET = '23456789ABCDEFGHJKMNPQRSTUVWXYZ'
+export const newTicketRef = () => {
+  const bytes = randomBytes(6)
+  let out = 'SCD-'
+  for (const b of bytes) out += REF_ALPHABET[b % REF_ALPHABET.length]
+  return out
+}

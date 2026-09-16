@@ -91,7 +91,7 @@ async function main(): Promise<void> {
   const tokens: string[] = []
   for (const ticketRef of CONTENDERS) {
     const { attendee } = await getAttendeeWithSelections(ticketRef)
-    if (!attendee) throw new Error(`${ticketRef} is not seeded, run npm run seed first`)
+    if (!attendee?.passToken) throw new Error(`${ticketRef} is not seeded, run npm run seed first`)
     tokens.push(attendee.passToken)
   }
 
