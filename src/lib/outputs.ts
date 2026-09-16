@@ -12,6 +12,8 @@ export type AmplifyOutputs = {
   custom?: {
     scdTableName?: string
     scdRegion?: string
+    sesConfigurationSet?: string
+    ssrComputeRoleArn?: string
   }
 }
 
