@@ -30,22 +30,22 @@ export async function POST(req: Request): Promise<Response> {
     const result = await settle(event)
     switch (result.outcome) {
       case 'paid':
-        console.info(`[webhook:razorpay] ${result.ticketRef} paid, confirmation ${result.emailed ? 'sent' : 'owed'}`)
+        console.info(`[webhook:razorpay] ${result.passId} paid, confirmation ${result.emailed ? 'sent' : 'owed'}`)
         break
       case 'already-settled':
-        console.info(`[webhook:razorpay] ${result.ticketRef} replay ignored, already ${result.status}`)
+        console.info(`[webhook:razorpay] ${result.passId} replay ignored, already ${result.state}`)
         break
       case 'amount-mismatch':
-        console.error(`[webhook:razorpay] ${result.ticketRef} NOT marked paid: order was ${result.expected} paise, payment ${result.got}`)
+        console.error(`[webhook:razorpay] ${result.passId} NOT marked paid: order was ${result.expected} paise, payment ${result.got}`)
         break
       case 'refunded':
-        console.info(`[webhook:razorpay] ${result.ticketRef} refunded, released ${result.seatsReleased} seat(s)`)
+        console.info(`[webhook:razorpay] ${result.passId} refunded, released ${result.seatsReleased} seat(s)`)
         break
       case 'partial-refund':
-        console.warn(`[webhook:razorpay] ${result.ticketRef} partial refund, record left as is`)
+        console.warn(`[webhook:razorpay] ${result.passId} partial refund, record left as is`)
         break
       case 'failed':
-        console.info(`[webhook:razorpay] ${result.ticketRef} payment failed (${result.reason}), left pending`)
+        console.info(`[webhook:razorpay] ${result.passId} payment failed (${result.reason}), left pending`)
         break
       case 'unknown-order':
         console.warn(`[webhook:razorpay] no record for order ${result.orderId}`)

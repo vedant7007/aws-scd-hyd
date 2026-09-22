@@ -1,6 +1,7 @@
 import { ImageResponse } from 'next/og'
 import { event, venue } from '@/content/event'
-import { getAttendeeByToken } from '@/lib/db/queries'
+import { getAttendee } from '@/lib/db/queries'
+import { normalisePassId } from '@/lib/db/keys'
 import { ogTheme } from '@/lib/og-theme'
 
 /**
@@ -20,14 +21,14 @@ const SIZES = {
 
 type Format = keyof typeof SIZES
 
-export async function GET(req: Request, ctx: RouteContext<'/api/pass/[token]/share'>): Promise<Response> {
-  const { token } = await ctx.params
+export async function GET(req: Request, ctx: RouteContext<'/api/pass/[passId]/share'>): Promise<Response> {
+  const { passId } = await ctx.params
   const requested = new URL(req.url).searchParams.get('format')
   const format: Format = requested === 'card' ? 'card' : 'story'
   const size = SIZES[format]
 
-  const attendee = await getAttendeeByToken(token)
-  if (!attendee) {
+  const attendee = await getAttendee(normalisePassId(passId) ?? '')
+  if (!attendee || (attendee.state !== 'VERIFIED' && attendee.state !== 'SESSIONS_SELECTED')) {
     return new Response('This pass link is not valid.', {
       status: 404,
       headers: { 'cache-control': 'no-store' },

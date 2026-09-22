@@ -1,4 +1,5 @@
 import { tierLabel } from '@/content/passes'
+import { trackName } from '@/content/sessions'
 import { currentAdmin } from '@/lib/auth/admin'
 import { loadDashboard, toCsv } from '@/lib/db/stats'
 
@@ -20,10 +21,10 @@ export async function GET(): Promise<Response> {
     [],
     ['Total paid attendees', d.paid],
     [],
-    ['Ticket', 'Name', 'Email', 'College', 'Tier', 'Food', 'Payment status'],
+    ['Pass ID', 'Name', 'Email', 'College', 'Tier', 'Track', 'Food', 'State'],
     ...d.attendees
-      .filter((a) => a.paymentStatus === 'paid')
-      .map((a) => [a.ticketRef, a.name, a.email, a.college, tierLabel(a.tier), a.foodPreference, a.paymentStatus]),
+      .filter((a) => a.state === 'VERIFIED' || a.state === 'SESSIONS_SELECTED')
+      .map((a) => [a.passId, a.name, a.email, a.college, tierLabel(a.tier), trackName(a.homeTrack), a.foodPreference, a.state]),
   ])
 
   const stamp = new Date().toISOString().slice(0, 10)

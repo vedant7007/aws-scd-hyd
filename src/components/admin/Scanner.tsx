@@ -15,7 +15,7 @@ import {
 
 type Feedback = {
   tone: 'ok' | 'repeat' | 'problem' | 'queued'
-  ticketRef: string
+  passId: string
   name?: string
   tier?: string
   food?: string
@@ -24,11 +24,11 @@ type Feedback = {
 
 const DRAIN_INTERVAL_MS = 8000
 
-async function post(ticketRef: string, action: QueuedAction | 'lookup'): Promise<Response> {
+async function post(passId: string, action: QueuedAction | 'lookup'): Promise<Response> {
   return fetch('/api/admin/scan', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ ticketRef, action }),
+    body: JSON.stringify({ passId, action }),
   })
 }
 
@@ -49,7 +49,7 @@ export function Scanner({ roster }: { roster: RosterEntry[] }) {
 
   const drain = useCallback(async () => {
     const { remaining } = await drainQueue(store(), async (entry: QueuedWrite) => {
-      const res = await post(entry.ticketRef, entry.action)
+      const res = await post(entry.passId, entry.action)
       if (res.ok) return { delivered: true, retry: false }
       // 4xx is the server's considered answer, retrying will not change it.
       if (res.status >= 400 && res.status < 500) return { delivered: false, retry: false }
@@ -73,8 +73,8 @@ export function Scanner({ roster }: { roster: RosterEntry[] }) {
     }
   }, [drain])
 
-  const handle = useCallback(async (ticketRef: string, action: QueuedAction | 'lookup') => {
-    const ref = ticketRef.trim()
+  const handle = useCallback(async (passId: string, action: QueuedAction | 'lookup') => {
+    const ref = passId.trim()
     if (!ref) return
 
     try {
@@ -82,12 +82,12 @@ export function Scanner({ roster }: { roster: RosterEntry[] }) {
       const data = (await res.json()) as ScanResult
 
       if (res.status === 404) {
-        setFeedback({ tone: 'problem', ticketRef: ref, message: 'No ticket with that reference.' })
+        setFeedback({ tone: 'problem', passId: ref, message: 'No pass with that id.' })
         return
       }
       setFeedback({
         tone: data.repeat ? 'repeat' : data.ok ? 'ok' : 'problem',
-        ticketRef: ref,
+        passId: ref,
         name: data.attendee?.name,
         tier: data.attendee?.tier,
         food: data.attendee?.foodPreference,
@@ -107,7 +107,7 @@ export function Scanner({ roster }: { roster: RosterEntry[] }) {
       if (action === 'lookup') {
         setFeedback({
           tone: cached ? 'queued' : 'problem',
-          ticketRef: ref,
+          passId: ref,
           name: cached?.name,
           tier: cached?.tier,
           food: cached?.foodPreference,
@@ -117,14 +117,14 @@ export function Scanner({ roster }: { roster: RosterEntry[] }) {
       }
       const next = enqueue(store(), {
         id: `${ref}:${action}`,
-        ticketRef: ref,
+        passId: ref,
         action,
         queuedAt: new Date().toISOString(),
       })
       setQueued(next.length)
       setFeedback({
         tone: 'queued',
-        ticketRef: ref,
+        passId: ref,
         name: cached?.name,
         tier: cached?.tier,
         food: cached?.foodPreference,
@@ -224,23 +224,23 @@ export function Scanner({ roster }: { roster: RosterEntry[] }) {
 
       {feedback ? (
         <div className={`scan-card ${toneClass}`} role="status" aria-live="polite">
-          <p className="display text-step-4">{feedback.name ?? feedback.ticketRef}</p>
+          <p className="display text-step-4">{feedback.name ?? feedback.passId}</p>
           {feedback.name ? (
             <p className="display text-step-2">
               {feedback.tier ? tierLabel(feedback.tier) : feedback.tier} , {feedback.food}
             </p>
           ) : null}
-          <p className="mono text-step--1">{feedback.ticketRef}</p>
+          <p className="mono text-step--1">{feedback.passId}</p>
           <p className="text-step-1">{feedback.message}</p>
 
           <div className="mt-4 flex flex-wrap gap-4">
-            <button type="button" className="cta" onClick={() => void handle(feedback.ticketRef, 'checkin')}>
+            <button type="button" className="cta" onClick={() => void handle(feedback.passId, 'checkin')}>
               Mark checked in
             </button>
             <button
               type="button"
               className="cta-quiet"
-              onClick={() => void handle(feedback.ticketRef, 'swag')}
+              onClick={() => void handle(feedback.passId, 'swag')}
             >
               Mark swag issued
             </button>

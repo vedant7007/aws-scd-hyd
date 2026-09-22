@@ -12,7 +12,7 @@ export type QueuedAction = 'checkin' | 'swag'
 
 export type QueuedWrite = {
   id: string
-  ticketRef: string
+  passId: string
   action: QueuedAction
   queuedAt: string
   attempts: number
@@ -45,7 +45,7 @@ export function enqueue(
 ): QueuedWrite[] {
   const queue = loadQueue(store)
   // Same ticket and same action twice is the same intent, not two entries.
-  if (queue.some((q) => q.ticketRef === entry.ticketRef && q.action === entry.action)) return queue
+  if (queue.some((q) => q.passId === entry.passId && q.action === entry.action)) return queue
   const next = [...queue, { ...entry, attempts: 0 }]
   saveQueue(store, next)
   return next
@@ -89,7 +89,7 @@ export async function drainQueue(
 }
 
 export type RosterEntry = {
-  ticketRef: string
+  passId: string
   name: string
   tier: string
   foodPreference: string
@@ -101,13 +101,13 @@ export function saveRoster(store: KeyValueStore, roster: RosterEntry[]): void {
   store.setItem(ROSTER_KEY, JSON.stringify(roster))
 }
 
-export function lookupCached(store: KeyValueStore, ticketRef: string): RosterEntry | null {
+export function lookupCached(store: KeyValueStore, passId: string): RosterEntry | null {
   const raw = store.getItem(ROSTER_KEY)
   if (!raw) return null
   try {
     const parsed: unknown = JSON.parse(raw)
     if (!Array.isArray(parsed)) return null
-    return (parsed as RosterEntry[]).find((r) => r.ticketRef === ticketRef) ?? null
+    return (parsed as RosterEntry[]).find((r) => r.passId === passId) ?? null
   } catch {
     return null
   }

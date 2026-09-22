@@ -1,7 +1,8 @@
 import { slots as fallbackSlots } from '../../content/event'
 import { roomById, sessionSpecs, trackName } from '../../content/sessions'
-import { getAllSessions, getConfig, getReconcileSummary, listAttendees, listEmailEvents } from './queries'
-import type { Attendee, EmailEvent, FoodPreference, ReconcileSummary, Slot, Tier, Track } from './types'
+import { tracks } from '../../content/tracks'
+import { getAllSessions, getConfig, getReconcileSummary, getTrackCounters, listAttendees, listEmailEvents } from './queries'
+import { REGISTRATION_STATES, type Attendee, type EmailEvent, type FoodPreference, type ReconcileSummary, type RegistrationState, type Slot, type Tier, type Track } from './types'
 
 /**
  * One session, both capacity numbers side by side. sold is seats held, by
@@ -27,12 +28,21 @@ export type SessionSeats = {
   free: number | null
 }
 
+/** Amendment 1 section 6. A track counter against its ceiling. */
+export type TrackLoad = { track: Track; trackName: string; registered: number; ceiling: number | null; seeded: boolean }
+
 export type Dashboard = {
   attendees: Attendee[]
   total: number
+  /** VERIFIED plus SESSIONS_SELECTED: the people actually coming. */
   paid: number
-  /** Checkouts started and not paid: abandoned, failed, or a webhook still in flight. */
-  pending: number
+  byState: { state: RegistrationState; count: number }[]
+  /** PENDING_VERIFICATION, oldest UTR first. The default admin view. */
+  queue: Attendee[]
+  /** VERIFIED with no sessions chosen, for chasing before the event. */
+  unselected: Attendee[]
+  trackLoad: TrackLoad[]
+  sessionsReleased: boolean
   byTier: { tier: Tier; count: number }[]
   byFood: { food: FoodPreference; count: number }[]
   checkedIn: number
@@ -61,12 +71,13 @@ const FOODS: FoodPreference[] = ['veg', 'nonveg', 'jain']
  * rather than with extra queries.
  */
 export async function loadDashboard(): Promise<Dashboard> {
-  const [attendees, config, reconcile, bounces, complaints] = await Promise.all([
+  const [attendees, config, reconcile, bounces, complaints, counters] = await Promise.all([
     listAttendees(),
     getConfig(),
     getReconcileSummary(),
     listEmailEvents('bounce'),
     listEmailEvents('complaint'),
+    getTrackCounters(),
   ])
 
   const slots: Slot[] = config?.slots ?? fallbackSlots
@@ -78,7 +89,7 @@ export async function loadDashboard(): Promise<Dashboard> {
   const specs = sessionSpecs()
   const stored = await getAllSessions()
 
-  const paidOnly = attendees.filter((a) => a.paymentStatus === 'paid')
+  const paidOnly = attendees.filter((a) => a.state === 'VERIFIED' || a.state === 'SESSIONS_SELECTED')
 
   const sessions: SessionSeats[] = specs.map((spec, i) => {
     const item = stored[i]
@@ -106,7 +117,19 @@ export async function loadDashboard(): Promise<Dashboard> {
     attendees,
     total: attendees.length,
     paid: paidOnly.length,
-    pending: attendees.filter((a) => a.paymentStatus === 'pending').length,
+    byState: REGISTRATION_STATES.map((state) => ({ state, count: attendees.filter((a) => a.state === state).length })),
+    queue: attendees
+      .filter((a) => a.state === 'PENDING_VERIFICATION')
+      .sort((a, b) => (a.utrSubmittedAt ?? a.createdAt).localeCompare(b.utrSubmittedAt ?? b.createdAt)),
+    unselected: attendees.filter((a) => a.state === 'VERIFIED').sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
+    trackLoad: counters.map((c, i) => ({
+      track: c?.track ?? (tracks[i]!.id as Track),
+      trackName: trackName(c?.track ?? (tracks[i]!.id as Track)),
+      registered: c?.registered ?? 0,
+      ceiling: c?.ceiling ?? null,
+      seeded: Boolean(c),
+    })),
+    sessionsReleased: config?.sessionsReleased ?? false,
     byTier: TIERS.map((tier) => ({ tier, count: paidOnly.filter((a) => a.tier === tier).length })),
     // Caterer numbers count people who are actually coming, not refunds.
     byFood: FOODS.map((food) => ({
@@ -116,7 +139,7 @@ export async function loadDashboard(): Promise<Dashboard> {
     checkedIn: attendees.filter((a) => a.checkedInAt).length,
     swagIssued: attendees.filter((a) => a.swagIssuedAt).length,
     sessions,
-    awaitingVerification: attendees.filter((a) => a.paymentStatus === 'pending' && a.verification === 'awaiting').length,
+    awaitingVerification: attendees.filter((a) => a.state === 'PENDING_VERIFICATION').length,
     reconcile,
     email: {
       bounces: bounces.length,

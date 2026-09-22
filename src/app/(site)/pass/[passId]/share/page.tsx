@@ -3,7 +3,8 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Container } from '@/components/layout/Container'
 import { event } from '@/content/event'
-import { getAttendeeByToken } from '@/lib/db/queries'
+import { normalisePassId } from '@/lib/db/keys'
+import { getAttendee } from '@/lib/db/queries'
 
 export const metadata: Metadata = {
   title: 'Share that you are going',
@@ -20,10 +21,10 @@ export const dynamic = 'force-dynamic'
  * anyone through a gate. No ticket ref and no QR, because these are made to be
  * posted in public.
  */
-export default async function SharePage({ params }: PageProps<'/pass/[token]/share'>) {
-  const { token } = await params
-  const attendee = await getAttendeeByToken(token)
-  if (!attendee) notFound()
+export default async function SharePage({ params }: PageProps<'/pass/[passId]/share'>) {
+  const { passId: token } = await params
+  const attendee = await getAttendee(normalisePassId(token) ?? '')
+  if (!attendee || (attendee.state !== 'VERIFIED' && attendee.state !== 'SESSIONS_SELECTED')) notFound()
 
   const story = `/api/pass/${token}/share?format=story`
   const card = `/api/pass/${token}/share?format=card`
@@ -45,7 +46,7 @@ export default async function SharePage({ params }: PageProps<'/pass/[token]/sha
           </figcaption>
           {/* eslint-disable-next-line @next/next/no-img-element -- generated PNG, no layout shift risk and next/image would only add a proxy hop */}
           <img src={story} alt={`Story card saying ${attendee.name} is going to ${event.shortName}`} className="share-preview share-story" />
-          <a className="cta-quiet" href={story} download={`scd-story-${attendee.ticketRef}.png`}>
+          <a className="cta-quiet" href={story} download="scd-story.png">
             Open the story image
           </a>
         </figure>
@@ -54,7 +55,7 @@ export default async function SharePage({ params }: PageProps<'/pass/[token]/sha
           <figcaption className="text-step--1 text-muted">LinkedIn and X, 1200 by 627</figcaption>
           {/* eslint-disable-next-line @next/next/no-img-element -- see above */}
           <img src={card} alt={`Landscape card saying ${attendee.name} is going to ${event.shortName}`} className="share-preview" />
-          <a className="cta-quiet" href={card} download={`scd-card-${attendee.ticketRef}.png`}>
+          <a className="cta-quiet" href={card} download="scd-card.png">
             Open the landscape image
           </a>
         </figure>

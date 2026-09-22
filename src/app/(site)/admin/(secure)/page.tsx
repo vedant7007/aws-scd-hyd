@@ -1,6 +1,9 @@
-import { AttendeeTable, type AttendeeRow } from '@/components/admin/AttendeeTable'
+import { AdminConsole, type Row, type SlotOption } from '@/components/admin/AdminConsole'
 import { Container } from '@/components/layout/Container'
-import { tierLabel } from '@/content/passes'
+import { slots as fallbackSlots } from '@/content/event'
+import { formatInr, tierLabel } from '@/content/passes'
+import { roomById, sessionSpecs, trackName } from '@/content/sessions'
+import { getAttendeeWithSeats, getConfig } from '@/lib/db/queries'
 import { requireAdmin } from '@/lib/auth/admin'
 import { loadDashboard } from '@/lib/db/stats'
 import { launchStatus } from '@/lib/tickets/launch'
@@ -20,16 +23,43 @@ export default async function AdminDashboardPage() {
   const d = await loadDashboard()
   const launch = launchStatus()
 
-  const rows: AttendeeRow[] = d.attendees.map((a) => ({
-    ticketRef: a.ticketRef,
+  // Held sessions for the selected ones, so an admin can see and change them.
+  const held = new Map<string, Record<string, string>>()
+  await Promise.all(
+    d.attendees
+      .filter((a) => a.state === 'SESSIONS_SELECTED')
+      .map(async (a) => {
+        const { seats } = await getAttendeeWithSeats(a.passId)
+        held.set(a.passId, Object.fromEntries(seats.map((s) => [s.slotId, s.sessionId])))
+      }),
+  )
+
+  const rows: Row[] = d.attendees.map((a) => ({
+    passId: a.passId,
     name: a.name,
     email: a.email,
     college: a.college,
-    tier: a.tier,
-    foodPreference: a.foodPreference,
-    paymentStatus: a.paymentStatus,
+    tierName: tierLabel(a.tier),
+    trackName: trackName(a.homeTrack),
+    state: a.state,
+    amountLabel: formatInr(a.amountPaise),
+    utr: a.utr ?? null,
+    utrSubmittedAt: a.utrSubmittedAt ?? null,
+    screenshot: Boolean(a.screenshotKey),
+    rejectionReason: a.rejectionReason ?? null,
+    createdAt: a.createdAt,
+    held: held.get(a.passId) ?? {},
     checkedIn: Boolean(a.checkedInAt),
-    swagIssued: Boolean(a.swagIssuedAt),
+  }))
+
+  const slotList = (await getConfig())?.slots ?? fallbackSlots
+  const specs = sessionSpecs()
+  const slotOptions: SlotOption[] = slotList.map((slot) => ({
+    slotId: slot.id,
+    label: slot.label,
+    sessions: specs
+      .filter((sp) => sp.slotId === slot.id)
+      .map((sp) => ({ sessionId: sp.sessionId, slotId: slot.id, label: `${trackName(sp.track)}${sp.title ? `, ${sp.title}` : ''}${roomById(sp.roomId) ? `, ${roomById(sp.roomId)!.name}` : ''}` })),
   }))
 
   return (
@@ -38,6 +68,31 @@ export default async function AdminDashboardPage() {
         <h1 className="display text-step-3">Dashboard</h1>
         <p className="mt-2 text-step--1 text-muted">Live from the table on every load, nothing cached.</p>
       </div>
+
+      {/* First: the queue. Every other number on this page can wait; a student waiting on a verification cannot. */}
+      <section aria-labelledby="queue">
+        <h2 id="queue" className="display text-step-2">
+          Registrations
+        </h2>
+        <div className="mt-6">
+          <AdminConsole rows={rows} slots={slotOptions} sessionsReleased={d.sessionsReleased} />
+        </div>
+      </section>
+
+      <section aria-labelledby="tracks">
+        <h2 id="tracks" className="display text-step-2">
+          Track counters
+        </h2>
+        <p className="mt-2 text-step--1 text-muted">
+          Registrations counted against each track at step one, against the sellable seats of its room. A track at its
+          ceiling refuses new registrations before the payment screen. Abandoned registrations give their place back.
+        </p>
+        <dl className="mt-6 grid gap-6 sm:grid-cols-3">
+          {d.trackLoad.map((t) => (
+            <Stat key={t.track} label={t.trackName} value={t.seeded ? `${t.registered} of ${t.ceiling ?? 'no ceiling'}` : 'not seeded'} />
+          ))}
+        </dl>
+      </section>
 
       {/*
         First, because it is the one thing that must be right before anything
@@ -67,7 +122,7 @@ export default async function AdminDashboardPage() {
           </div>
         ) : (
           <p className="mt-6 text-step--1 text-muted">
-            Live key, every tier priced, no test amount in the environment. Nothing stands between registrationOpen and real customers.
+            Nothing stands between registrationOpen and real students in {launch.mode} mode.
           </p>
         )}
       </section>
@@ -78,8 +133,8 @@ export default async function AdminDashboardPage() {
         </h2>
         <dl className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
           <Stat label="Total records" value={d.total} />
-          <Stat label="Paid and coming" value={d.paid} />
-          <Stat label="Pending checkouts" value={d.pending} />
+          <Stat label="Verified and coming" value={d.paid} />
+          <Stat label="Awaiting verification" value={d.awaitingVerification} />
           <Stat label="Checked in" value={d.checkedIn} />
           <Stat label="Swag issued" value={d.swagIssued} />
         </dl>
@@ -107,7 +162,7 @@ export default async function AdminDashboardPage() {
           ))}
         </dl>
         <p className="mt-4 text-step--1 text-muted">
-          Counts paid attendees only, so refunds and cancellations are not catered for.
+          Counts verified attendees only, so rejections and abandoned registrations are not catered for.
         </p>
       </section>
 
@@ -225,14 +280,6 @@ export default async function AdminDashboardPage() {
         )}
       </section>
 
-      <section aria-labelledby="attendees">
-        <h2 id="attendees" className="display text-step-2">
-          Attendees
-        </h2>
-        <div className="mt-6">
-          <AttendeeTable rows={rows} />
-        </div>
-      </section>
     </Container>
   )
 }

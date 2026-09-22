@@ -1,59 +1,52 @@
-import { sessionRefinementOpen } from '@/content/event'
-import { getAttendeeByToken, getAttendeeWithSeats, getConfig, getSessionsInSlot } from '@/lib/db/queries'
-import { refineSlot } from '@/lib/db/seats'
-import type { SeatCount, Session } from '@/lib/db/types'
+import { normalisePassId } from '@/lib/db/keys'
+import { getAllSessions, getAttendee } from '@/lib/db/queries'
+import type { SeatCount } from '@/lib/db/types'
+import { chooseSessions, sessionsAreReleased, validatePicks, type PickInput } from '@/lib/registration/flow'
 
-const counts = (sessions: Session[]): SeatCount[] =>
-  sessions.map((s) => ({ sessionId: s.sessionId, seatsTaken: s.seatsTaken, sellableCapacity: s.sellableCapacity }))
+const counts = (): Promise<SeatCount[]> =>
+  getAllSessions().then((all) =>
+    all.flatMap((s) => (s ? [{ sessionId: s.sessionId, seatsTaken: s.seatsTaken, sellableCapacity: s.sellableCapacity }] : [])),
+  )
 
 const json = (status: number, body: unknown) =>
   Response.json(body, { status, headers: { 'cache-control': 'no-store' } })
 
 /**
- * SHIPS LATER. Narrows one slot to one session within the tracks the pass
- * holds, releasing the seats held in the other tracks for that slot. Behind
- * sessionRefinementOpen (content, or the config item) and refused while it is
- * off. The pass token in the path is the only credential, which is the whole
- * point of SPEC.md section 1: there is no login.
- *
- * Refining never claims a seat, so it cannot fail on capacity, and a Regular
- * pass, holding one track, has nothing to narrow.
+ * Amendment 2 sections 3 and 4. All four picks at once. Validated here
+ * against the slots, the sessions and the tier's track allowance from
+ * passes.ts, whatever the UI did; then claimed in one transaction. A 409
+ * names the session that filled and carries fresh counts so the picker can
+ * re-render with the other choices kept. Never a 500 for a full session,
+ * never a partial claim.
  */
-export async function POST(req: Request, ctx: RouteContext<'/api/pass/[token]/sessions'>): Promise<Response> {
-  const { token } = await ctx.params
+export async function POST(req: Request, ctx: RouteContext<'/api/pass/[passId]/sessions'>): Promise<Response> {
+  const { passId: raw } = await ctx.params
+  const passId = normalisePassId(raw)
+  const attendee = passId ? await getAttendee(passId) : null
+  // Same answer for unknown and for any state that has no picker.
+  if (!attendee || attendee.state !== 'VERIFIED') {
+    return json(404, { ok: false, message: 'We could not find a pass waiting for session choices with that pass ID.' })
+  }
+  if (!(await sessionsAreReleased())) return json(403, { ok: false, message: 'Sessions are not open for choosing yet.' })
 
-  const config = await getConfig()
-  if (!(config?.sessionRefinementOpen ?? sessionRefinementOpen)) {
-    return json(403, { ok: false, code: 'not-open', message: 'Session choices open once the line-up is announced.' })
+  const body = (await req.json().catch(() => null)) as { picks?: unknown } | null
+  const input = body?.picks
+  if (typeof input !== 'object' || input === null || Array.isArray(input)) return json(400, { ok: false, message: 'Send your picks as an object keyed by slot.' })
+  const clean: PickInput = {}
+  for (const [k, v] of Object.entries(input as Record<string, unknown>)) if (typeof v === 'string') clean[k] = v
+
+  const v = validatePicks(attendee, clean)
+  if (!v.ok) return json(400, { ok: false, field: v.field, message: v.message, sessions: await counts() })
+
+  const out = await chooseSessions(attendee.passId, v.picks)
+  if (!out.ok) {
+    if (out.reason === 'filled') {
+      return json(409, { ok: false, filled: out.sessionId, message: 'That session just filled up, please pick another.', sessions: await counts() })
+    }
+    // Already selected, most likely a second tab. Nothing was claimed.
+    return json(409, { ok: false, message: 'Your sessions are already saved. Open your pass to see them.', sessions: await counts() })
   }
 
-  const attendee = await getAttendeeByToken(token)
-  if (!attendee) return json(404, { ok: false, code: 'invalid-token', message: 'This pass link is not valid.' })
-  if (attendee.paymentStatus !== 'paid') {
-    return json(403, { ok: false, code: 'not-paid', message: 'This pass is no longer active. Write to us if that looks wrong.' })
-  }
-
-  const body: unknown = await req.json().catch(() => null)
-  const slotId = (body as { slotId?: unknown } | null)?.slotId
-  const sessionId = (body as { sessionId?: unknown } | null)?.sessionId
-  if (typeof slotId !== 'string' || typeof sessionId !== 'string') {
-    return json(400, { ok: false, code: 'bad-request', message: 'Pick a session in a slot.' })
-  }
-
-  const { seats } = await getAttendeeWithSeats(attendee.ticketRef)
-  const outcome = await refineSlot(attendee.ticketRef, slotId, sessionId, seats)
-
-  // Always hand back fresh counts, so a refusal updates the screen rather than
-  // leaving stale numbers next to an error.
-  const refreshed = counts(await getSessionsInSlot(slotId))
-
-  if (!outcome.ok) {
-    const message =
-      outcome.reason === 'not-held'
-        ? 'That session is not in a track your pass covers.'
-        : 'This slot changed in another tab. The latest is shown now, try again.'
-    return json(409, { ok: false, code: outcome.reason, message, sessions: refreshed })
-  }
-
-  return json(200, { ok: true, slotId, sessionId, released: outcome.released, sessions: refreshed })
+  console.info(`[sessions] ${attendee.passId} selected ${v.picks.map((p) => p.sessionId).join(',')}, email 4 ${out.emailed ? 'sent' : 'not sent'}`)
+  return json(200, { ok: true, passUrl: `/pass/${attendee.passId}` })
 }

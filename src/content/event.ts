@@ -104,13 +104,11 @@ export type SessionDetail = {
 export const sessionDetails: Partial<Record<string, SessionDetail>> = {}
 
 /**
- * SHIPS LATER. Once sessions have titles, a tier with more than one track may
- * narrow to one session per slot within its tracks, releasing the seats it
- * holds in its other tracks for that slot. TODO(vedant): flip when the
- * line-up is announced. Off, the pass shows the tracks held and nothing can
- * be changed.
+ * Amendment 1 section 4. Whether students may choose their sessions yet.
+ * Flipped by the admin release action (which also sends email 3) and stored
+ * on the config item; this is only the default before that has ever run.
  */
-export const sessionRefinementOpen: boolean = false
+export const sessionsReleased: boolean = false
 
 /** TODO(vedant): flip when the registration open date is decided. */
 export const registrationOpen: boolean = false

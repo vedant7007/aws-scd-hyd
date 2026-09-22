@@ -16,9 +16,12 @@ export type Pass = {
   /** TODO(vedant): swag levels unconfirmed. */
   swag: string | null
   /**
-   * How many DISTINCT tracks the tier may draw sessions from. This is the tier
-   * constraint: at registration a student picks up to this many tracks and a
-   * seat is held in every session of each. Not a count of sessions.
+   * How many tracks the tier may PICK SESSIONS FROM, counting the home track
+   * chosen at registration. Regular picks only from its home track; Premium
+   * from home plus one other; Platinum and VIP from all three. It is not a
+   * number of seats: every attendee holds exactly one seat per slot, four in
+   * all, whatever the tier. The number is unchanged from the earlier model
+   * where it meant tracks held; the meaning is not. Amendment 1, Q3.
    */
   tracksAllowed: number
   /** Unused. Track allowance replaced it as the tier constraint; kept null so nothing reads it by accident. */
@@ -110,7 +113,7 @@ export const passFor = (tier: Tier): Pass | undefined => passes.find((p) => p.id
  */
 export const tierLabel = (tier: Tier | string): string => passes.find((p) => p.id === tier)?.name ?? tier
 
-/** The tier constraint. How many distinct tracks this tier may register for. */
+/** The tier constraint. How many tracks, home track included, this tier may pick sessions from. */
 export function tracksAllowedFor(tier: Tier): number {
   return passes.find((p) => p.id === tier)?.tracksAllowed ?? 1
 }

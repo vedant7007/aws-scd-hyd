@@ -25,9 +25,9 @@ function memoryStore(seed: Record<string, string> = {}): KeyValueStore {
   }
 }
 
-const entry = (ticketRef: string, action: 'checkin' | 'swag' = 'checkin') => ({
-  id: `${ticketRef}:${action}`,
-  ticketRef,
+const entry = (passId: string, action: 'checkin' | 'swag' = 'checkin') => ({
+  id: `${passId}:${action}`,
+  passId,
   action,
   queuedAt: '2026-10-30T04:00:00.000Z',
 })
@@ -96,14 +96,14 @@ async function main(): Promise<void> {
     })
     assert.equal(r.delivered, 1)
     assert.equal(r.remaining, 0)
-    assert.equal(sent[0].ticketRef, 'SEED-001')
+    assert.equal(sent[0].passId, 'SEED-001')
   }
 
   // Cached roster answers a lookup with no network.
   {
     const s = memoryStore()
     saveRoster(s, [
-      { ticketRef: 'SEED-001', name: 'Aarav Reddy', tier: 'basic', foodPreference: 'veg', college: 'VJIT' },
+      { passId: 'SEED-001', name: 'Aarav Reddy', tier: 'basic', foodPreference: 'veg', college: 'VJIT' },
     ])
     assert.equal(lookupCached(s, 'SEED-001')?.name, 'Aarav Reddy')
     assert.equal(lookupCached(s, 'NOPE-000'), null)

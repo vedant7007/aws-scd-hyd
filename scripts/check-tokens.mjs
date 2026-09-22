@@ -23,7 +23,7 @@ const FONT_DECLARATION_FILE = 'src/app/layout.tsx'
  */
 const RASTER_FILES = [
   'src/app/opengraph-image.tsx',
-  'src/app/api/pass/[token]/share/route.tsx',
+  'src/app/api/pass/[passId]/share/route.tsx',
   'src/app/global-error.tsx',
 ]
 

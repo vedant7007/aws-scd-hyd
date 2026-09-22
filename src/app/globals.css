@@ -525,9 +525,17 @@ html[data-theme="dark"] [data-theme-label="dark"] { display:none; }
   cursor: pointer;
 }
 
-.pick[aria-pressed="true"] {
+.pick[aria-pressed="true"],
+.pick[aria-checked="true"],
+.pick[aria-current="true"] {
   border-left: 3px solid var(--accent);
   padding-left: 0.75rem;
+}
+
+/* Full is a state the eye must catch before the finger does. */
+.pick[data-full="true"] {
+  text-decoration: line-through;
+  text-decoration-color: var(--muted);
 }
 
 .pick:disabled {

@@ -16,9 +16,9 @@ export default async function ScanPage() {
    * are included: the gate needs to identify a person, not contact them.
    */
   const roster: RosterEntry[] = attendees
-    .filter((a) => a.paymentStatus === 'paid')
+    .filter((a) => a.state === 'SESSIONS_SELECTED')
     .map((a) => ({
-      ticketRef: a.ticketRef,
+      passId: a.passId,
       name: a.name,
       tier: a.tier,
       foodPreference: a.foodPreference,
