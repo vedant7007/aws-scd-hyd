@@ -92,16 +92,18 @@ aws-scd-hyd/
 │  │  ├─ speakers/page.tsx
 │  │  ├─ sponsors/page.tsx
 │  │  ├─ code-of-conduct/page.tsx
-│  │  ├─ pass/[token]/page.tsx
+│  │  ├─ pass/page.tsx            # pass id entry
+│  │  ├─ pass/[passId]/page.tsx
 │  │  ├─ admin/
 │  │  │  ├─ page.tsx
 │  │  │  └─ scan/page.tsx
 │  │  └─ api/
 │  │     ├─ subscribe/route.ts
-│  │     ├─ checkout/route.ts            # order + pending record
-│  │     ├─ checkout/status/route.ts     # what the browser polls
+│  │     ├─ register/screenshot/route.ts # presigned upload
 │  │     ├─ webhook/razorpay/route.ts    # the only thing that marks paid
-│  │     └─ pass/[token]/sessions/route.ts
+│  │     ├─ register/route.ts            # step one, counter
+│  │     ├─ register/utr/route.ts        # step two
+│  │     └─ pass/[passId]/sessions/route.ts
 │  ├─ components/
 │  │  ├─ layout/              # Header, Footer, ThemeToggle, Container
 │  │  ├─ home/                # Hero, Ticker, Countdown, Tracks, Passes...
@@ -158,32 +160,75 @@ One DynamoDB table. `PK` and `SK` as strings, one global secondary index `GSI1` 
 
 | Item | PK | SK | GSI1PK | GSI1SK |
 |---|---|---|---|---|
-| Attendee | `ATT#<ticketRef>` | `PROFILE` | `TOKEN#<passToken>` | `ATT` |
-| Selection | `ATT#<ticketRef>` | `SLOT#<slotId>` | | |
+| Attendee | `ATT#<passId>` | `PROFILE` | `PASS#<passId>` | `ATT` |
+| Seat | `ATT#<passId>` | `SEAT#<sessionId>` | | |
+| Verification log | `ATT#<passId>` | `VERIFY#<ISO>` | | |
 | Session | `SESSION#<sessionId>` | `META` | `SLOT#<slotId>` | `SESSION#<sessionId>` |
+| Track counter | `TRACK#<track>` | `COUNTER` | | |
+| UTR claim | `UTR#<utr>` | `CLAIM` | | |
+| Submission key | `SUBMIT#<key>` | `REG` | | |
 | Config | `CONFIG` | `EVENT` | | |
 | Subscriber | `SUB#<email>` | `PROFILE` | `SUBS` | `<createdAt ISO>` |
 
+### The pass id, the one identifier
+
+`passId` replaces the earlier `ticketRef` and `passToken`. There is one value: it is the pass page URL, the QR payload, the reference typed into the UPI note, the CSV key, the admin search key and what the gate reads aloud. Two identifiers meant two things to print, two things to mistype and a lookup between them; one removes all three.
+
+Format: `SCD-` and ten characters from `ABCDEFGHJKMNPQRSTVWXYZ23456789`, thirty characters with no I, L, O, U, 0 or 1. Generated at submission with `crypto.randomBytes` and rejection sampling (a byte is accepted only below 240, the largest multiple of 30 that fits, then reduced), never `Math.random` and never a bare modulo. 30^10 is about 49 bits, which is why it is safe to expose in a form people type. It never changes for the life of the record.
+
+Every lookup normalises first: uppercase, strip whitespace and hyphens, re-apply `SCD-`. `scd k4m7pqr29t`, `SCDK4M7PQR29T` and `SCD-K4M7PQR29T` are the same record. The public entry page looks up through GSI1 (`GSI1PK = PASS#<passId>`); a page or route that already holds the canonical id reads the item by key, which is strongly consistent, so the link in an email works the second after the verify that sent it.
+
+### The lifecycle: six states
+
+Every transition is a conditional write asserting the current state. An attempt from any other state fails and changes nothing, which is what stops a double-clicked Verify sending two emails. The legal transitions live in `lib/registration/state.ts` and nowhere else.
+
+| State | Meaning |
+|---|---|
+| `AWAITING_PAYMENT` | form submitted, home track chosen, no UTR yet |
+| `PENDING_VERIFICATION` | UTR and screenshot submitted, nobody has checked |
+| `VERIFIED` | an admin matched the UTR against the bank statement |
+| `SESSIONS_SELECTED` | student has picked one session per slot |
+| `REJECTED` | admin could not find the payment |
+| `ABANDONED` | `AWAITING_PAYMENT` that expired without a UTR |
+
+| From | To | By |
+|---|---|---|
+| (new) | `AWAITING_PAYMENT` | step one of registration |
+| `AWAITING_PAYMENT` | `PENDING_VERIFICATION` | student submits UTR and screenshot |
+| `AWAITING_PAYMENT` | `ABANDONED` | the hourly sweep, after the 60 minute hold |
+| `AWAITING_PAYMENT` | `VERIFIED` | Razorpay mode only: a signature-verified capture for the recorded amount |
+| `ABANDONED` | `PENDING_VERIFICATION` | admin reinstate with a typed UTR |
+| `PENDING_VERIFICATION` | `VERIFIED` | admin verify |
+| `PENDING_VERIFICATION` | `REJECTED` | admin reject, with a reason |
+| `REJECTED` | `PENDING_VERIFICATION` | student resubmits a UTR |
+| `VERIFIED` | `SESSIONS_SELECTED` | student completes four picks |
+
+Nothing else is legal. `state` is a DynamoDB reserved word and is aliased `#state` in every expression.
+
 **Attendee attributes**
-`ticketRef, passToken, name, email` (lowercased on write)`, phone, college, tier` (`basic` | `premium` | `ultra` | `vip`)`, foodPreference` (`veg` | `nonveg` | `jain`)`, paymentStatus` (`paid` | `refunded` | `cancelled`)`, checkedInAt, swagIssuedAt, source` (`webhook` | `reconcile` | `manual`)`, createdAt`
+`passId, name, email` (lowercased on write)`, phone, college, tier` (`basic` | `premium` | `ultra` | `vip`, display names Regular, Premium, Platinum, VIP)`, homeTrack, foodPreference, state, paymentMode, amountPaise, utr, utrSubmittedAt, screenshotKey, rejectionReason, verifiedBy, verifiedAt, holdUntil, sessionsSelectedAt, receiptSentAt, confirmationSentAt, sessionsReleaseEmailSentAt, passReadySentAt, checkedInAt, swagIssuedAt, source, createdAt`
 
 **Session attributes**
-`title, speaker, track` (`ai` | `cloud` | `career`)`, hallId, slotId, capacity, seatsTaken`
+`sessionId` (`<slot>-<track>`)`, slotId, track, roomId, title, speaker, type` (`keynote` | `talk` | `qa` | `workshop` | `panel`, null until decided, nothing is a workshop by default)`, physicalCapacity, sellableCapacity, seatsTaken`
+
+**Track counter attributes**
+`track, registered, ceiling`
 
 **Config attributes**
-`halls: { id, name, capacity }[]`, `slots: { id, label, startsAt, endsAt }[]`, `registrationOpen: boolean`
+`rooms, slots, roomForTrack, registrationOpen, sessionsReleased, sessionsReleasedAt`
 
-`TODO(vedant)`: hall count is 3 or 4 and unconfirmed. Every hall feature reads from `config.halls`. Never hardcode four.
+Rooms: VJIT's four, with physical seat counts. E Block auditorium 240, C Block ground floor 400, C Block first floor 100, C Block second floor 100. Three host a track; the fourth is marked `role: buffer` and is never a session venue. `TODO(vedant)`: which track runs in which room (`roomForTrack`, empty), which room is the buffer (assumed the last listed), slot times, session titles, speakers, types, and `sellableCapacity` per session. Every surface renders all of these unset.
 
 ### Access patterns
 
 | Need | Query |
 |---|---|
-| Attendee by pass token | GSI1, `GSI1PK = TOKEN#<token>` |
-| Attendee plus all their selections | Query `PK = ATT#<ref>` |
+| Pass by typed id | normalise, then GSI1, `GSI1PK = PASS#<passId>` |
+| Pass by canonical id | `GetItem PK = ATT#<passId>` |
+| Attendee plus seats plus admin log | Query `PK = ATT#<passId>` |
 | All sessions in a slot | GSI1, `GSI1PK = SLOT#<slotId>` |
-| All subscribers by date | GSI1, `GSI1PK = SUBS` |
-| Every attendee, for the admin table | Scan with a `PROFILE` filter |
+| All 12 sessions, all 3 counters | `BatchGetItem` on known keys |
+| Every attendee, for the admin | Scan with a `PROFILE` filter |
 
 The Scan is deliberate. At a few thousand items it costs a fraction of a rupee and is far simpler than another index. Do not add a GSI to avoid it.
 
@@ -192,134 +237,104 @@ The Scan is deliberate. At a few thousand items it costs a fraction of a rupee a
 ## 7. Security
 
 - **Nothing client-side ever touches AWS.** All reads and writes happen in server components, route handlers, or Lambdas.
-- `passToken` is 16 url-safe chars from `crypto.randomBytes`. Never `Math.random`, never derived from email or ticket ref.
-- `/api/webhook/razorpay` verifies `X-Razorpay-Signature` against `RAZORPAY_WEBHOOK_SECRET` **before parsing the body**. Unverified requests get a 401 and the body is not logged. The secret is never logged anywhere.
-- `/api/checkout` accepts exactly the registration fields and nothing else. **The amount is never a parameter.** It is computed on the server from `content/passes.ts`, sent to Razorpay, and stored on the record; the webhook then checks the captured amount against it.
-- The browser's payment success callback is UX only. Nothing it sends can mark a record paid. `/api/checkout/status` reads state, it never writes it, and it needs the checkout token handed to the browser that created the record.
-- `/api/checkout` is rate limited **per email**, five an hour, because the audience is students on college wifi with hundreds behind one NATed address. A per-IP ceiling of 500 an hour exists only against abuse. Both 429s say plainly what happened and that nothing was charged.
-- Selling is guarded independently of `registrationOpen`, see section 8.
-- `/api/subscribe` validates the email server-side and rate limits to 5 per IP per hour.
-- The reconcile Lambda is invoked by EventBridge and is not publicly reachable.
-- `/pass/[token]` sets `noindex`. Pass URLs never appear in the sitemap.
-- `/admin/*` checks the Cognito session and that the email is in `ADMIN_EMAILS`. A signed-in user not on the list gets an explicit refusal, not a blank page.
+- The pass id is generated with `crypto.randomBytes` and rejection sampling, see section 6. Never `Math.random`, never derived from anything.
+- **The pass entry page cannot be used to learn which ids exist.** An unknown id, a mistyped one and a record in any state but `VERIFIED` or `SESSIONS_SELECTED` produce the one same response, built by the one same line. Failed lookups are throttled per IP at a high ceiling (300 an hour) because students share NATed campus addresses; successful lookups are never counted.
+- **A UTR is used exactly once across the whole system, enforced by the table.** Submitting one puts a `UTR#<utr>` item in the same transaction as the attendee update, conditional on it not existing (or already belonging to this pass, so a rejected UTR can be resubmitted). A second submission of the same UTR from any other pass fails the transaction.
+- UTR format is validated server side: exactly twelve digits.
+- **UPI screenshots** carry the payer's bank, account holder and UPI id. Private bucket, block all public access, SSL only, encrypted, deleted 30 days after the event date by lifecycle rule. The browser uploads straight to the bucket on a one-shot presigned PUT with the content type and length signed in; the server never sees the bytes. An admin reads one through a 60 second presigned URL minted inside `requireAdmin`. Never in an email, never in any response reachable without admin auth.
+- `/api/webhook/razorpay` (Razorpay mode) verifies `X-Razorpay-Signature` against `RAZORPAY_WEBHOOK_SECRET` **before parsing the body**. Unverified requests get a 401 and the body is not logged.
+- The amount is never a parameter. It is computed on the server from `content/passes.ts` and stored on the record; a verify checks against it.
+- Step one of registration is rate limited **per email**, five an hour, because the audience is students on college wifi with hundreds behind one NATed address. A per-IP ceiling of 500 an hour exists only against abuse.
+- Registration is guarded independently of `registrationOpen`, see section 8.
+- `/pass/[passId]` sets `noindex`. Pass URLs never appear in the sitemap.
+- `/admin/*` checks the Cognito session and that the email is in `ADMIN_EMAILS`. A signed-in user not on the list gets an explicit refusal, not a blank page. Every admin action is logged under the attendee with who, when and which UTR.
 
 ---
 
 ## 8. Payments
 
-The provider is Razorpay, and nothing about Razorpay exists outside `src/lib/tickets/`.
+Two modes, switched by `PAYMENT_MODE` (`manual` | `razorpay`), default manual. Manual is what the site is built around: the college's UPI QR, a UTR, an admin verifying against the bank statement. Razorpay is kept intact behind the switch because the college QR route depends on the college sharing bank statements, which is not yet guaranteed. Both end in the same `VERIFIED` state through the same transition and send the same email 2. Nothing about Razorpay exists outside `src/lib/tickets/`.
 
-Razorpay is a payment gateway, not a ticketing platform. That changed the shape of this section: a hosted platform owns the form and tells us about a sale after the fact, whereas here **we own the form, we create the order, and the provider only tells us whether the money moved.** The record exists before any payment does.
+### Registration is two steps, and why
 
-```ts
-// src/lib/tickets/razorpay.ts, the whole boundary
-createOrder({ ticketRef, amountPaise, tier }): Promise<{ orderId, amountPaise, currency, keyId }>
-verifyAndParse(req: Request): Promise<PaymentEvent | null>   // signature over the raw body first
-listSettled(from: Date): Promise<PaymentEvent[]>              // for reconcile
+The student fills the form, then leaves the site to pay in their UPI app, then comes back to enter the UTR. That gap is real and it is minutes long.
 
-type PaymentEvent =
-  | { type: 'captured'; orderId; paymentId; amountPaise }
-  | { type: 'refunded'; orderId; paymentId; amountPaise; full }
-  | { type: 'failed';   orderId; paymentId; reason }
-```
+**Step one.** Form plus home track. The record is created in `AWAITING_PAYMENT` with its pass id, and **in the same transaction the home track's counter is incremented, conditional on `registered < ceiling`**. The ceiling is the sellable capacity of the room that track runs in. If the increment fails, the track is full: no record is created and the student is told which track, before ever seeing the payment screen. This counter is the only thing protecting the event from selling more passes for a track than its room holds, because seats are claimed later, at selection. A submission key minted once per form rides in the transaction too, so a double click or a retry after a timeout resolves to the record the first one made instead of counting twice.
 
-`settle(event)` in `src/lib/tickets/settle.ts` is the one place a `PaymentEvent` changes state. The webhook and the reconcile run both call it, so a lost webhook and a delivered one end in the same state by the same code.
+The student then sees the college QR, the exact amount for their tier, their pass id to put in the UPI note, and the UTR form, at `/register/pay/<passId>`. That page is reachable by pass id alone, because no email exists yet and the id on screen is the only thing they can carry across the gap. It renders only for `AWAITING_PAYMENT` and `REJECTED`; every other state gets the generic not-found.
 
-### Flow
+**Step two.** UTR and screenshot in. `AWAITING_PAYMENT` (or `REJECTED`) to `PENDING_VERIFICATION`, `holdUntil` cleared, email 1 sent.
 
-1. `/register` collects name, email, phone, college, tier and food preference. Ours, styled like the rest of the site.
-2. `POST /api/checkout` validates every field on the server, computes the amount from `content/passes.ts`, creates a Razorpay order for that amount with the ticket reference as its receipt, and writes the attendee as `paymentStatus: 'pending'` with **no passToken**, plus an `ORDER#<id>` pointer back to the record. Both in one transaction.
-3. The browser opens Razorpay Checkout with the returned order id. The amount it displays comes from the order, which the server created; the browser never sends one.
-4. `POST /api/webhook/razorpay` is the only source of truth. On `payment.captured`, `settle` runs a conditional update, pending to paid, minting the passToken in the same write, and sends the confirmation through `sendEmail`. On `refund.processed` for the full amount, the record is refunded and its seats released. On `payment.failed`, nothing changes.
-5. The browser's success callback only switches the page to a confirming state, which polls `/api/checkout/status` until the webhook has landed. It marks nothing.
+**The sweep.** The hourly reconcile Lambda moves every `AWAITING_PAYMENT` record whose 60 minute hold has lapsed to `ABANDONED` **and decrements its track counter in the same transaction**. A crash between the two would leak a track place for good, and over forty days of registration that silently shrinks sellable capacity; bound together, either both happen or neither. No email is sent: a student who never paid is not chased. The hold is `holdMinutes` in `content/payment.ts`; with an hourly sweep the effective hold is 60 to 120 minutes.
 
-### Why a pending record cannot leak
+**Late payers.** Someone will abandon, pay anyway an hour later, and come back. The admin reinstate action takes an `ABANDONED` record back to `PENDING_VERIFICATION` with a UTR the admin types in, re-incrementing the counter under its ceiling in the same transaction. If the track is now full it fails loudly and nothing changes, so the admin offers a refund or another track rather than quietly overselling the room.
 
-Every consumer already filters on `paymentStatus === 'paid'`: the scanner, the session picker, the food CSV, the dashboard counts, the reconcile run. A pending record also has no passToken, so no pass URL can ever resolve to it. It is inert by construction, not by a check someone has to remember.
+**Conservative by design.** A Premium or VIP holder counts against their home track's counter even though they may later pick sessions in other rooms. That under-sells slightly, deliberately: under-selling means empty chairs, over-selling means students standing in a corridor.
 
-### Idempotency
+### Verification
 
-`markPaid` is `UpdateItem` with `ConditionExpression: paymentStatus = :pending AND amountPaise = :amount`. A replay loses the condition, returns `settled: false`, sends nothing, and the passToken already in someone's inbox is untouched. **Replaying a captured webhook three times gives one paid record, one token, one email.** Verified.
-
-The amount condition is defence in depth: a captured payment that does not match the order the record was created for never marks anyone paid, whatever else was signed.
-
-### Failed and abandoned payments
-
-Stay pending. The same person can register again with the same email: the record key is the ticket reference, not the address, so nothing collides. Pending records are counted on the dashboard so abandonment is visible. They are not cleaned up; they are small and they are evidence.
+The admin dashboard's default view is the `PENDING_VERIFICATION` queue, oldest UTR first: name, email, tier, home track, amount expected, UTR, screenshot. Verify moves the record to `VERIFIED` and sends email 2; Reject moves it to `REJECTED` with a reason and sends the rejection email; both are conditional on the current state, so two admins acting at once produce one change and one email. A rejected student resubmits at the pay page and goes back into the queue with the same record.
 
 ### The launch guard
 
-`registrationOpen` is one edit in a content file, so it is not allowed to be the only thing between test configuration and real customers. `src/lib/tickets/launch.ts` refuses to sell, in production, while any of these hold:
+`registrationOpen` is one edit in a content file, so it is not allowed to be the only thing between a half-configured site and real students. `src/lib/tickets/launch.ts` refuses to register anyone, in production, while any blocker for the current mode holds.
 
-1. `RAZORPAY_KEY_ID` is not a live key (test, malformed, or unset)
-2. any tier on sale has `pricePaise: null`
-3. `RAZORPAY_TEST_AMOUNT_PAISE` is set at all, even to nothing
+Manual mode: every tier priced, the college QR at `public/assets/upi-qr.png`, `VERIFICATION_WINDOW` set, at least one address in `ADMIN_EMAILS`, a room assigned to every track, and a `sellableCapacity` on every session.
 
-Every entry point asks `registrationIsOpen()`, which is `registrationOpen` **and** no enforced blocker: the checkout route (503, and a loud `[checkout] REFUSED` log line naming each blocker), `/register`, the hero, the pass grid, the nav, the sitemap. The admin dashboard's first panel lists the blockers in plain words. Enforcement is keyed on `NODE_ENV === 'production'`, which the runtime sets and no env file can override; development is exempt so the flow can be exercised against test mode at all. Consequence: a live dry run with test keys is impossible by design. `npm run check:launch` proves each condition blocks on its own.
+Razorpay mode: a live key, every tier priced, `RAZORPAY_TEST_AMOUNT_PAISE` absent, plus the room and capacity conditions.
+
+Every entry point asks `registrationIsOpen()`, which is `registrationOpen` **and** no enforced blocker. Enforcement is keyed on `NODE_ENV === 'production'`; development is exempt so the flow can be exercised at all, and `SCD_DEV_REGISTRATION_OPEN=1` opens step one outside production for the acceptance suite. `npm run check:launch` proves each condition blocks on its own.
 
 ### Pricing
 
-Every tier in `content/passes.ts` is priced (Rs 399, 799, 1,299, 1,699, confirmed 22 September 2026) and that file is the only source: the landing page and the checkout both format from it. A tier with `pricePaise: null` would be charged `RAZORPAY_TEST_AMOUNT_PAISE`, default 100, one rupee, with a warning on every order and a "Test price, placeholder" label on the form; the launch guard refuses to sell in production while that could apply, so the fallback stays as the safety net for a tier added without a price.
+Every tier in `content/passes.ts` is priced (Rs 399, 799, 1,299, 1,699, confirmed 22 September 2026) and that file is the only source: the landing page, the pay page and the record all read from it. A tier with `pricePaise: null` would be offered at `RAZORPAY_TEST_AMOUNT_PAISE`, default 100, and the launch guard refuses to sell while that could apply.
 
 ### Early bird and coupons: none
 
 No early bird is offered and there is no discount logic. `earlyBirdEndsAt` stays null. The design handoff's Register screen carries demo coupon codes (EARLYBIRD, SBGVJIT, CAMPUS5) that its own notes flag as invented; they must not come across when that screen is ported.
 
-### Reconciliation, not optional
+### Reconciliation (Razorpay mode)
 
-Lambda in `amplify/functions/reconcile`, hourly.
-
-1. `listSettled(now - 3 days)`: every paid order with its captured payment, every processed refund, as `PaymentEvent`s.
-2. Each goes through `settle`. A record still pending here for a captured payment there is a webhook that never arrived; it is now paid, tokened and emailed, and counted as a mismatch.
-3. Anyone paid with no `confirmationSentAt` gets the email now.
-4. Write a summary item and surface the last run plus mismatch count on the admin dashboard.
-
-Razorpay's order list can lag a capture by a few seconds, so a reconcile run right after a payment may not see it. The next run does.
-
-Razorpay rate limits order creation and answers a burst with 429. Ten concurrent checkouts in test mode lost eleven of forty to it. The client retries 429 and 5xx up to four times with backoff, after which forty concurrent checkouts from one address succeed. Creating an order is safe to retry; a duplicate is an unpaid order nobody can reach.
-
-### Webhook registration
-
-Dashboard, Settings, Webhooks: URL `https://awsscdhyd.in/api/webhook/razorpay`, events `payment.captured`, `payment.failed`, `refund.processed`, with the secret set as `RAZORPAY_WEBHOOK_SECRET` on the Amplify app. Razorpay retries a non-2xx for a day, so a verified request always gets a 200 even when applying it fails.
+The hourly Lambda, in Razorpay mode only, also asks the provider what settled in the last three days and applies every event through `settle()`, which is idempotent: a capture is the one provider transition, `AWAITING_PAYMENT` to `VERIFIED`, for the recorded amount. A full refund releases the seats and moves the record to `REJECTED`, which closes the pass and refuses the gate. In both modes the run sends any owed email 2 and writes a summary the dashboard shows.
 
 ---
 
 ## 9. Seat claiming
 
-This is the one genuinely hard piece. Get it right and test it properly.
+Seats are claimed at session selection, not at registration. Everyone holds exactly four, one per slot, whatever the tier.
 
-An attendee picks one session per slot. Their tier decides how many slots they may fill. `TODO(vedant)`: per-tier allowance, read from `content/passes.ts`, never hardcoded.
+Twelve sessions: three tracks by four slots, one session per track per slot, each session in its track's room, so each has that room's `physicalCapacity` and its own `sellableCapacity`, always at most physical. The difference is the reserve for speakers, sponsors, organisers, VIP flex and no-shows. A session whose `sellableCapacity` is unset refuses every claim rather than falling back to physical.
 
-One selection per slot is enforced by the key itself: `PK = ATT#<ref>`, `SK = SLOT#<slotId>`. No application logic needed to prevent double booking.
+### Tier to track allowance
 
-Claiming a seat is a single `TransactWriteItems`:
+`tracksAllowed` in `content/passes.ts` is how many tracks a tier may **pick sessions from, counting the home track chosen at registration**. It is not a number of seats.
 
-```ts
-// 1. increment the new session, only if it has room
-{ Update: {
-    Key: { PK: `SESSION#${newId}`, SK: 'META' },
-    UpdateExpression: 'SET seatsTaken = seatsTaken + :one',
-    ConditionExpression: 'seatsTaken < capacity',
-    ExpressionAttributeValues: { ':one': 1 }
-}}
-// 2. write the selection
-{ Put: { Item: { PK: `ATT#${ref}`, SK: `SLOT#${slotId}`, sessionId: newId, ... } } }
-// 3. only when replacing an existing choice, release the old seat
-{ Update: {
-    Key: { PK: `SESSION#${oldId}`, SK: 'META' },
-    UpdateExpression: 'SET seatsTaken = seatsTaken - :one',
-    ConditionExpression: 'seatsTaken > :zero',
-    ExpressionAttributeValues: { ':one': 1, ':zero': 0 }
-}}
-```
+| Tier | Display | `tracksAllowed` | May pick from |
+|---|---|---|---|
+| `basic` | Regular | 1 | home track only |
+| `premium` | Premium | 2 | home track plus one other, chosen at selection |
+| `ultra` | Platinum | 3 | all three |
+| `vip` | VIP | 3 | all three |
 
-All three succeed or none do. **Never increment and decrement as separate calls.**
+Enforced server side on submit, read from `passes.ts`, never hardcoded in a route: a submission that picks from a track the tier does not allow, that puts two sessions in one slot, or that leaves a slot unfilled is rejected whatever the UI did.
 
-On `TransactionCanceledException` where the cancellation reason is `ConditionalCheckFailed` on the new session, the hall filled up while they were deciding. Return a clear message saying exactly that and refresh the counts, do not show a generic error.
+### The claim
 
-UI: show live remaining seats, disable a full session with the reason visible rather than just greyed out.
+All four seats in a single `TransactWriteItems`: an increment on each session with `ConditionExpression: seatsTaken < #capacity`, and a `SEAT#` item for each, plus the `VERIFIED` to `SESSIONS_SELECTED` transition asserting the current state. Either everything is written or nothing is.
 
-**Test:** two browser windows claiming the last seat of a one-seat session at the same time. Exactly one must win. If both succeed, the transaction is wrong.
+**`#capacity` is an expression attribute name aliasing `sellableCapacity`.** The attribute is not reserved, but `capacity` is, and the bare name has bitten this repo once. Keep the alias so nobody reintroduces it.
+
+### Conflict handling
+
+Two transactions touching one session at the same moment are not judged on their conditions: DynamoDB cancels one outright with `TransactionConflict`, and the SDK does not retry it. A campus registering in a burst is exactly that case. Every seat transaction therefore retries a conflict with jittered backoff until it is actually evaluated, and only then does a `ConditionalCheckFailed` mean what the caller thinks it means. The race test proved this: without the retry, the loser was cancelled with no condition result at all.
+
+On `TransactionCanceledException` the route parses `CancellationReasons` to find which session filled (item index maps back to the pick), answers 409 with that session id, fresh counts for all twelve and the message "That session just filled up, please pick another." The picker keeps every other choice, marks that one Full, and asks for another. Never a 500, never a generic error page, never a partial claim.
+
+**Test:** two verified attendees submitting four picks that include a session with one seat left, at the same time. Exactly one wins and holds four seats; the other is refused with that session named and holds nothing; `seatsTaken` on it rises by exactly one. `npm run race-test`, against the real table.
+
+### Selections are final
+
+On success the record is `SESSIONS_SELECTED` and email 4 goes out. Revisiting the pass shows the completed pass, read only, with a line to contact the organisers at the reply-to address for a change. Only an admin can change a selection, and doing so releases the old seats and claims the new ones in one transaction so counts never drift.
 
 ---
 
@@ -372,27 +387,54 @@ In order, each its own component file.
 ### `/schedule`
 Time down, halls across. On mobile, a per-hall vertical list. Never a horizontally scrolling table.
 
-### `/pass/[token]`
-Server component. Look up by token via GSI1. Invalid token renders a plain "this pass link is not valid, check your confirmation email or write to us". Never a stack trace, never a redirect to a login that does not exist.
+### `/pass` and `/pass/[passId]`
 
-Shows name, tier, a QR encoding `ticketRef`, food preference, the session picker, and an add-to-calendar link. Must be legible on a phone in bright sunlight at a gate: high contrast, large QR.
+`/pass` is where a student types their pass id. A `VERIFIED` or `SESSIONS_SELECTED` id redirects to the pass. Anything else, an unknown id included, gets the one generic message, byte for byte the same response, so the page cannot be used to discover which ids exist.
+
+`/pass/[passId]` renders by state. The link in email 2 opens it directly.
+
+| State | Renders |
+|---|---|
+| `AWAITING_PAYMENT`, `PENDING_VERIFICATION`, `ABANDONED`, `REJECTED`, unknown | the same not-found page, a real 404, naming nothing |
+| `VERIFIED`, sessions not released | name, pass id, tier, home track, "Agenda coming soon. We will email you when you can pick your sessions." No QR, no picker. |
+| `VERIFIED`, sessions released, none chosen | the per-slot picker, section 9. Still no QR. |
+| `SESSIONS_SELECTED` | the full pass: QR encoding the pass id, name, pass id, tier, the four chosen sessions with room and time, food preference. Read only. |
+
+The QR appears only in the final state. The pass id is identical in every state; nothing is ever regenerated. Server component; invalid or unfinished renders never a stack trace and never a redirect to a login that does not exist. Must be legible on a phone in bright sunlight at a gate: high contrast, large QR.
+
+### `/register` and `/register/pay/[passId]`
+
+Step one is the form, section 8. Step two, at the pay page, is reachable by pass id alone and renders the QR, the amount and the UTR form for `AWAITING_PAYMENT` and `REJECTED`, "we have your UTR" for `PENDING_VERIFICATION`, redirects to the pass for `VERIFIED` and `SESSIONS_SELECTED`, and explains the lapse for `ABANDONED`.
 
 ### `/admin` and `/admin/scan`
 Cognito sign-in, `ADMIN_EMAILS` allowlist.
 
-Dashboard: total registrations, split by tier, seats left per hall, **food preference totals with CSV export** (this number goes to the caterer), check-in count, last reconcile run and mismatch count, searchable attendee table.
+Dashboard: the `PENDING_VERIFICATION` queue first, oldest first, with Verify and Reject; counts for all six states; a filter for `VERIFIED` attendees who have not chosen sessions, so they can be chased; search by pass id, UTR and email; reinstate for `ABANDONED`; change sessions for `SESSIONS_SELECTED`, releasing and claiming in one transaction; the release-sessions action, which flips the flag and sends email 3; per-track counters against their ceilings; per-session sold, sellable, physical and reserve; **food preference totals with CSV export** (this number goes to the caterer); the last sweep run.
 
-Scanner: camera QR scan, look up by `ticketRef`, show name, tier and food preference in large type, buttons to mark checked in and swag issued. An already-checked-in scan says so clearly rather than silently succeeding. **Queue writes and retry on failure, because campus wifi will fail on the day.**
+Scanner: camera QR scan reads the pass id, looks it up, shows name, tier and food preference in large type, buttons to mark checked in and swag issued. **Only `SESSIONS_SELECTED` admits.** A `VERIFIED` attendee who never chose sessions gets a distinct message telling the volunteer so, not a generic invalid-pass error, because a volunteer at 9am cannot debug a generic error. An already-checked-in scan says so rather than silently succeeding. **Queue writes and retry on failure, because campus wifi will fail on the day.**
+
+---
 
 ---
 
 ## 12. Email
 
-SES, `ap-south-1`. Three templates, plain and mobile-legible.
+SES, `ap-south-1`. Every body lives in `src/lib/email/templates.ts` as named exports, so wording changes there and nowhere else. All transactional, none market anything, plain and mobile-legible.
 
-1. **Confirmation.** Name, tier, the pass link, date, venue, what to bring. The pass link is the single most important thing in the email, so make it obvious.
-2. **Session reminder.** Sent to anyone who has not picked sessions, a week out.
-3. **Day before.** Timings, directions, the pass link again.
+`VERIFICATION_WINDOW` is one exported constant, `"24 hours"` for now. The organiser has not yet said how often the bank statement is checked; when they do, only that constant changes.
+
+| Email | Trigger | Idempotency mark |
+|---|---|---|
+| 1, receipt | entering `PENDING_VERIFICATION` | `receiptSentAt` |
+| 2, confirmation | entering `VERIFIED` | `confirmationSentAt`; the hourly run resends anything owed |
+| 3, sessions live | the admin release action, to every `VERIFIED` attendee | `sessionsReleaseEmailSentAt`, written per attendee right after each send, so an interrupted run resumes where it stopped and a repeated run sends nothing twice |
+| 4, pass ready | entering `SESSIONS_SELECTED`, lists the chosen sessions with room and time | `passReadySentAt` |
+| rejection | entering `REJECTED`, quotes the UTR, links the pay page for a corrected one, **contains no pass link** | none |
+| day before | timings and directions | not yet scheduled |
+
+**Email 1 must never read as a confirmation.** Nobody has checked the money when it is sent. It contains none of successful, success, confirmed, confirmation, paid, complete, approved or verified; the acceptance suite asserts this against `RECEIPT_FORBIDDEN_WORDS`.
+
+No email is sent on `ABANDONED`. A student who never paid is not chased.
 
 ### Addresses
 
@@ -402,11 +444,9 @@ SES, `ap-south-1`. Three templates, plain and mobile-legible.
 | `Reply-To` | `awssbgvjit@gmail.com` |
 | Public contact on the site | `awssbgvjit@gmail.com` |
 
-**The domain is send only. There is no mailbox on `awsscdhyd.in`.** Nothing delivered to `vjit@awsscdhyd.in` is ever read, so every outbound message must set `Reply-To`, and the site never prints a domain address as a way to reach us. A student replying to a confirmation email has to land in the Gmail inbox, not in a black hole.
+**The domain is send only. There is no mailbox on `awsscdhyd.in`.** Nothing delivered to `vjit@awsscdhyd.in` is ever read, so every outbound message sets `Reply-To`, and the site never prints a domain address as a way to reach us. Every email names the reply-to address in its footer.
 
-Set `Reply-To` in the SES call itself, not in the template body. A template that says "write to us at" and an envelope that replies elsewhere will drift apart.
-
-Until SES production access is granted the account is sandboxed and can only send to verified addresses. Verify `awssbgvjit@gmail.com` first so the whole loop is testable before the domain is live. Build against a `console.log` transport in development.
+Set `Reply-To` in the SES call itself, not in the template body. Seeded and test attendees carry reserved addresses (`example.test`, `.example`) which the send layer refuses, so no code path can mail a fake person. Build against the `console` transport in development; `EMAIL_TRANSPORT=ses` points a local run at real SES on purpose.
 
 ---
 
@@ -464,12 +504,12 @@ Kept current as work lands. Everything else in this file is the plan, this secti
 | Sandbox backend | deployed: table, Cognito pool, reconcile Lambda, hourly schedule |
 | Amplify Hosting | building from `main`, live at https://awsscdhyd.in with a compute role and production env vars attached |
 | Landing page | ported from the design handoff (Landing Bitmap). Its own header and footer, theme in localStorage under `scd-theme`, cloud page transition on every route. APPLY TO SPEAK and BECOME A SPONSOR open a mail to awssbgvjit@gmail.com with a fixed subject until the `/speak` and `/sponsor` screens are ported |
-| Schedule, speakers, sponsors, code of conduct, register, pass, admin | built on the pre-handoff layout, kept under `src/app/(site)/` with the old chrome until each is ported |
-| Pass page, QR, session picker, seat transaction | built, race test passes |
-| Payments | Razorpay, test keys. Our form at `/register`, order + pending record, webhook the only writer, reconcile hourly. Verified in test mode: capture, replay x3, tamper, wrong amount, failure, refund, lost webhook. Registration stays closed until `registrationOpen` flips, and the launch guard refuses to sell in production on a test key, an unpriced tier, or `RAZORPAY_TEST_AMOUNT_PAISE` being set, each verified to block alone. Prices are set in `content/passes.ts` and single sourced; `check:launch` no longer reports `unpriced-tier`. |
-| Organiser auth, dashboard, scanner | built, gated on ADMIN_EMAILS |
+| Schedule, speakers, sponsors, code of conduct, register, pay, pass, pass entry, admin | built on the pre-handoff layout, kept under `src/app/(site)/` with the old chrome until each is ported |
+| Pass page, QR, per-slot picker, seat transaction | rebuilt on the six-state lifecycle and the one pass id. Race test and the 25-check acceptance suite (`npm run test:lifecycle`) pass against the sandbox |
+| Payments | Manual UPI by default: two-step registration, per-track counter at step one, UTR and screenshot, admin verification queue, hourly sweep. Razorpay kept intact behind `PAYMENT_MODE`. Registration stays closed until `registrationOpen` flips; the launch guard lists per-mode blockers on the dashboard |
+| Organiser auth, dashboard, scanner | rebuilt: verification queue, six-state counts, reinstate, change sessions, session release, per-track counters; scanner admits only `SESSIONS_SELECTED` and names the verified-but-unselected case |
 | Reconcile | hourly, verified to report and repair a deleted record |
-| Email | built. Confirmation on create, reconcile retries what fails, bounces and complaints recorded and suppressed, counts on the dashboard |
+| Email | five transactional bodies in one module, each with an idempotency mark; SES sending verified end to end from the sandbox |
 | Deliverability | DKIM, SPF via custom MAIL FROM `mail.awsscdhyd.in`, DMARC at `p=none` reporting to awssbgvjit@gmail.com. Records are CDK in `amplify/backend.ts`, created only by the build that carries `SCD_MANAGE_DNS=true`, which is the production Amplify app and nothing else |
 | Theme | handoff tokens, one block at the top of `globals.css`. The old token names alias onto it for the unported screens |
 
