@@ -1,8 +1,9 @@
 import type { Metadata } from 'next'
 import { Container } from '@/components/layout/Container'
-import { RegisterForm, type TierOption } from '@/components/register/RegisterForm'
+import { RegisterForm, type TierOption, type TrackOption } from '@/components/register/RegisterForm'
 import { event, venue } from '@/content/event'
 import { ALWAYS_INCLUDED, formatInr, passes, tierIds } from '@/content/passes'
+import { tracks } from '@/content/tracks'
 import type { Tier } from '@/lib/db/types'
 import { registrationIsOpen } from '@/lib/tickets/launch'
 import { placeholderPaise } from '@/lib/tickets/pricing'
@@ -47,7 +48,9 @@ export default async function RegisterPage({ searchParams }: PageProps<'/registe
     placeholder: p.pricePaise === null,
     includes: [...p.includes, ...ALWAYS_INCLUDED],
     recommended: Boolean(p.recommended),
+    tracksAllowed: p.tracksAllowed,
   }))
+  const trackOptions: TrackOption[] = tracks.map((t) => ({ id: t.id, name: t.name, blurb: t.blurb }))
 
   return (
     <Container className="section-tight">
@@ -61,7 +64,7 @@ export default async function RegisterPage({ searchParams }: PageProps<'/registe
       </header>
 
       <div className="reg-grid mt-12">
-        <RegisterForm tiers={tiers} preselect={preselect} eventName={event.shortName} contactEmail={event.contactEmail} />
+        <RegisterForm tiers={tiers} tracks={trackOptions} preselect={preselect} eventName={event.shortName} contactEmail={event.contactEmail} />
       </div>
     </Container>
   )

@@ -1,8 +1,9 @@
-import { GetCommand, QueryCommand, ScanCommand } from '@aws-sdk/lib-dynamodb'
+import { BatchGetCommand, GetCommand, QueryCommand, ScanCommand } from '@aws-sdk/lib-dynamodb'
 import type { QueryCommandInput, ScanCommandInput } from '@aws-sdk/lib-dynamodb'
 import { ddb, tableName } from './client'
 import { gsi1, keys } from './keys'
-import type { Attendee, EmailEvent, EmailEventType, EventConfig, OrderPointer, ReconcileSummary, Selection, Session, Subscriber } from './types'
+import { sessionSpecs } from '../../content/sessions'
+import type { Attendee, EmailEvent, EmailEventType, EventConfig, OrderPointer, ReconcileSummary, Seat, Session, Subscriber, VerificationLog } from './types'
 
 /**
  * Drain every page. DynamoDB truncates at 1 MB regardless of how few items
@@ -60,19 +61,39 @@ export async function getAttendeeByOrder(orderId: string): Promise<Attendee | nu
   return pointer ? getAttendee(pointer.ticketRef) : null
 }
 
-/** One query returns the profile and every slot selection in the same partition. */
-export async function getAttendeeWithSelections(
+/** One query returns the profile, every held seat and the verification log from the same partition. */
+export async function getAttendeeWithSeats(
   ticketRef: string,
-): Promise<{ attendee: Attendee | null; selections: Selection[] }> {
-  const items = await queryAll<Attendee | Selection>({
+): Promise<{ attendee: Attendee | null; seats: Seat[]; log: VerificationLog[] }> {
+  const items = await queryAll<Attendee | Seat | VerificationLog>({
     TableName: tableName(),
     KeyConditionExpression: 'PK = :pk',
     ExpressionAttributeValues: { ':pk': keys.attendee(ticketRef).PK },
   })
   return {
     attendee: (items.find((i) => i.SK === 'PROFILE') as Attendee | undefined) ?? null,
-    selections: items.filter((i) => i.SK.startsWith('SLOT#')) as Selection[],
+    seats: items.filter((i) => i.SK.startsWith('SEAT#')) as Seat[],
+    log: (items.filter((i) => i.SK.startsWith('VERIFY#')) as VerificationLog[]).sort((a, b) => a.at.localeCompare(b.at)),
   }
+}
+
+/**
+ * All 12 sessions in content order, from the table. A session content
+ * describes but the table lacks (never seeded) comes back as undefined in
+ * its place, so a caller can tell "not seeded" from "full".
+ */
+export async function getAllSessions(): Promise<(Session | undefined)[]> {
+  const specs = sessionSpecs()
+  const table = tableName()
+  const found = new Map<string, Session>()
+  // BatchGet takes at most 100 keys and may return some unprocessed.
+  let requestKeys = specs.map((s) => keys.session(s.sessionId))
+  for (let attempt = 0; requestKeys.length > 0 && attempt < 6; attempt++) {
+    const res = await ddb.send(new BatchGetCommand({ RequestItems: { [table]: { Keys: requestKeys } } }))
+    for (const item of (res.Responses?.[table] ?? []) as Session[]) found.set(item.sessionId, item)
+    requestKeys = (res.UnprocessedKeys?.[table]?.Keys ?? []) as typeof requestKeys
+  }
+  return specs.map((s) => found.get(s.sessionId))
 }
 
 /** Everything running opposite everything else in one time slot. */

@@ -111,34 +111,41 @@ export default async function AdminDashboardPage() {
         </p>
       </section>
 
-      <section aria-labelledby="halls">
-        <h2 id="halls" className="display text-step-2">
-          Seats left per hall
+      <section aria-labelledby="sessions">
+        <h2 id="sessions" className="display text-step-2">
+          Seats per session
         </h2>
+        <p className="mt-2 text-step--1 text-muted">
+          Sold counts every seat held, by paid and pending records alike, because a pending record holds a real seat
+          until it is verified or its hold lapses. Sellable is what registration may claim, physical is the room,
+          reserve is the difference. A dash is a value not yet decided.
+        </p>
         <div className="scroll-x mt-6">
           <table className="data-table">
-            <caption className="sr-only">Seats remaining in each hall, by slot</caption>
+            <caption className="sr-only">Sold, sellable, physical and reserve seats for each session</caption>
             <thead>
               <tr>
-                <th scope="col">Hall</th>
-                {d.halls[0]?.slots.map((s) => (
-                  <th key={s.slotId} scope="col">
-                    {s.slotLabel}
-                  </th>
-                ))}
-                <th scope="col">Total left</th>
+                <th scope="col">Slot</th>
+                <th scope="col">Track</th>
+                <th scope="col">Room</th>
+                <th scope="col">Sold</th>
+                <th scope="col">Sellable</th>
+                <th scope="col">Physical</th>
+                <th scope="col">Reserve</th>
+                <th scope="col">Free</th>
               </tr>
             </thead>
             <tbody>
-              {d.halls.map((hall) => (
-                <tr key={hall.hallId}>
-                  <th scope="row">{hall.hallName}</th>
-                  {hall.slots.map((s) => (
-                    <td key={s.slotId} className="mono">
-                      {s.left} of {s.capacity}
-                    </td>
-                  ))}
-                  <td className="mono">{hall.left}</td>
+              {d.sessions.map((s) => (
+                <tr key={s.sessionId}>
+                  <th scope="row">{s.slotLabel}</th>
+                  <td>{s.trackName}</td>
+                  <td>{s.roomName ?? 'Unassigned'}</td>
+                  <td className="mono">{s.seeded ? s.sold : 'not seeded'}</td>
+                  <td className="mono">{s.sellable ?? '–'}</td>
+                  <td className="mono">{s.physical ?? '–'}</td>
+                  <td className="mono">{s.reserve ?? '–'}</td>
+                  <td className="mono">{s.free ?? '–'}</td>
                 </tr>
               ))}
             </tbody>

@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
-import type { FoodPreference, Tier } from '@/lib/db/types'
+import type { FoodPreference, Tier, Track } from '@/lib/db/types'
 
 export type TierOption = {
   id: Tier
@@ -12,7 +12,11 @@ export type TierOption = {
   placeholder: boolean
   includes: string[]
   recommended: boolean
+  /** Distinct tracks this tier may register for. A seat is held in every session of each. */
+  tracksAllowed: number
 }
+
+export type TrackOption = { id: Track; name: string; blurb: string }
 
 const FOODS: { id: FoodPreference; label: string }[] = [
   { id: 'veg', label: 'Veg' },
@@ -79,16 +83,19 @@ const SLOW_AFTER_MS = 90_000
 
 export function RegisterForm({
   tiers,
+  tracks,
   preselect,
   eventName,
   contactEmail,
 }: {
   tiers: TierOption[]
+  tracks: TrackOption[]
   preselect?: Tier
   eventName: string
   contactEmail: string
 }) {
   const [tier, setTier] = useState<Tier | ''>(preselect ?? tiers.find((t) => t.recommended)?.id ?? tiers[0]?.id ?? '')
+  const [picked, setPicked] = useState<Track[]>([])
   const [food, setFood] = useState<FoodPreference | ''>('')
   const [phase, setPhase] = useState<Phase>({ kind: 'form' })
   const [error, setError] = useState<{ field?: string; message: string } | null>(null)
@@ -99,7 +106,24 @@ export function RegisterForm({
   const ids = useId()
 
   const chosen = tiers.find((t) => t.id === tier)
+  const allowed = chosen?.tracksAllowed ?? 1
   const busy = phase.kind === 'creating' || phase.kind === 'paying'
+
+  // Changing tier can lower the allowance; drop the extra tracks from the end.
+  function chooseTier(id: Tier) {
+    setTier(id)
+    const cap = tiers.find((t) => t.id === id)?.tracksAllowed ?? 1
+    setPicked((p) => p.slice(0, cap))
+  }
+
+  function toggleTrack(id: Track) {
+    setPicked((p) => {
+      if (p.includes(id)) return p.filter((t) => t !== id)
+      // One track allowed: choosing another replaces it, like a radio.
+      if (allowed === 1) return [id]
+      return p.length < allowed ? [...p, id] : p
+    })
+  }
 
   // Confirming: ask the server every two seconds whether the webhook landed.
   // This never decides anything, it only reads what the webhook wrote.
@@ -189,6 +213,7 @@ export function RegisterForm({
       phone: String(fd.get('phone') ?? ''),
       college: String(fd.get('college') ?? ''),
       tier,
+      tracks: picked,
       foodPreference: food,
     }
 
@@ -357,7 +382,7 @@ export function RegisterForm({
                   name="tier"
                   value={t.id}
                   checked={tier === t.id}
-                  onChange={() => setTier(t.id)}
+                  onChange={() => chooseTier(t.id)}
                   className="choice-input"
                 />
                 <span className="choice-body">
@@ -375,6 +400,41 @@ export function RegisterForm({
             ))}
           </div>
           {fieldError('tier') ? <p id={`${ids}-tier-err`} className="reg-error">{fieldError('tier')}</p> : null}
+        </fieldset>
+
+        <fieldset className="reg-block" disabled={busy}>
+          <legend className="eyebrow">{allowed === 1 ? 'Your track' : `Your tracks, up to ${allowed}`}</legend>
+          <p className="reg-hint">
+            {allowed === 1
+              ? 'A seat is held for you in every session of the track you pick.'
+              : `A seat is held for you in every session of each track you pick. Choose up to ${allowed}.`}
+          </p>
+          <div className="choice-list" role="group" aria-describedby={fieldError('tracks') ? `${ids}-tracks-err` : undefined}>
+            {tracks.map((tr) => {
+              const on = picked.includes(tr.id)
+              const capped = !on && allowed > 1 && picked.length >= allowed
+              return (
+                <label key={tr.id} className="choice" data-checked={on ? 'true' : undefined} aria-disabled={capped || undefined}>
+                  <input
+                    type="checkbox"
+                    name="tracks"
+                    value={tr.id}
+                    checked={on}
+                    disabled={capped}
+                    onChange={() => toggleTrack(tr.id)}
+                    className="choice-input"
+                  />
+                  <span className="choice-body">
+                    <span className="choice-head">
+                      <span className="choice-name">{tr.name}</span>
+                    </span>
+                    <span className="choice-detail">{tr.blurb}</span>
+                  </span>
+                </label>
+              )
+            })}
+          </div>
+          {fieldError('tracks') ? <p id={`${ids}-tracks-err`} className="reg-error">{fieldError('tracks')}</p> : null}
         </fieldset>
 
         <fieldset className="reg-block" disabled={busy}>
@@ -423,7 +483,7 @@ export function RegisterForm({
         ) : null}
 
         <div className="reg-actions">
-          <button type="submit" className="cta" disabled={busy || !tier || !food}>
+          <button type="submit" className="cta" disabled={busy || !tier || !food || picked.length === 0}>
             {phase.kind === 'creating'
               ? 'Preparing'
               : phase.kind === 'paying'
@@ -442,6 +502,9 @@ export function RegisterForm({
           {chosen ? (
             <>
               <p className="display text-step-2 mt-2">{chosen.name}</p>
+              {picked.length ? (
+                <p className="text-step--1 text-muted mt-1">{picked.map((id) => tracks.find((t) => t.id === id)?.name ?? id).join(', ')}</p>
+              ) : null}
               <ul className="tier-list mt-4">
                 {chosen.includes.map((i) => (
                   <li key={i}>{i}</li>

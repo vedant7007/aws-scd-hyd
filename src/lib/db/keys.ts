@@ -3,11 +3,14 @@ import { randomBytes } from 'node:crypto'
 /** Primary keys. One place, so a key never gets templated by hand at a call site. */
 export const keys = {
   attendee: (ticketRef: string) => ({ PK: `ATT#${ticketRef}`, SK: 'PROFILE' }),
-  selection: (ticketRef: string, slotId: string) => ({ PK: `ATT#${ticketRef}`, SK: `SLOT#${slotId}` }),
+  seat: (ticketRef: string, sessionId: string) => ({ PK: `ATT#${ticketRef}`, SK: `SEAT#${sessionId}` }),
   session: (sessionId: string) => ({ PK: `SESSION#${sessionId}`, SK: 'META' }),
   config: () => ({ PK: 'CONFIG', SK: 'EVENT' }),
   reconcile: () => ({ PK: 'RECONCILE', SK: 'LATEST' }),
   order: (orderId: string) => ({ PK: `ORDER#${orderId}`, SK: 'ATT' }),
+  /** One per UTR ever submitted. Its existence is the uniqueness rule. */
+  utr: (utr: string) => ({ PK: `UTR#${utr}`, SK: 'CLAIM' }),
+  verificationLog: (ticketRef: string, at: string) => ({ PK: `ATT#${ticketRef}`, SK: `VERIFY#${at}` }),
   subscriber: (email: string) => ({ PK: `SUB#${normaliseEmail(email)}`, SK: 'PROFILE' }),
   emailEvent: (email: string, occurredAt: string, type: string) => ({
     PK: `EMAIL#${normaliseEmail(email)}`,

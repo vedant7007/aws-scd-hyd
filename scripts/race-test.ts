@@ -1,133 +1,100 @@
 /**
- * The acceptance test for SPEC.md section 9.
+ * The acceptance test for SPEC.md section 9, reshaped for tracks.
  *
- * Two genuinely concurrent claims on a session with exactly one seat. One must
- * win, one must be told the seat went, and seatsTaken must end at 1, not 2.
+ * A track's four sessions are set to exactly one free seat each, then two
+ * registrations for that track run genuinely concurrently. One must win and
+ * hold all four seats, one must be told the track is full with nothing
+ * written, and every session must end one seat higher, not two.
  *
- * Runs against the real sandbox table through the real HTTP route. Nothing here
- * is mocked, because the thing under test is a DynamoDB transaction and a mock
- * would only prove the mock works.
+ * Runs against the real sandbox table through createPendingAttendee, the same
+ * function the checkout route calls, because the thing under test is a
+ * DynamoDB transaction and a mock would only prove the mock works.
  *
- *   npm run dev            # in another shell
  *   npm run race-test
  */
-import { DeleteCommand, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb'
+import { GetCommand, TransactWriteCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import { ddb, tableName } from '../src/lib/db/client'
-import { gsi1, keys } from '../src/lib/db/keys'
-import { getAttendeeWithSelections } from '../src/lib/db/queries'
-import type { Session } from '../src/lib/db/types'
+import { keys, newTicketRef } from '../src/lib/db/keys'
+import { getAttendeeWithSeats } from '../src/lib/db/queries'
+import { releaseSeatItems } from '../src/lib/db/seats'
+import type { Session, Track } from '../src/lib/db/types'
+import { createPendingAttendee } from '../src/lib/db/writes'
+import { sessionIdsForTrack } from '../src/content/sessions'
 
-const BASE = process.env.RACE_TEST_BASE_URL ?? 'http://localhost:3100'
-
-/** Its own slot, so this fixture never shows up in a real attendee's picker. */
-const SLOT_ID = 'race'
-const SESSION_ID = 'race-one-seat'
-const CONTENDERS = ['SEED-001', 'SEED-002']
-
+const TRACK: Track = 'career'
 const table = () => tableName()
 
-async function resetFixture(): Promise<void> {
-  await ddb.send(
-    new PutCommand({
-      TableName: table(),
-      Item: {
-        ...keys.session(SESSION_ID),
-        ...gsi1.sessionBySlot(SLOT_ID, SESSION_ID),
-        sessionId: SESSION_ID,
-        title: 'Race test, one seat',
-        speaker: 'Nobody',
-        track: 'cloud',
-        hallId: 'race',
-        slotId: SLOT_ID,
-        capacity: 1,
-        seatsTaken: 0,
-      } satisfies Session,
-    }),
-  )
+async function session(id: string): Promise<Session> {
+  const res = await ddb.send(new GetCommand({ TableName: table(), Key: keys.session(id) }))
+  if (!res.Item) throw new Error(`${id} is not seeded. Run the seed with SEED_TEST_MODEL=1 first.`)
+  return res.Item as Session
+}
 
-  // Clear any selection either contender holds in this slot, from a prior run.
-  for (const ticketRef of CONTENDERS) {
+/** Leave exactly one free seat in every session of the track. */
+async function pinToOneFree(ids: string[]): Promise<void> {
+  for (const id of ids) {
+    const s = await session(id)
     await ddb.send(
-      new DeleteCommand({ TableName: table(), Key: keys.selection(ticketRef, SLOT_ID) }),
+      new UpdateCommand({
+        TableName: table(),
+        Key: keys.session(id),
+        UpdateExpression: 'SET sellableCapacity = :cap',
+        ExpressionAttributeValues: { ':cap': s.seatsTaken + 1 },
+      }),
     )
   }
 }
 
-async function seatsTaken(): Promise<number> {
-  const res = await ddb.send(new GetCommand({ TableName: table(), Key: keys.session(SESSION_ID) }))
-  return (res.Item as Session | undefined)?.seatsTaken ?? -1
+async function register(name: string) {
+  return createPendingAttendee(
+    newTicketRef(),
+    { name, email: `${name}@example.test`, phone: '+919000000000', college: 'Race', tier: 'basic', tracks: [TRACK], foodPreference: 'veg' },
+    { mode: 'manual', amountPaise: 39900, holdUntil: new Date(Date.now() + 60_000).toISOString() },
+  )
 }
 
-type Attempt = {
-  ticketRef: string
-  status: number
-  body: { ok?: boolean; code?: string; message?: string }
-  startedAt: number
-  finishedAt: number
-}
-
-async function claim(ticketRef: string, token: string): Promise<Attempt> {
-  const startedAt = Date.now()
-  const res = await fetch(`${BASE}/api/pass/${token}/sessions`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ slotId: SLOT_ID, sessionId: SESSION_ID }),
-  })
-  // Read as text first. A 500 with an empty body must surface as a failed
-  // attempt, not as a JSON parse error that hides what the route did.
-  const raw = await res.text()
-  let body: Attempt['body'] = {}
-  try {
-    body = raw ? (JSON.parse(raw) as Attempt['body']) : { message: `empty body (${raw.length} bytes)` }
-  } catch {
-    body = { message: `unparseable body: ${raw.slice(0, 200)}` }
-  }
-  return { ticketRef, status: res.status, body, startedAt, finishedAt: Date.now() }
+async function cleanup(ticketRef: string): Promise<void> {
+  const { seats } = await getAttendeeWithSeats(ticketRef)
+  await ddb.send(
+    new TransactWriteCommand({
+      TransactItems: [{ Delete: { TableName: table(), Key: keys.attendee(ticketRef) } }, ...releaseSeatItems(seats)],
+    }),
+  )
 }
 
 async function main(): Promise<void> {
-  await resetFixture()
+  const ids = sessionIdsForTrack(TRACK)
+  await pinToOneFree(ids)
+  const before = await Promise.all(ids.map(session))
 
-  const tokens: string[] = []
-  for (const ticketRef of CONTENDERS) {
-    const { attendee } = await getAttendeeWithSelections(ticketRef)
-    if (!attendee?.passToken) throw new Error(`${ticketRef} is not seeded, run npm run seed first`)
-    tokens.push(attendee.passToken)
-  }
+  const [a, b] = await Promise.all([register('race-a'), register('race-b')])
+  const winners = [a, b].filter((r) => r.ok)
+  const losers = [a, b].filter((r) => !r.ok)
 
-  console.log(`before: seatsTaken=${await seatsTaken()} capacity=1`)
+  const after = await Promise.all(ids.map(session))
+  const deltas = after.map((s, i) => s.seatsTaken - before[i]!.seatsTaken)
 
-  // Both requests are dispatched before either resolves. Promise.all does not
-  // await the first, so the two are in flight at the same time.
-  const attempts = await Promise.all(CONTENDERS.map((ref, i) => claim(ref, tokens[i])))
+  const winner = winners[0]
+  const held = winner?.ok ? (await getAttendeeWithSeats(winner.attendee.ticketRef)).seats : []
 
-  const overlapStart = Math.max(...attempts.map((a) => a.startedAt))
-  const overlapEnd = Math.min(...attempts.map((a) => a.finishedAt))
-  const overlapMs = overlapEnd - overlapStart
+  const problems: string[] = []
+  if (winners.length !== 1) problems.push(`expected exactly one winner, got ${winners.length}`)
+  if (losers.length !== 1) problems.push(`expected exactly one loser, got ${losers.length}`)
+  const loser = losers[0]
+  if (loser && !loser.ok && !(loser.reason === 'track-full' && loser.track === TRACK)) problems.push(`loser was refused for ${loser.reason}, not track-full on ${TRACK}`)
+  if (deltas.some((d) => d !== 1)) problems.push(`session deltas were ${deltas.join(',')}, expected 1,1,1,1`)
+  if (held.length !== ids.length) problems.push(`winner holds ${held.length} seats, expected ${ids.length}`)
+  if (held.some((s) => s.track !== TRACK)) problems.push('winner holds a seat outside the track')
 
-  for (const a of attempts) {
-    console.log(`  ${a.ticketRef}: HTTP ${a.status} ${a.body.code ?? 'ok'} ${a.body.message ?? ''}`)
-  }
-  console.log(`  in flight together for ${overlapMs}ms`)
+  for (const w of winners) if (w.ok) await cleanup(w.attendee.ticketRef)
+  // Put the free seat back for the next run.
+  await pinToOneFree(ids)
 
-  const winners = attempts.filter((a) => a.status === 200 && a.body.ok === true)
-  const losers = attempts.filter((a) => a.status === 409 && a.body.code === 'full')
-  const after = await seatsTaken()
-
-  const failures: string[] = []
-  if (overlapMs <= 0) failures.push('the two requests did not actually overlap in flight')
-  if (winners.length !== 1) failures.push(`expected exactly 1 winner, got ${winners.length}`)
-  if (losers.length !== 1) failures.push(`expected exactly 1 loser with code "full", got ${losers.length}`)
-  if (after !== 1) failures.push(`expected seatsTaken to be 1 afterwards, got ${after}`)
-
-  console.log(`after:  seatsTaken=${after}`)
-
-  if (failures.length > 0) {
-    console.error('\nRACE TEST FAILED')
-    failures.forEach((f) => console.error(`  ${f}`))
+  if (problems.length) {
+    console.error('RACE TEST FAILED\n  ' + problems.join('\n  '))
     process.exit(1)
   }
-  console.log('\nRACE TEST PASSED: one winner, one told the seat went, seatsTaken=1')
+  console.log(`race test passed: one winner holding ${held.length} seats in ${TRACK}, one refused with track-full, deltas ${deltas.join(',')}`)
 }
 
 main().catch((err) => {

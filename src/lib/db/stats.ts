@@ -1,22 +1,30 @@
-import { halls as fallbackHalls, slots as fallbackSlots } from '../../content/event'
-import { getConfig, getReconcileSummary, getSessionsInSlot, listAttendees, listEmailEvents } from './queries'
-import type { Attendee, EmailEvent, FoodPreference, Hall, ReconcileSummary, Slot, Tier } from './types'
+import { slots as fallbackSlots } from '../../content/event'
+import { roomById, sessionSpecs, trackName } from '../../content/sessions'
+import { getAllSessions, getConfig, getReconcileSummary, listAttendees, listEmailEvents } from './queries'
+import type { Attendee, EmailEvent, FoodPreference, ReconcileSummary, Slot, Tier, Track } from './types'
 
-export type HallSlotSeats = {
+/**
+ * One session, both capacity numbers side by side. sold is seats held, by
+ * paid and pending records alike, since a pending record holds real seats.
+ * reserve is what is kept back from sale; free is what is physically unsold.
+ * Nulls are TODO(vedant): no room assigned, or no sellable count decided.
+ */
+export type SessionSeats = {
+  sessionId: string
   slotId: string
   slotLabel: string
-  capacity: number
-  seatsTaken: number
-  left: number
-}
-
-export type HallSeats = {
-  hallId: string
-  hallName: string
-  slots: HallSlotSeats[]
-  capacity: number
-  seatsTaken: number
-  left: number
+  track: Track
+  trackName: string
+  roomName: string | null
+  title: string | null
+  seeded: boolean
+  sold: number
+  sellable: number | null
+  physical: number | null
+  /** physical minus sellable: seats held back from sale. */
+  reserve: number | null
+  /** physical minus sold: seats physically still free, reserve included. */
+  free: number | null
 }
 
 export type Dashboard = {
@@ -29,7 +37,9 @@ export type Dashboard = {
   byFood: { food: FoodPreference; count: number }[]
   checkedIn: number
   swagIssued: number
-  halls: HallSeats[]
+  sessions: SessionSeats[]
+  /** Manual payments with a UTR waiting for an admin. */
+  awaitingVerification: number
   reconcile: ReconcileSummary | null
   email: {
     bounces: number
@@ -59,35 +69,36 @@ export async function loadDashboard(): Promise<Dashboard> {
     listEmailEvents('complaint'),
   ])
 
-  // Halls and slots are config, never hardcoded. Works for three halls or four.
-  const halls: Hall[] = config?.halls ?? fallbackHalls
   const slots: Slot[] = config?.slots ?? fallbackSlots
+  const slotLabel = new Map(slots.map((s) => [s.id, s.label]))
 
-  const sessionsPerSlot = await Promise.all(slots.map((slot) => getSessionsInSlot(slot.id)))
+  // Content says what the 12 sessions are; the table says how many seats each
+  // has given out. A session content describes but the table lacks is shown
+  // as not seeded rather than as empty.
+  const specs = sessionSpecs()
+  const stored = await getAllSessions()
 
   const paidOnly = attendees.filter((a) => a.paymentStatus === 'paid')
 
-  const hallSeats: HallSeats[] = halls.map((hall) => {
-    const perSlot: HallSlotSeats[] = slots.map((slot, i) => {
-      const session = sessionsPerSlot[i].find((s) => s.hallId === hall.id)
-      const capacity = session?.capacity ?? 0
-      const seatsTaken = session?.seatsTaken ?? 0
-      return {
-        slotId: slot.id,
-        slotLabel: slot.label,
-        capacity,
-        seatsTaken,
-        left: Math.max(0, capacity - seatsTaken),
-      }
-    })
-
+  const sessions: SessionSeats[] = specs.map((spec, i) => {
+    const item = stored[i]
+    const sold = item?.seatsTaken ?? 0
+    const sellable = item ? item.sellableCapacity : spec.sellableCapacity
+    const physical = item ? item.physicalCapacity : spec.physicalCapacity
     return {
-      hallId: hall.id,
-      hallName: hall.name,
-      slots: perSlot,
-      capacity: perSlot.reduce((n, s) => n + s.capacity, 0),
-      seatsTaken: perSlot.reduce((n, s) => n + s.seatsTaken, 0),
-      left: perSlot.reduce((n, s) => n + s.left, 0),
+      sessionId: spec.sessionId,
+      slotId: spec.slotId,
+      slotLabel: slotLabel.get(spec.slotId) ?? spec.slotId,
+      track: spec.track,
+      trackName: trackName(spec.track),
+      roomName: roomById(item?.roomId ?? spec.roomId)?.name ?? null,
+      title: item?.title ?? spec.title,
+      seeded: Boolean(item),
+      sold,
+      sellable,
+      physical,
+      reserve: physical !== null && sellable !== null ? physical - sellable : null,
+      free: physical !== null ? physical - sold : null,
     }
   })
 
@@ -104,7 +115,8 @@ export async function loadDashboard(): Promise<Dashboard> {
     })),
     checkedIn: attendees.filter((a) => a.checkedInAt).length,
     swagIssued: attendees.filter((a) => a.swagIssuedAt).length,
-    halls: hallSeats,
+    sessions,
+    awaitingVerification: attendees.filter((a) => a.paymentStatus === 'pending' && a.verification === 'awaiting').length,
     reconcile,
     email: {
       bounces: bounces.length,

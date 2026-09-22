@@ -1,4 +1,4 @@
-import type { Hall, Slot } from '../lib/db/types'
+import type { Room, SessionType, Slot, Track } from '../lib/db/types'
 
 export const event = {
   name: 'AWS Student Community Day Hyderabad',
@@ -50,22 +50,67 @@ export const travel: { label: string; detail: string | null }[] = [
 ]
 
 /**
- * TODO(vedant): hall count is 3 or 4 and unconfirmed, names and capacities are
- * placeholders. Nothing may hardcode a hall count. Read config.halls at runtime.
+ * The four rooms VJIT has given us, with their real physical seat counts.
+ * Three host a track each. The fourth is a buffer: overflow, a broken
+ * projector, a speaker who needs a quiet room. It is never a session venue,
+ * so it never appears in the schedule or the picker, and nothing counts its
+ * seats.
+ *
+ * TODO(vedant): which of the four is the buffer is assumed to be the last one
+ * listed. Move the role if that is wrong.
  */
-export const halls: Hall[] = [
-  { id: 'h1', name: 'Hall 1', capacity: 200 },
-  { id: 'h2', name: 'Hall 2', capacity: 150 },
-  { id: 'h3', name: 'Hall 3', capacity: 120 },
+export const rooms: Room[] = [
+  { id: 'e-aud', name: 'E Block auditorium', physicalCapacity: 240, role: 'track' },
+  { id: 'c-g', name: 'C Block ground floor', physicalCapacity: 400, role: 'track' },
+  { id: 'c-1', name: 'C Block first floor', physicalCapacity: 100, role: 'track' },
+  { id: 'c-2', name: 'C Block second floor', physicalCapacity: 100, role: 'buffer' },
 ]
 
-/** TODO(vedant): slot times are placeholders until the schedule is fixed. */
+/**
+ * TODO(vedant): which track runs in which room. Empty until decided. Every
+ * room feature reads this: a track without a room says so, and a session in
+ * no room has no physical capacity and cannot be sold.
+ */
+export const roomForTrack: Partial<Record<Track, string>> = {}
+
+/**
+ * Four slots. 3 tracks x 4 slots = 12 sessions. TODO(vedant): times are
+ * undecided, so startsAt and endsAt are null and every surface prints the
+ * label alone until they are set.
+ */
 export const slots: Slot[] = [
-  { id: 's1', label: 'Session 1', startsAt: '2026-10-30T10:30:00+05:30', endsAt: '2026-10-30T11:15:00+05:30' },
-  { id: 's2', label: 'Session 2', startsAt: '2026-10-30T11:30:00+05:30', endsAt: '2026-10-30T12:15:00+05:30' },
-  { id: 's3', label: 'Session 3', startsAt: '2026-10-30T14:00:00+05:30', endsAt: '2026-10-30T14:45:00+05:30' },
-  { id: 's4', label: 'Session 4', startsAt: '2026-10-30T15:00:00+05:30', endsAt: '2026-10-30T15:45:00+05:30' },
+  { id: 's1', label: 'Slot 1', startsAt: null, endsAt: null },
+  { id: 's2', label: 'Slot 2', startsAt: null, endsAt: null },
+  { id: 's3', label: 'Slot 3', startsAt: null, endsAt: null },
+  { id: 's4', label: 'Slot 4', startsAt: null, endsAt: null },
 ]
+
+/**
+ * Per session detail, keyed by session id, which is "<slot>-<track>". Every
+ * field is TODO(vedant) and absent until decided. Titles and speakers arrive
+ * with the line-up. The type is never assumed: nothing is a workshop until
+ * it is written here. sellableCapacity is how many of the room's physical
+ * seats registration may claim, the rest held back for speakers, sponsors,
+ * organisers, VIP flex and no-shows; it is always at most the physical count,
+ * and a session without it refuses every claim rather than falling back to
+ * physical.
+ */
+export type SessionDetail = {
+  title?: string
+  speaker?: string
+  type?: SessionType
+  sellableCapacity?: number
+}
+export const sessionDetails: Partial<Record<string, SessionDetail>> = {}
+
+/**
+ * SHIPS LATER. Once sessions have titles, a tier with more than one track may
+ * narrow to one session per slot within its tracks, releasing the seats it
+ * holds in its other tracks for that slot. TODO(vedant): flip when the
+ * line-up is announced. Off, the pass shows the tracks held and nothing can
+ * be changed.
+ */
+export const sessionRefinementOpen: boolean = false
 
 /** TODO(vedant): flip when the registration open date is decided. */
 export const registrationOpen: boolean = false

@@ -4,9 +4,11 @@ import { notFound } from 'next/navigation'
 import { Container } from '@/components/layout/Container'
 import { QrPass } from '@/components/pass/QrPass'
 import { SessionPicker, type PickerSlot } from '@/components/pass/SessionPicker'
-import { event, halls, slots as fallbackSlots, venue } from '@/content/event'
+import { event, sessionRefinementOpen, slots as fallbackSlots, venue } from '@/content/event'
 import { tierLabel } from '@/content/passes'
-import { getAttendeeByToken, getAttendeeWithSelections, getConfig, getSessionsInSlot } from '@/lib/db/queries'
+import { roomById, trackName } from '@/content/sessions'
+import { getAttendeeByToken, getAttendeeWithSeats, getConfig, getSessionsInSlot } from '@/lib/db/queries'
+import { slotTime } from '@/lib/utils'
 
 /** A pass link is private. It must never be indexed or appear in the sitemap. */
 export const metadata: Metadata = {
@@ -23,31 +25,30 @@ export default async function PassPage({ params }: PageProps<'/pass/[token]'>) {
   // Renders not-found.tsx in this segment, with a 404 rather than a 200.
   if (!attendee) notFound()
 
-  const [config, { selections }] = await Promise.all([
-    getConfig(),
-    getAttendeeWithSelections(attendee.ticketRef),
-  ])
+  const [config, { seats }] = await Promise.all([getConfig(), getAttendeeWithSeats(attendee.ticketRef)])
 
-  // Halls and slots are config, never hardcoded, see SPEC.md section 6.
+  // Slots are config, never hardcoded. Rooms come from the track assignment.
   const slotList = config?.slots ?? fallbackSlots
-  const hallNames = new Map((config?.halls ?? halls).map((h) => [h.id, h.name]))
+  const refinementOpen = config?.sessionRefinementOpen ?? sessionRefinementOpen
+  const heldIds = new Set(seats.map((s) => s.sessionId))
 
   const slotSessions = await Promise.all(slotList.map((slot) => getSessionsInSlot(slot.id)))
 
   const pickerSlots: PickerSlot[] = slotList.map((slot, i) => ({
     slotId: slot.id,
     label: slot.label,
-    sessions: slotSessions[i].map((s) => ({
-      sessionId: s.sessionId,
-      title: s.title,
-      speaker: s.speaker,
-      hallName: hallNames.get(s.hallId) ?? s.hallId,
-      seatsTaken: s.seatsTaken,
-      capacity: s.capacity,
-    })),
+    time: slotTime(slot),
+    sessions: slotSessions[i]
+      .filter((s) => heldIds.has(s.sessionId))
+      .map((s) => ({
+        sessionId: s.sessionId,
+        title: s.title,
+        speaker: s.speaker,
+        trackName: trackName(s.track),
+        roomName: roomById(s.roomId)?.name ?? null,
+        held: true,
+      })),
   }))
-
-  const initialSelections = Object.fromEntries(selections.map((s) => [s.slotId, s.sessionId]))
 
   return (
     <Container className="section-tight flex flex-col gap-16">
@@ -79,6 +80,10 @@ export default async function PassPage({ params }: PageProps<'/pass/[token]'>) {
             <dd>{attendee.foodPreference}</dd>
           </div>
           <div className="ticket-fact">
+            <dt>{attendee.tracks.length === 1 ? 'Track' : 'Tracks'}</dt>
+            <dd>{attendee.tracks.map(trackName).join(', ')}</dd>
+          </div>
+          <div className="ticket-fact">
             <dt>Date</dt>
             <dd>{event.dateLabel}</dd>
           </div>
@@ -100,10 +105,12 @@ export default async function PassPage({ params }: PageProps<'/pass/[token]'>) {
           Your sessions
         </h2>
         <p className="measure mt-4 text-muted">
-          One session per slot. Seats are limited per hall, so a hall can fill up while you are deciding.
+          {refinementOpen && attendee.tracks.length > 1
+            ? 'Your pass holds a seat in every session of each of your tracks. Where two clash, keep the one you want and the other seat goes back.'
+            : 'A seat is held for you in every session of your track. Titles and speakers are announced closer to the day.'}
         </p>
         <div className="mt-10">
-          <SessionPicker token={token} slots={pickerSlots} initialSelections={initialSelections} />
+          <SessionPicker token={token} slots={pickerSlots} refinementOpen={refinementOpen} />
         </div>
       </section>
     </Container>

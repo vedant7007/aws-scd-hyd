@@ -1,8 +1,10 @@
-import { tierIds } from '@/content/passes'
+import { tierIds, tracksAllowedFor } from '@/content/passes'
+import { tracks as trackList } from '@/content/tracks'
 import { callerIp, withinRateLimit } from '@/lib/db/rate-limit'
-import type { FoodPreference, Tier } from '@/lib/db/types'
+import type { FoodPreference, Tier, Track } from '@/lib/db/types'
 import { newTicketRef } from '@/lib/db/keys'
-import { createPendingAttendee, type Registration } from '@/lib/db/writes'
+import { trackFullMessage } from '@/lib/db/seats'
+import { createPendingAttendee, type CreateOutcome, type Registration } from '@/lib/db/writes'
 import { launchStatus } from '@/lib/tickets/launch'
 import { amountFor } from '@/lib/tickets/pricing'
 import { createOrder } from '@/lib/tickets/razorpay'
@@ -26,7 +28,8 @@ import { createOrder } from '@/lib/tickets/razorpay'
 const PER_EMAIL_PER_HOUR = 5
 const PER_IP_PER_HOUR = 500
 
-const FIELDS = ['name', 'email', 'phone', 'college', 'tier', 'foodPreference'] as const
+const FIELDS = ['name', 'email', 'phone', 'college', 'tier', 'tracks', 'foodPreference'] as const
+const TRACK_IDS = trackList.map((t) => t.id)
 const FOODS: FoodPreference[] = ['veg', 'nonveg', 'jain']
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
@@ -81,12 +84,24 @@ function validate(body: unknown): { reg: Registration } | { error: Invalid } {
     return { error: { field: 'tier', message: 'Pick a pass.' } }
   }
 
+  // Tracks: distinct, known, at least one, and no more than the tier allows.
+  // A seat is held in every session of each, so this is the whole choice.
+  const raw = b.tracks
+  if (!Array.isArray(raw) || raw.length === 0 || !raw.every((t) => typeof t === 'string' && TRACK_IDS.includes(t as Track))) {
+    return { error: { field: 'tracks', message: 'Pick at least one track.' } }
+  }
+  const tracks = [...new Set(raw as Track[])]
+  const allowed = tracksAllowedFor(tier as Tier)
+  if (tracks.length > allowed) {
+    return { error: { field: 'tracks', message: `That pass covers ${allowed} track${allowed === 1 ? '' : 's'}. Pick ${allowed}.` } }
+  }
+
   const food = b.foodPreference
   if (typeof food !== 'string' || !FOODS.includes(food as FoodPreference)) {
     return { error: { field: 'foodPreference', message: 'Pick a food preference.' } }
   }
 
-  return { reg: { name, email, phone, college, tier: tier as Tier, foodPreference: food as FoodPreference } }
+  return { reg: { name, email, phone, college, tier: tier as Tier, tracks, foodPreference: food as FoodPreference } }
 }
 
 export async function POST(req: Request): Promise<Response> {
@@ -140,8 +155,24 @@ export async function POST(req: Request): Promise<Response> {
     return json(502, { ok: false, message: 'The payment provider did not respond. Nothing was charged. Try again.' })
   }
 
-  const attendee = await createPendingAttendee(ticketRef, v.reg, { orderId: order.orderId, amountPaise: order.amountPaise })
-  console.info(`[checkout] ${attendee.ticketRef} pending, order ${order.orderId}, ${order.amountPaise} paise${amount.placeholder ? ' PLACEHOLDER' : ''}`)
+  // Record and seats in one transaction. A full track cancels the whole thing
+  // and names itself; the order stays at the provider unpaid, which is harmless.
+  let created: CreateOutcome = await createPendingAttendee(ticketRef, v.reg, {
+    mode: 'razorpay',
+    orderId: order.orderId,
+    amountPaise: order.amountPaise,
+  })
+  if (!created.ok && created.reason === 'ref-collision') {
+    created = await createPendingAttendee(newTicketRef(), v.reg, { mode: 'razorpay', orderId: order.orderId, amountPaise: order.amountPaise })
+  }
+  if (!created.ok) {
+    if (created.reason === 'track-full') {
+      return json(409, { ok: false, field: 'tracks', reason: 'track-full', track: created.track, message: trackFullMessage(created.track) })
+    }
+    return json(503, { ok: false, message: 'Could not start the registration. Nothing was charged. Try again.' })
+  }
+  const { attendee } = created
+  console.info(`[checkout] ${attendee.ticketRef} pending, order ${order.orderId}, ${order.amountPaise} paise, tracks ${attendee.tracks.join('+')}${amount.placeholder ? ' PLACEHOLDER' : ''}`)
 
   return json(200, {
     ok: true,

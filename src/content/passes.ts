@@ -15,8 +15,14 @@ export type Pass = {
   includes: string[]
   /** TODO(vedant): swag levels unconfirmed. */
   swag: string | null
-  /** SPEC.md section 9. How many slots this tier may fill. Null means undecided. */
-  sessionsAllowed: number | null
+  /**
+   * How many DISTINCT tracks the tier may draw sessions from. This is the tier
+   * constraint: at registration a student picks up to this many tracks and a
+   * seat is held in every session of each. Not a count of sessions.
+   */
+  tracksAllowed: number
+  /** Unused. Track allowance replaced it as the tier constraint; kept null so nothing reads it by accident. */
+  sessionsAllowed: null
   recommended?: boolean
 }
 
@@ -54,6 +60,7 @@ export const passes: Pass[] = [
     pricePaise: 39900,
     includes: [],
     swag: null,
+    tracksAllowed: 1,
     sessionsAllowed: null,
   },
   {
@@ -62,6 +69,7 @@ export const passes: Pass[] = [
     pricePaise: 79900,
     includes: ['Reserved seating'],
     swag: null,
+    tracksAllowed: 2,
     sessionsAllowed: null,
     recommended: true,
   },
@@ -71,6 +79,7 @@ export const passes: Pass[] = [
     pricePaise: 129900,
     includes: ['Reserved seating'],
     swag: null,
+    tracksAllowed: 3,
     sessionsAllowed: null,
   },
   {
@@ -79,6 +88,7 @@ export const passes: Pass[] = [
     pricePaise: 169900,
     includes: ['Reserved seating', 'Speaker dinner'],
     swag: null,
+    tracksAllowed: 3,
     sessionsAllowed: null,
   },
 ]
@@ -100,14 +110,7 @@ export const passFor = (tier: Tier): Pass | undefined => passes.find((p) => p.id
  */
 export const tierLabel = (tier: Tier | string): string => passes.find((p) => p.id === tier)?.name ?? tier
 
-/**
- * SPEC.md section 9. How many slots a tier may fill, read from here and never
- * hardcoded at a call site.
- *
- * TODO(vedant): every tier is null, meaning undecided. Null is treated as no
- * cap beyond the one-per-slot rule the table key already enforces. Set real
- * numbers and the picker starts refusing extra slots with no other change.
- */
-export function sessionsAllowedFor(tier: Tier): number | null {
-  return passes.find((p) => p.id === tier)?.sessionsAllowed ?? null
+/** The tier constraint. How many distinct tracks this tier may register for. */
+export function tracksAllowedFor(tier: Tier): number {
+  return passes.find((p) => p.id === tier)?.tracksAllowed ?? 1
 }
