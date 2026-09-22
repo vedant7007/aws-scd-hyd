@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Container } from '@/components/layout/Container'
+import Link from 'next/link'
 import { RegisterForm, type TierOption, type TrackOption } from '@/components/register/RegisterForm'
 import { event, venue } from '@/content/event'
 import { ALWAYS_INCLUDED, formatInr, passes, tierIds } from '@/content/passes'
@@ -21,17 +21,16 @@ export const metadata: Metadata = {
 export default async function RegisterPage({ searchParams }: PageProps<'/register'>) {
   if (!registrationIsOpen()) {
     return (
-      <Container className="section-loose">
-        <p className="eyebrow">Register</p>
-        <div className="awaiting mt-6">
-          <p className="awaiting-head">
-            Registration <em>opens soon</em>
-          </p>
-          <p className="measure text-muted">
-            Passes and prices are announced closer to the date. The signup on the home page will tell you first.
-          </p>
+      <div className="page rise">
+        <div className="flex flex-col gap-3">
+          <span className="eye">{'// REGISTER'}</span>
+          <h1 className="h1">OPENS SOON</h1>
+          <p className="lede">Registration is not open yet. This page will say so the moment it is.</p>
         </div>
-      </Container>
+        <Link href="/" className="btn self-start">
+          BACK HOME
+        </Link>
+      </div>
     )
   }
 
@@ -53,19 +52,16 @@ export default async function RegisterPage({ searchParams }: PageProps<'/registe
   const trackOptions: TrackOption[] = tracks.map((t) => ({ id: t.id, name: t.name, blurb: t.blurb }))
 
   return (
-    <Container className="section-tight">
-      <header className="enter">
-        <p className="eyebrow">Register</p>
-        <h1 className="display text-step-3 mt-2">Get your pass</h1>
-        <p className="measure mt-4 text-muted">
-          {event.dateLabel}, {venue.name}. One pass, one seat per session, lunch included. You pay on the next
-          screen and your pass arrives by email.
+    <div className="page page-bar rise">
+      <div className="flex flex-col gap-3">
+        <span className="eye">{'// REGISTER'}</span>
+        <h1 className="h1">GET YOUR PASS</h1>
+        <p className="lede">
+          {event.dateLabel}, {venue.name}. One pass, one seat per session, lunch included. You pay on the next screen and your
+          pass arrives by email.
         </p>
-      </header>
-
-      <div className="reg-grid mt-12">
-        <RegisterForm tiers={tiers} tracks={trackOptions} preselect={preselect} eventName={event.shortName} contactEmail={event.contactEmail} />
       </div>
-    </Container>
+      <RegisterForm tiers={tiers} tracks={trackOptions} preselect={preselect} eventName={event.shortName} contactEmail={event.contactEmail} />
+    </div>
   )
 }

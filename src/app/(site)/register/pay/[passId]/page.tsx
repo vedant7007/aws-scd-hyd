@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
-import { Container } from '@/components/layout/Container'
-import { PayStep, Received } from '@/components/register/PayStep'
+import { PassIdNote, PayStep, Received } from '@/components/register/PayStep'
 import { event } from '@/content/event'
 import { formatInr } from '@/content/passes'
 import { payment } from '@/content/payment'
@@ -41,44 +41,50 @@ export default async function PayPage({ params }: PageProps<'/register/pay/[pass
 
   if (attendee.state === 'PENDING_VERIFICATION') {
     return (
-      <Container className="section-tight">
+      <div className="page rise">
         <Received passId={passId} verificationWindow={VERIFICATION_WINDOW} contactEmail={event.contactEmail} />
-      </Container>
+      </div>
     )
   }
 
   if (attendee.state === 'ABANDONED') {
     return (
-      <Container className="section-tight flex flex-col gap-6">
-        <p className="eyebrow">Expired</p>
-        <h1 className="display text-step-3">This registration ran out of time</h1>
-        <p className="measure text-muted">
-          No UTR arrived within the hour, so the place was released. If you did pay, write to {event.contactEmail} with your UTR and pass
-          ID {passId} and we will put it back. Otherwise, register again.
-        </p>
-      </Container>
+      <div className="page rise">
+        <div className="flex flex-col items-start gap-4">
+          <span className="pill pill-err">Expired</span>
+          <h1 className="h1">THIS REGISTRATION RAN OUT OF TIME</h1>
+          <p className="lede">
+            No UTR arrived within the hour, so the place was released. If you did pay, write to {event.contactEmail} with your UTR and
+            the pass ID below and we will put it back. Otherwise, register again.
+          </p>
+          <PassIdNote passId={passId} />
+          <Link href="/register" className="btn btn-primary">
+            REGISTER AGAIN
+          </Link>
+        </div>
+      </div>
     )
   }
 
   return (
-    <Container className="section-tight">
-      <header className="enter">
-        <p className="eyebrow">Register</p>
-        <h1 className="display text-step-3 mt-2">Almost there</h1>
-      </header>
-      <div className="mt-10">
-        <PayStep
-          passId={passId}
-          amountLabel={formatInr(attendee.amountPaise)}
-          qr={payment.qrAssetPath}
-          upiId={payment.upiId}
-          payee={payment.payeeName}
-          verificationWindow={VERIFICATION_WINDOW}
-          rejectedReason={attendee.state === 'REJECTED' ? (attendee.rejectionReason ?? '') : null}
-          previousUtr={attendee.state === 'REJECTED' ? (attendee.utr ?? null) : null}
-          contactEmail={event.contactEmail}
-        />
+    <div className="page rise">
+      <div className="flex flex-col gap-3">
+        <span className="eye">{'// REGISTER'}</span>
+        <h1 className="h1">ALMOST THERE</h1>
+        <p className="lede">Keep the pass ID below. It is how we find your registration, and it opens your pass once the payment is checked.</p>
       </div>
-    </Container>
+      <PassIdNote passId={passId} />
+      <PayStep
+        passId={passId}
+        amountLabel={formatInr(attendee.amountPaise)}
+        qr={payment.qrAssetPath}
+        upiId={payment.upiId}
+        payee={payment.payeeName}
+        verificationWindow={VERIFICATION_WINDOW}
+        rejectedReason={attendee.state === 'REJECTED' ? (attendee.rejectionReason ?? '') : null}
+        previousUtr={attendee.state === 'REJECTED' ? (attendee.utr ?? null) : null}
+        contactEmail={event.contactEmail}
+      />
+    </div>
   )
 }

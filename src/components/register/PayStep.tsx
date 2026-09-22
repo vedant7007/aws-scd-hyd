@@ -94,129 +94,163 @@ export function PayStep({ passId, amountLabel, qr, upiId, payee, verificationWin
   const fieldError = (f: string) => (error?.field === f ? error.message : null)
 
   return (
-    <div className="reg-grid">
-      <section className="reg-form" aria-labelledby="pay-heading">
-        {rejectedReason !== null ? (
-          <div role="alert" className="notice">
-            <p className="font-semibold">We could not match your last payment{previousUtr ? ` (UTR ${previousUtr})` : ''}.</p>
-            <p className="text-step--1 text-muted">{rejectedReason || 'Check the UTR in your UPI app and submit the correct one below.'}</p>
-          </div>
-        ) : null}
+    <div className="flex flex-col gap-[clamp(22px,5vh,36px)]">
+      {rejectedReason !== null ? (
+        <div role="alert" className="notice-err">
+          <span className="notice-title">WE COULD NOT MATCH YOUR LAST PAYMENT</span>
+          <p className="copy">
+            {previousUtr ? `UTR ${previousUtr}. ` : ''}
+            {rejectedReason || 'Check the UTR in your UPI app and submit the correct one below.'}
+          </p>
+        </div>
+      ) : null}
 
-        <div className="reg-block">
-          <p className="eyebrow">Step 1 of 2</p>
-          <h2 id="pay-heading" className="display text-step-2 mt-2">
-            Pay {amountLabel} by UPI
-          </h2>
-          <ol className="mt-4 flex flex-col gap-2 text-step--1 text-muted">
-            <li>1. Scan the QR with any UPI app, or pay the UPI ID below.</li>
-            <li>
-              2. Put your pass ID in the note: <span className="numeral text-text">{passId}</span>
+      <div className="steps" aria-hidden="true">
+        <span data-state="now" />
+        <span />
+      </div>
+
+      <section aria-labelledby="pay-heading" className="flex flex-col gap-3">
+        <div className="flex items-baseline justify-between gap-3">
+          <span className="eye">STEP 01 OF 02</span>
+          <span className="lbl">Pay by UPI</span>
+        </div>
+        <h2 id="pay-heading" className="h1">
+          PAY <span className="num">{amountLabel}</span>
+        </h2>
+        <div className="card flex flex-col gap-4 p-4">
+          <ol className="m-0 flex list-none flex-col gap-2.5 p-0">
+            <li className="flex gap-3">
+              <span className="num flex-none font-semibold text-amber-ink">01</span>
+              <span className="copy">Scan the QR with any UPI app{upiId ? ', or pay the UPI ID below' : ''}.</span>
             </li>
-            <li>3. Pay exactly {amountLabel}. The payee shows as {payee}.</li>
-            <li>4. Keep the screenshot and note the 12 digit UTR.</li>
+            <li className="flex gap-3">
+              <span className="num flex-none font-semibold text-amber-ink">02</span>
+              <span className="copy">
+                Put your pass ID in the note: <span className="num text-ink">{passId}</span>
+              </span>
+            </li>
+            <li className="flex gap-3">
+              <span className="num flex-none font-semibold text-amber-ink">03</span>
+              <span className="copy">
+                Pay exactly <span className="num text-ink">{amountLabel}</span>. The payee shows as {payee}.
+              </span>
+            </li>
+            <li className="flex gap-3">
+              <span className="num flex-none font-semibold text-amber-ink">04</span>
+              <span className="copy">Keep the screenshot and note the 12 digit UTR.</span>
+            </li>
           </ol>
-          <div className="qr-plate mt-6" style={{ maxWidth: '18rem' }}>
-            <Image src={qr} alt={`UPI QR code for ${payee}`} width={512} height={512} sizes="18rem" style={{ width: '100%', height: 'auto' }} priority />
+          <div className="qr-plate qr-plate-lg self-center">
+            <Image src={qr} alt={`UPI QR code for ${payee}`} width={512} height={512} sizes="18rem" priority />
           </div>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button type="button" className="cta-quiet" onClick={() => copy('pass id', passId)}>
-              {copied === 'pass id' ? 'Copied' : 'Copy pass ID for the note'}
+          <div className="flex flex-wrap gap-2.5">
+            <button type="button" className="btn btn-sm" onClick={() => copy('pass id', passId)}>
+              {copied === 'pass id' ? 'COPIED' : 'COPY PASS ID FOR THE NOTE'}
             </button>
             {upiId ? (
-              <button type="button" className="cta-quiet" onClick={() => copy('upi', upiId)}>
-                {copied === 'upi' ? 'Copied' : `Copy UPI ID ${upiId}`}
+              <button type="button" className="btn btn-sm" onClick={() => copy('upi', upiId)}>
+                {copied === 'upi' ? 'COPIED' : `COPY UPI ID ${upiId}`}
               </button>
             ) : null}
           </div>
         </div>
-
-        <form onSubmit={onSubmit} noValidate className="reg-block">
-          <p className="eyebrow">Step 2 of 2</p>
-          <h2 className="display text-step-2 mt-2">Tell us it went through</h2>
-          <fieldset disabled={busy} className="mt-4 flex flex-col gap-6">
-            <div className="reg-field">
-              <label htmlFor={`${ids}-utr`}>UTR, 12 digits</label>
-              <input
-                id={`${ids}-utr`}
-                name="utr"
-                className="field numeral"
-                inputMode="numeric"
-                autoComplete="off"
-                pattern="\d{12}"
-                maxLength={14}
-                required
-                defaultValue={previousUtr ?? ''}
-                aria-invalid={fieldError('utr') ? true : undefined}
-                aria-describedby={`${ids}-utr-hint${fieldError('utr') ? ` ${ids}-utr-err` : ''}`}
-              />
-              <p id={`${ids}-utr-hint`} className="reg-hint">
-                In your UPI app, open the payment and look for UTR or UPI Ref. No spaces.
-              </p>
-              {fieldError('utr') ? <p id={`${ids}-utr-err`} className="reg-error">{fieldError('utr')}</p> : null}
-            </div>
-            <div className="reg-field">
-              <label htmlFor={`${ids}-shot`}>Payment screenshot</label>
-              <input
-                id={`${ids}-shot`}
-                ref={fileRef}
-                name="screenshot"
-                type="file"
-                accept="image/jpeg,image/png,image/webp,image/heic"
-                className="field"
-                required
-                aria-invalid={fieldError('screenshot') ? true : undefined}
-                aria-describedby={`${ids}-shot-hint${fieldError('screenshot') ? ` ${ids}-shot-err` : ''}`}
-              />
-              <p id={`${ids}-shot-hint`} className="reg-hint">
-                The success screen from your UPI app, under 8 MB. Only the organisers can see it, and it is deleted after the event.
-              </p>
-              {fieldError('screenshot') ? <p id={`${ids}-shot-err`} className="reg-error">{fieldError('screenshot')}</p> : null}
-            </div>
-            {error && !error.field ? (
-              <p role="alert" className="reg-error">
-                {error.message}
-              </p>
-            ) : null}
-            <div className="reg-actions">
-              <button type="submit" className="cta" disabled={busy}>
-                {phase.kind === 'uploading' ? 'Uploading screenshot' : phase.kind === 'submitting' ? 'Sending' : 'Submit UTR'}
-              </button>
-              <p className="text-step--1 text-muted">We check every payment against the bank statement. Expect an email within {verificationWindow}.</p>
-            </div>
-          </fieldset>
-        </form>
       </section>
 
-      <aside className="reg-aside" aria-label="Your registration">
-        <div className="reg-summary">
-          <p className="eyebrow">Your pass ID</p>
-          <p className="display text-step-2 mt-2 numeral">{passId}</p>
-          <p className="text-step--1 text-muted mt-2">Keep it. It is how we find your registration, and it opens your pass once the payment is checked.</p>
-          <div className="reg-total">
-            <span>To pay</span>
-            <span className="numeral">{amountLabel}</span>
-          </div>
+      <form onSubmit={onSubmit} noValidate className="flex flex-col gap-3" aria-labelledby="utr-heading">
+        <div className="flex items-baseline justify-between gap-3">
+          <span className="eye">STEP 02 OF 02</span>
+          <span className="lbl">Then tell us</span>
         </div>
-      </aside>
+        <h2 id="utr-heading" className="h1">
+          TELL US IT WENT THROUGH
+        </h2>
+        <fieldset disabled={busy} className="card m-0 flex flex-col gap-4 p-4">
+          <div className="fld">
+            <label htmlFor={`${ids}-utr`}>
+              UTR, 12 digits <span className="req">*</span>
+            </label>
+            <input
+              id={`${ids}-utr`}
+              name="utr"
+              className="inp inp-num"
+              inputMode="numeric"
+              autoComplete="off"
+              pattern="\d{12}"
+              maxLength={14}
+              required
+              defaultValue={previousUtr ?? ''}
+              aria-invalid={fieldError('utr') ? true : undefined}
+              aria-describedby={`${ids}-utr-hint${fieldError('utr') ? ` ${ids}-utr-err` : ''}`}
+            />
+            <p id={`${ids}-utr-hint`} className="hint">
+              In your UPI app, open the payment and look for UTR or UPI Ref. No spaces.
+            </p>
+            {fieldError('utr') ? (
+              <p id={`${ids}-utr-err`} className="err-text">
+                {fieldError('utr')}
+              </p>
+            ) : null}
+          </div>
+          <div className="fld">
+            <label htmlFor={`${ids}-shot`}>
+              Payment screenshot <span className="req">*</span>
+            </label>
+            <input
+              id={`${ids}-shot`}
+              ref={fileRef}
+              name="screenshot"
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/heic"
+              className="inp"
+              required
+              aria-invalid={fieldError('screenshot') ? true : undefined}
+              aria-describedby={`${ids}-shot-hint${fieldError('screenshot') ? ` ${ids}-shot-err` : ''}`}
+            />
+            <p id={`${ids}-shot-hint`} className="hint">
+              The success screen from your UPI app, under 8 MB. Only the organisers can see it, and it is deleted after the event.
+            </p>
+            {fieldError('screenshot') ? (
+              <p id={`${ids}-shot-err`} className="err-text">
+                {fieldError('screenshot')}
+              </p>
+            ) : null}
+          </div>
+          {error && !error.field ? (
+            <p role="alert" className="err-text">
+              {error.message}
+            </p>
+          ) : null}
+          <button type="submit" className="btn btn-primary btn-lg" disabled={busy}>
+            {phase.kind === 'uploading' ? 'UPLOADING SCREENSHOT' : phase.kind === 'submitting' ? 'SENDING' : 'SUBMIT UTR >'}
+          </button>
+          <p className="hint">We check every payment against the bank statement. Expect an email within {verificationWindow}.</p>
+        </fieldset>
+      </form>
     </div>
   )
 }
 
 export function Received({ passId, verificationWindow, contactEmail }: { passId: string; verificationWindow: string; contactEmail: string }) {
   return (
-    <div className="reg-result enter" role="status">
-      <p className="eyebrow">Received</p>
-      <p className="awaiting-head mt-2">
-        We have <em>your UTR</em>
-      </p>
-      <p className="measure text-muted">
+    <div className="flex flex-col items-start gap-4" role="status">
+      <span className="pill">Received</span>
+      <h1 className="h1">WE HAVE YOUR UTR</h1>
+      <p className="lede">
         We are checking the payment against our bank records. You will get an email within {verificationWindow}. Until then there is nothing
         you need to do. If it has not arrived by then, write to {contactEmail} and quote your pass ID.
       </p>
-      <p className="text-step--1 text-muted">
-        Pass ID <span className="numeral">{passId}</span>
-      </p>
+      <PassIdNote passId={passId} />
+    </div>
+  )
+}
+
+/** The id the student will need to quote, in the handoff's mint panel. */
+export function PassIdNote({ passId, label = 'Your pass ID' }: { passId: string; label?: string }) {
+  return (
+    <div className="notice-mint w-full">
+      <span className="lbl text-mint-ink">{label}</span>
+      <span className="num-lg">{passId}</span>
     </div>
   )
 }

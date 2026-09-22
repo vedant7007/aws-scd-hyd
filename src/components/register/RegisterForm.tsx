@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useId, useRef, useState, type FormEvent } from 'react'
 import type { FoodPreference, Tier, Track } from '@/lib/db/types'
 
@@ -18,9 +19,9 @@ export type TierOption = {
 export type TrackOption = { id: Track; name: string; blurb: string }
 
 const FOODS: { id: FoodPreference; label: string }[] = [
-  { id: 'veg', label: 'Veg' },
-  { id: 'nonveg', label: 'Non-veg' },
-  { id: 'jain', label: 'Jain' },
+  { id: 'veg', label: 'VEG' },
+  { id: 'nonveg', label: 'NON-VEG' },
+  { id: 'jain', label: 'JAIN' },
 ]
 
 /** What /api/register hands back. */
@@ -60,6 +61,8 @@ function loadCheckout(): Promise<RazorpayCtor> {
   return checkoutJs
 }
 
+const DETAIL_FIELDS = ['name', 'email', 'phone', 'college'] as const
+
 /**
  * Step one of registration: the form and the home track. On success the
  * browser goes to the payment page for the new pass id, which is where the
@@ -68,6 +71,10 @@ function loadCheckout(): Promise<RazorpayCtor> {
  * The submission key is minted once per mounted form. A double click or a
  * retry after a timeout sends the same key, and the server hands back the
  * record the first one made instead of making a second.
+ *
+ * Laid out as the handoff's Register screen: four numbered steps down one
+ * column and a fixed bar at the foot carrying the total and the one button.
+ * Everything typed here is validated again on the server.
  */
 export function RegisterForm({
   tiers,
@@ -85,13 +92,14 @@ export function RegisterForm({
   const [tier, setTier] = useState<Tier | ''>(preselect ?? tiers.find((t) => t.recommended)?.id ?? tiers[0]?.id ?? '')
   const [homeTrack, setHomeTrack] = useState<Track | ''>('')
   const [food, setFood] = useState<FoodPreference | ''>('')
+  const [detailsDone, setDetailsDone] = useState(false)
   const [phase, setPhase] = useState<Phase>({ kind: 'form' })
   const [error, setError] = useState<{ field?: string; message: string } | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   // Minted on the first submit and kept for the life of the form, so a retry carries the same key.
   const submissionKey = useRef('')
-  const resultRef = useRef<HTMLDivElement>(null)
   const ids = useId()
+  const formId = `${ids}-form`
 
   const chosen = tiers.find((t) => t.id === tier)
   const busy = phase.kind === 'creating' || phase.kind === 'paying'
@@ -169,200 +177,300 @@ export function RegisterForm({
     window.location.assign(reg.payUrl)
   }
 
+  // Presentation only: the step bars at the top follow what has been filled in.
+  function onChange(e: FormEvent<HTMLFormElement>) {
+    if (phase.kind === 'dismissed') setPhase({ kind: 'form' })
+    const fd = new FormData(e.currentTarget)
+    setDetailsDone(DETAIL_FIELDS.every((f) => String(fd.get(f) ?? '').trim() !== ''))
+  }
+
   const fieldError = (field: string) => (error?.field === field ? error.message : null)
+  const done = [Boolean(tier), detailsDone, Boolean(homeTrack), Boolean(food)]
+  const now = done.indexOf(false)
+  const coverage = (t: TierOption) =>
+    t.tracksAllowed >= tracks.length
+      ? 'Sessions from all three tracks'
+      : t.tracksAllowed === 1
+        ? 'Sessions from your track'
+        : `Sessions from your track plus ${t.tracksAllowed - 1} other`
+
+  const submitLabel =
+    phase.kind === 'creating'
+      ? 'SAVING YOUR PLACE'
+      : phase.kind === 'paying'
+        ? 'PAYMENT WINDOW OPEN'
+        : phase.kind === 'dismissed'
+          ? 'TRY THE PAYMENT AGAIN'
+          : 'CONTINUE >'
 
   return (
     <>
-      <form onSubmit={onSubmit} onChange={() => phase.kind === 'dismissed' && setPhase({ kind: 'form' })} className="reg-form" noValidate>
-        <fieldset className="reg-block" disabled={busy}>
-          <legend className="eyebrow">You</legend>
-          <div className="reg-field">
-            <label htmlFor={`${ids}-name`}>Name</label>
-            <input
-              id={`${ids}-name`}
-              name="name"
-              className="field"
-              autoComplete="name"
-              required
-              maxLength={80}
-              aria-invalid={fieldError('name') ? true : undefined}
-              aria-describedby={fieldError('name') ? `${ids}-name-err` : undefined}
-            />
-            {fieldError('name') ? <p id={`${ids}-name-err`} className="reg-error">{fieldError('name')}</p> : null}
+      <form id={formId} onSubmit={onSubmit} onChange={onChange} className="flex flex-col gap-[clamp(26px,5vh,40px)]" noValidate>
+        <div className="steps" aria-hidden="true">
+          {done.map((d, i) => (
+            <span key={i} data-state={d ? 'done' : i === now ? 'now' : undefined} />
+          ))}
+        </div>
+
+        <fieldset className="m-0 flex min-w-0 flex-col gap-3 border-0 p-0" disabled={busy}>
+          <legend className="flex w-full items-baseline justify-between gap-3">
+            <span className="eye">STEP 01 OF 04</span>
+            <span className="lbl">Choose a pass</span>
+          </legend>
+          <h2 className="h1">PICK YOUR PASS</h2>
+          <div className="flex flex-col gap-3" role="radiogroup" aria-label="Pass" aria-describedby={fieldError('tier') ? `${ids}-tier-err` : undefined}>
+            {tiers.map((t) => {
+              const on = tier === t.id
+              return (
+                <label key={t.id} className="opt" data-on={on ? 'true' : undefined}>
+                  <input type="radio" name="tier" value={t.id} checked={on} onChange={() => setTier(t.id)} className="sr-only" />
+                  <span className="opt-row">
+                    <span className="opt-title opt-title-lg uppercase">{t.name}</span>
+                    <span className="price">{t.priceLabel}</span>
+                  </span>
+                  <span className="opt-copy">
+                    {coverage(t)}
+                    {t.includes.length ? `. ${t.includes.join(', ')}` : ''}.
+                  </span>
+                  <span className="opt-row">
+                    <span className="opt-mark" data-tone={t.placeholder ? 'err' : undefined}>
+                      {t.placeholder ? 'Test price, placeholder' : ''}
+                    </span>
+                    <span className="opt-mark" data-tone={on ? 'ink' : 'warn'}>
+                      {on ? 'Picked' : t.recommended ? 'Our pick' : ''}
+                    </span>
+                  </span>
+                </label>
+              )
+            })}
           </div>
-          <div className="reg-two">
-            <div className="reg-field">
-              <label htmlFor={`${ids}-email`}>Email</label>
+          {fieldError('tier') ? (
+            <p id={`${ids}-tier-err`} className="err-text">
+              {fieldError('tier')}
+            </p>
+          ) : null}
+          <p className="hint">
+            Lunch is included on every tier. Swag level rises with the tier, and what is in it stays sealed until the day.{' '}
+            <Link href="/#passes">See the full tier comparison</Link>
+          </p>
+        </fieldset>
+
+        <fieldset className="m-0 flex min-w-0 flex-col gap-3 border-0 p-0" disabled={busy}>
+          <legend className="flex w-full items-baseline justify-between gap-3">
+            <span className="eye">STEP 02 OF 04</span>
+            <span className="lbl">Your details</span>
+          </legend>
+          <h2 className="h1">WHO IS COMING?</h2>
+          <p className="hint">
+            Every field is required. <span className="req">*</span> marks a required field.
+          </p>
+          <div className="card flex flex-col gap-4 p-4">
+            <div className="fld">
+              <label htmlFor={`${ids}-name`}>
+                Name <span className="req">*</span>
+              </label>
+              <input
+                id={`${ids}-name`}
+                name="name"
+                className="inp"
+                autoComplete="name"
+                required
+                maxLength={80}
+                aria-invalid={fieldError('name') ? true : undefined}
+                aria-describedby={`${ids}-name-hint${fieldError('name') ? ` ${ids}-name-err` : ''}`}
+              />
+              <p id={`${ids}-name-hint`} className="hint">
+                This is the name on your pass.
+              </p>
+              {fieldError('name') ? (
+                <p id={`${ids}-name-err`} className="err-text">
+                  {fieldError('name')}
+                </p>
+              ) : null}
+            </div>
+            <div className="fld">
+              <label htmlFor={`${ids}-email`}>
+                Email <span className="req">*</span>
+              </label>
               <input
                 id={`${ids}-email`}
                 name="email"
                 type="email"
-                className="field"
+                className="inp"
                 autoComplete="email"
+                inputMode="email"
                 required
                 maxLength={254}
                 aria-invalid={fieldError('email') ? true : undefined}
                 aria-describedby={`${ids}-email-hint${fieldError('email') ? ` ${ids}-email-err` : ''}`}
               />
-              <p id={`${ids}-email-hint`} className="reg-hint">Your pass is sent here.</p>
-              {fieldError('email') ? <p id={`${ids}-email-err`} className="reg-error">{fieldError('email')}</p> : null}
+              <p id={`${ids}-email-hint`} className="hint">
+                Your pass is sent here. Check it twice, we cannot move a pass to another address.
+              </p>
+              {fieldError('email') ? (
+                <p id={`${ids}-email-err`} className="err-text">
+                  {fieldError('email')}
+                </p>
+              ) : null}
             </div>
-            <div className="reg-field">
-              <label htmlFor={`${ids}-phone`}>Mobile</label>
-              <input
-                id={`${ids}-phone`}
-                name="phone"
-                type="tel"
-                className="field"
-                autoComplete="tel"
-                inputMode="numeric"
-                required
-                aria-invalid={fieldError('phone') ? true : undefined}
-                aria-describedby={`${ids}-phone-hint${fieldError('phone') ? ` ${ids}-phone-err` : ''}`}
-              />
-              <p id={`${ids}-phone-hint`} className="reg-hint">Ten digits, India.</p>
-              {fieldError('phone') ? <p id={`${ids}-phone-err`} className="reg-error">{fieldError('phone')}</p> : null}
-            </div>
-          </div>
-          <div className="reg-field">
-            <label htmlFor={`${ids}-college`}>College</label>
-            <input
-              id={`${ids}-college`}
-              name="college"
-              className="field"
-              autoComplete="organization"
-              required
-              maxLength={120}
-              aria-invalid={fieldError('college') ? true : undefined}
-              aria-describedby={fieldError('college') ? `${ids}-college-err` : undefined}
-            />
-            {fieldError('college') ? <p id={`${ids}-college-err`} className="reg-error">{fieldError('college')}</p> : null}
-          </div>
-        </fieldset>
-
-        <fieldset className="reg-block" disabled={busy}>
-          <legend className="eyebrow">Pass</legend>
-          <div className="choice-list" role="radiogroup" aria-describedby={fieldError('tier') ? `${ids}-tier-err` : undefined}>
-            {tiers.map((t) => (
-              <label key={t.id} className="choice" data-checked={tier === t.id ? 'true' : undefined}>
-                <input type="radio" name="tier" value={t.id} checked={tier === t.id} onChange={() => setTier(t.id)} className="choice-input" />
-                <span className="choice-body">
-                  <span className="choice-head">
-                    <span className="choice-name">{t.name}</span>
-                    {t.recommended ? <span className="badge">Pick</span> : null}
-                  </span>
-                  <span className="choice-detail">
-                    {t.tracksAllowed >= tracks.length
-                      ? 'Sessions from all three tracks'
-                      : t.tracksAllowed === 1
-                        ? 'Sessions from your track'
-                        : `Sessions from your track plus ${t.tracksAllowed - 1} other`}
-                    {t.includes.length ? `. ${t.includes.join(', ')}` : ''}
-                  </span>
-                </span>
-                <span className="choice-price">
-                  <span className="numeral">{t.priceLabel}</span>
-                  {t.placeholder ? <span className="choice-flag">Test price, placeholder</span> : null}
-                </span>
+            <div className="fld">
+              <label htmlFor={`${ids}-phone`}>
+                Phone number <span className="req">*</span>
               </label>
-            ))}
-          </div>
-          {fieldError('tier') ? <p id={`${ids}-tier-err`} className="reg-error">{fieldError('tier')}</p> : null}
-        </fieldset>
-
-        <fieldset className="reg-block" disabled={busy}>
-          <legend className="eyebrow">Your track</legend>
-          <p className="reg-hint">The one you are here for. Places are counted per track, so a full track cannot be picked.</p>
-          <div className="choice-list" role="radiogroup" aria-describedby={fieldError('homeTrack') ? `${ids}-track-err` : undefined}>
-            {tracks.map((tr) => (
-              <label key={tr.id} className="choice" data-checked={homeTrack === tr.id ? 'true' : undefined}>
+              <div className="flex items-stretch">
+                <span className="inp-prefix" aria-hidden="true">
+                  +91
+                </span>
                 <input
-                  type="radio"
-                  name="homeTrack"
-                  value={tr.id}
-                  checked={homeTrack === tr.id}
-                  onChange={() => setHomeTrack(tr.id)}
-                  className="choice-input"
+                  id={`${ids}-phone`}
+                  name="phone"
+                  type="tel"
+                  className="inp"
+                  autoComplete="tel"
+                  inputMode="numeric"
                   required
+                  aria-invalid={fieldError('phone') ? true : undefined}
+                  aria-describedby={`${ids}-phone-hint${fieldError('phone') ? ` ${ids}-phone-err` : ''}`}
                 />
-                <span className="choice-body">
-                  <span className="choice-head">
-                    <span className="choice-name">{tr.name}</span>
-                  </span>
-                  <span className="choice-detail">{tr.blurb}</span>
-                </span>
+              </div>
+              <p id={`${ids}-phone-hint`} className="hint">
+                Ten digits, India.
+              </p>
+              {fieldError('phone') ? (
+                <p id={`${ids}-phone-err`} className="err-text">
+                  {fieldError('phone')}
+                </p>
+              ) : null}
+            </div>
+            <div className="fld">
+              <label htmlFor={`${ids}-college`}>
+                College <span className="req">*</span>
               </label>
-            ))}
+              <input
+                id={`${ids}-college`}
+                name="college"
+                className="inp"
+                autoComplete="organization"
+                placeholder="Any college in Hyderabad"
+                required
+                maxLength={120}
+                aria-invalid={fieldError('college') ? true : undefined}
+                aria-describedby={fieldError('college') ? `${ids}-college-err` : undefined}
+              />
+              {fieldError('college') ? (
+                <p id={`${ids}-college-err`} className="err-text">
+                  {fieldError('college')}
+                </p>
+              ) : null}
+            </div>
           </div>
-          {fieldError('homeTrack') ? <p id={`${ids}-track-err`} className="reg-error">{fieldError('homeTrack')}</p> : null}
         </fieldset>
 
-        <fieldset className="reg-block" disabled={busy}>
-          <legend className="eyebrow">Lunch</legend>
-          <div className="choice-row" role="radiogroup" aria-describedby={fieldError('foodPreference') ? `${ids}-food-err` : undefined}>
-            {FOODS.map((f) => (
-              <label key={f.id} className="chip" data-checked={food === f.id ? 'true' : undefined}>
-                <input type="radio" name="foodPreference" value={f.id} checked={food === f.id} onChange={() => setFood(f.id)} className="choice-input" required />
-                {f.label}
-              </label>
-            ))}
+        <fieldset className="m-0 flex min-w-0 flex-col gap-3 border-0 p-0" disabled={busy}>
+          <legend className="flex w-full items-baseline justify-between gap-3">
+            <span className="eye">STEP 03 OF 04</span>
+            <span className="lbl">Your track</span>
+          </legend>
+          <h2 className="h1">BUILD YOUR DAY</h2>
+          <div className="card-dash flex flex-col gap-1.5 px-4 py-3.5">
+            <span className="lbl eye-amber">
+              {chosen ? `Your ${chosen.name} pass covers ${chosen.tracksAllowed} track${chosen.tracksAllowed > 1 ? 's' : ''} of ${tracks.length}` : 'Pick a pass first'}
+            </span>
+            <p className="copy">
+              The one you are here for. Places are counted per track, so a full track cannot be picked.
+              {chosen && chosen.tracksAllowed > 1
+                ? ` When sessions open you can also pick from ${chosen.tracksAllowed >= tracks.length ? 'the other tracks' : 'one other track'}.`
+                : ''}
+            </p>
           </div>
-          {fieldError('foodPreference') ? <p id={`${ids}-food-err`} className="reg-error">{fieldError('foodPreference')}</p> : null}
+          <div className="flex flex-col gap-2.5" role="radiogroup" aria-label="Your track" aria-describedby={fieldError('homeTrack') ? `${ids}-track-err` : undefined}>
+            {tracks.map((tr) => {
+              const on = homeTrack === tr.id
+              return (
+                <label key={tr.id} className="opt" data-on={on ? 'true' : undefined}>
+                  <input type="radio" name="homeTrack" value={tr.id} checked={on} onChange={() => setHomeTrack(tr.id)} className="sr-only" required />
+                  <span className="opt-row">
+                    <span className="flex items-center gap-2.5">
+                      <span className="dot" data-track={tr.id} aria-hidden="true" />
+                      <span className="opt-title uppercase">{tr.name}</span>
+                    </span>
+                    <span className="opt-mark" data-tone="ok">
+                      {on ? 'Picked' : ''}
+                    </span>
+                  </span>
+                  <span className="opt-note">{tr.blurb}</span>
+                </label>
+              )
+            })}
+          </div>
+          {fieldError('homeTrack') ? (
+            <p id={`${ids}-track-err`} className="err-text">
+              {fieldError('homeTrack')}
+            </p>
+          ) : null}
+        </fieldset>
+
+        <fieldset className="m-0 flex min-w-0 flex-col gap-3 border-0 p-0" disabled={busy}>
+          <legend className="flex w-full items-baseline justify-between gap-3">
+            <span className="eye">STEP 04 OF 04</span>
+            <span className="lbl">Lunch</span>
+          </legend>
+          <h2 className="h1">WHAT DO YOU EAT?</h2>
+          <div className="card flex flex-col gap-3 p-4">
+            <p className="hint">This count goes straight to the caterer. Pick carefully, it cannot be changed on the day.</p>
+            <div className="grid gap-2.5 [grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr))]" role="radiogroup" aria-label="Lunch" aria-describedby={fieldError('foodPreference') ? `${ids}-food-err` : undefined}>
+              {FOODS.map((f) => (
+                <label key={f.id} className="tog" data-on={food === f.id ? 'true' : undefined}>
+                  <input type="radio" name="foodPreference" value={f.id} checked={food === f.id} onChange={() => setFood(f.id)} className="sr-only" required />
+                  {f.label}
+                </label>
+              ))}
+            </div>
+            {fieldError('foodPreference') ? (
+              <p id={`${ids}-food-err`} className="err-text">
+                {fieldError('foodPreference')}
+              </p>
+            ) : null}
+          </div>
         </fieldset>
 
         {error && !error.field ? (
-          <p role="alert" className="reg-error">
-            {error.message}
-          </p>
+          <div role="alert" className="notice-err">
+            <span className="notice-title">THAT DID NOT GO THROUGH</span>
+            <p className="copy">{error.message}</p>
+          </div>
         ) : null}
         {notice ? (
-          <div ref={resultRef} role="alert" className="notice">
-            <p className="font-semibold">This registration was not started.</p>
-            <p className="text-step--1 text-muted">{notice}</p>
+          <div role="alert" className="notice-err">
+            <span className="notice-title">NOT STARTED</span>
+            <p className="copy">{notice}</p>
           </div>
         ) : null}
 
-        <div className="reg-actions">
-          <button type="submit" className="cta" disabled={busy || !tier || !food || !homeTrack}>
-            {phase.kind === 'creating'
-              ? 'Saving your place'
-              : phase.kind === 'paying'
-                ? 'Payment window open'
-                : phase.kind === 'dismissed'
-                  ? 'Try the payment again'
-                  : `Continue to pay ${chosen?.priceLabel ?? ''}`}
-          </button>
-          <p className="text-step--1 text-muted">Next: pay by UPI and send us the UTR. Questions go to {contactEmail}.</p>
+        <div className="card-dash flex flex-col gap-2 p-4">
+          <span className="lbl eye-amber">What happens next</span>
+          <p className="copy">
+            You pay by UPI from your own app on the next screen, then send us the UTR and a screenshot. We check it against the bank
+            statement and email your pass link.
+          </p>
+          <p className="hint">Questions go to {contactEmail}.</p>
         </div>
       </form>
 
-      <aside className="reg-aside" aria-label="Your order">
-        <div className="reg-summary">
-          <p className="eyebrow">Your pass</p>
-          {chosen ? (
-            <>
-              <p className="display text-step-2 mt-2">{chosen.name}</p>
-              {homeTrack ? <p className="text-step--1 text-muted mt-1">{tracks.find((t) => t.id === homeTrack)?.name}</p> : null}
-              <ul className="tier-list mt-4">
-                {chosen.includes.map((i) => (
-                  <li key={i}>{i}</li>
-                ))}
-              </ul>
-              <div className="reg-total">
-                <span>Total</span>
-                <span className="numeral">{chosen.priceLabel}</span>
-              </div>
-              {chosen.placeholder ? (
-                <p className="reg-flag" role="note">
-                  Placeholder price. Real prices are not set yet, so every pass is offered at the test amount.
-                </p>
-              ) : null}
-            </>
-          ) : (
-            <p className="text-muted mt-2">Pick a pass to see the total.</p>
-          )}
+      <div className="bar-fixed">
+        <div className="bar-fixed-in">
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <span className="bar-lbl truncate">
+              {chosen ? chosen.name : 'No pass picked'}
+              {homeTrack ? ` · ${tracks.find((t) => t.id === homeTrack)?.name ?? ''}` : ''}
+            </span>
+            <span className="bar-val">{chosen?.priceLabel ?? '-'}</span>
+          </div>
+          <button type="submit" form={formId} className="btn btn-primary" disabled={busy || !tier || !food || !homeTrack}>
+            {submitLabel}
+          </button>
         </div>
-      </aside>
+      </div>
     </>
   )
 }

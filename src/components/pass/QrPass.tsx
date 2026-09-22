@@ -12,15 +12,8 @@ import { QRCodeSVG } from 'qrcode.react'
  */
 export function QrPass({ passId }: { passId: string }) {
   return (
-    <div className="qr-plate">
-      <QRCodeSVG
-        value={passId}
-        bgColor="transparent"
-        fgColor="currentColor"
-        level="M"
-        marginSize={0}
-        title={`Pass code ${passId}`}
-      />
-    </div>
+    <span className="qr-plate">
+      <QRCodeSVG value={passId} bgColor="transparent" fgColor="currentColor" level="M" marginSize={0} title={`Pass code ${passId}`} />
+    </span>
   )
 }

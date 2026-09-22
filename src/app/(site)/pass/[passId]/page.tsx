@@ -1,9 +1,9 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
-import { Container } from '@/components/layout/Container'
-import { QrPass } from '@/components/pass/QrPass'
+import { PassCard, type PassSession } from '@/components/pass/PassCard'
 import { SlotPicker, type PickerSlot } from '@/components/pass/SlotPicker'
-import { event, slots as fallbackSlots, venue } from '@/content/event'
+import { doorsLabel, event, slots as fallbackSlots, venue } from '@/content/event'
 import { tierLabel, tracksAllowedFor } from '@/content/passes'
 import { roomById, trackName } from '@/content/sessions'
 import { tracks } from '@/content/tracks'
@@ -20,6 +20,15 @@ export const metadata: Metadata = {
 
 /** Lookups hit the table on every request, never a cached render. */
 export const dynamic = 'force-dynamic'
+
+/** "30TH" from the one date in content/event.ts. */
+const DAY_ORDINAL = (() => {
+  const d = new Date(event.startsAt).getDate()
+  const suffix = d % 10 === 1 && d !== 11 ? 'ST' : d % 10 === 2 && d !== 12 ? 'ND' : d % 10 === 3 && d !== 13 ? 'RD' : 'TH'
+  return `${d}${suffix}`
+})()
+
+const firstName = (name: string) => (name.trim().split(/\s+/)[0] ?? name).toUpperCase()
 
 /**
  * Amendment 1 section 4, the state table.
@@ -54,43 +63,33 @@ export default async function PassPage({ params }: PageProps<'/pass/[passId]'>) 
         ? `the ${trackName(attendee.homeTrack)} track`
         : `${trackName(attendee.homeTrack)} plus one other track`
 
-  const facts = (
-    <dl className="ticket-facts">
-      <div className="ticket-fact">
-        <dt>Pass ID</dt>
-        <dd className="numeral">{attendee.passId}</dd>
-      </div>
-      <div className="ticket-fact">
-        <dt>Pass</dt>
-        <dd>{tierLabel(attendee.tier)}</dd>
-      </div>
-      <div className="ticket-fact">
-        <dt>Track</dt>
-        <dd>{trackName(attendee.homeTrack)}</dd>
-      </div>
-      <div className="ticket-fact">
-        <dt>Date</dt>
-        <dd>{event.dateLabel}</dd>
-      </div>
-    </dl>
+  const card = (extra: { sessions?: PassSession[]; showQr: boolean; sessionsNote?: string }) => (
+    <PassCard
+      passId={attendee.passId}
+      name={attendee.name}
+      college={attendee.college}
+      tier={attendee.tier}
+      tierName={tierLabel(attendee.tier)}
+      trackName={trackName(attendee.homeTrack)}
+      food={attendee.foodPreference}
+      {...extra}
+    />
   )
 
   if (attendee.state === 'VERIFIED') {
     if (!released) {
       return (
-        <Container className="section-tight flex flex-col gap-10">
-          <article className="ticket enter">
-            <div className="ticket-head">
-              <div>
-                <p className="eyebrow">{event.shortName}</p>
-                <h1 className="ticket-name mt-1">{attendee.name}</h1>
-              </div>
-              <span className="badge">{tierLabel(attendee.tier)}</span>
-            </div>
-            {facts}
-            <p className="measure text-muted">Agenda coming soon. We will email you when you can pick your sessions.</p>
-          </article>
-        </Container>
+        <div className="page rise">
+          <div className="flex flex-col gap-2">
+            <span className="eye">{'// YOU ARE IN'}</span>
+            <h1 className="h1">
+              SEE YOU ON THE {DAY_ORDINAL}, {firstName(attendee.name)}
+            </h1>
+            <p className="lede">Agenda coming soon. We will email you when you can pick your sessions.</p>
+          </div>
+          {card({ showQr: false, sessionsNote: 'Not open yet' })}
+          <p className="hint">Keep this link. It is in your confirmation email, and it becomes your ticket once you have picked your sessions.</p>
+        </div>
       )
     }
 
@@ -117,14 +116,17 @@ export default async function PassPage({ params }: PageProps<'/pass/[passId]'>) 
     }))
 
     return (
-      <Container className="section-tight flex flex-col gap-10">
-        <div>
-          <p className="eyebrow">{event.shortName}</p>
-          <h1 className="display text-step-3 mt-2">{attendee.name}, choose your sessions</h1>
-          <p className="numeral mt-2 text-muted">{attendee.passId}</p>
+      <div className="page page-bar rise">
+        <div className="flex flex-col gap-2">
+          <span className="eye">{'// PICK YOUR SESSIONS'}</span>
+          <h1 className="h1">{firstName(attendee.name)}, BUILD YOUR DAY</h1>
+          <p className="lede">
+            Pass ID <span className="num text-ink">{attendee.passId}</span>. Pick one session in each slot, then save. Your seat in each
+            is held from that moment.
+          </p>
         </div>
         <SlotPicker passId={attendee.passId} slots={pickerSlots} allowedTracks={allowedTracks} />
-      </Container>
+      </div>
     )
   }
 
@@ -137,56 +139,75 @@ export default async function PassPage({ params }: PageProps<'/pass/[passId]'>) 
     const seat = seats.find((s) => s.slotId === slot.id)
     return { slot, session: seat ? slotSessions[i]!.find((s) => s.sessionId === seat.sessionId) : undefined }
   })
+  const sessions: PassSession[] = chosen.map(({ slot, session }) => ({
+    slotLabel: slot.label,
+    time: slotTime(slot),
+    track: session?.track ?? attendee.homeTrack,
+    title: session ? (session.title ?? `${trackName(session.track)}, title announced soon`) : 'Session missing, write to us',
+  }))
 
   return (
-    <Container className="section-tight flex flex-col gap-12">
-      <article className="ticket enter">
-        <div className="ticket-head">
-          <div>
-            <p className="eyebrow">{event.shortName}</p>
-            <h1 className="ticket-name mt-1">{attendee.name}</h1>
-          </div>
-          <span className="badge">{tierLabel(attendee.tier)}</span>
-        </div>
-        <QrPass passId={attendee.passId} />
-        <div className="ticket-tear" />
-        {facts}
-        <dl className="ticket-facts">
-          <div className="ticket-fact">
-            <dt>Food</dt>
-            <dd>{attendee.foodPreference}</dd>
-          </div>
-        </dl>
-        <p className="text-step--1 text-muted">{venue.name}. Show this code at the gate.</p>
-      </article>
+    <div className="page rise">
+      <div className="flex flex-col gap-2">
+        <span className="eye">{'// THIS LINK IS YOUR TICKET'}</span>
+        <h1 className="h1">
+          SEE YOU ON THE {DAY_ORDINAL}, {firstName(attendee.name)}
+        </h1>
+        <p className="lede">Screenshot this page. It works with no signal at the gate, and you do not need to log in anywhere.</p>
+      </div>
 
-      <section aria-labelledby="sessions-heading">
-        <h2 id="sessions-heading" className="display text-step-3">
-          Your sessions
-        </h2>
-        <ul className="mt-6 flex flex-col gap-4">
+      {card({ showQr: true, sessions })}
+
+      <div className="flex flex-wrap gap-2.5">
+        <a href={venue.directionsUrl} className="btn flex-[1_1_150px]">
+          GATE PIN
+        </a>
+        <Link href={`/pass/${attendee.passId}/share`} className="btn flex-[1_1_150px]">
+          TELL PEOPLE
+        </Link>
+      </div>
+
+      <section aria-labelledby="sessions-heading" className="flex flex-col gap-3.5">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <h2 id="sessions-heading" className="h2">
+            YOUR DAY
+          </h2>
+          <span className="lbl">{chosen.length} sessions, one per slot</span>
+        </div>
+        <div className="ag-card">
           {chosen.map(({ slot, session }) => (
-            <li key={slot.id} className="pick" aria-current="true">
-              <span>
-                <span className="block text-step--1 text-muted">
-                  {slot.label}
-                  {slotTime(slot) ? `, ${slotTime(slot)}` : ''}
-                </span>
-                <span className="block text-step-1">
+            <div key={slot.id} className="ag-row">
+              <span className="ag-time">
+                {slot.label}
+                {slotTime(slot) ? <span className="ag-time-tbc block">{slotTime(slot)}</span> : null}
+              </span>
+              <span className="ag-cell">
+                <span className="ag-title">
                   {session ? (session.title ?? `${trackName(session.track)}, title announced soon`) : 'Session missing, write to us'}
                 </span>
-                <span className="block text-step--1 text-muted">
-                  {session ? `${trackName(session.track)}, ${roomById(session.roomId)?.name ?? 'room announced soon'}` : ''}
+                <span className="ag-sub">
+                  {session ? `${trackName(session.track)} · ${roomById(session.roomId)?.name ?? 'room announced soon'}` : ''}
                 </span>
               </span>
-            </li>
+            </div>
           ))}
-        </ul>
-        <p className="measure mt-6 text-step--1 text-muted">
-          Your choices are saved and cannot be changed here. If you need a change, write to the organisers at {REPLY_TO}{' '}
-          quoting your pass ID.
+        </div>
+        <p className="hint">
+          Your choices are saved and cannot be changed here. If you need a change, write to the organisers at {REPLY_TO} quoting your
+          pass ID.
         </p>
       </section>
-    </Container>
+
+      <div className="card-dash flex flex-col gap-2.5 px-4 py-4">
+        <span className="lbl eye-amber">On the day</span>
+        <p className="copy">Doors at {doorsLabel}. The pin above is the gate.</p>
+        <p className="copy">Turn your screen brightness up before you reach the volunteer. Sunlight kills scanner reads.</p>
+        <p className="copy">Lost this link? It is in your confirmation email.</p>
+        <Link href="/code-of-conduct#report" className="btn btn-mono self-start">
+          Something wrong with your pass? Report it
+        </Link>
+      </div>
+
+    </div>
   )
 }

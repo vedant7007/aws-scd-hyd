@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { IBM_Plex_Mono, Pixelify_Sans, Roboto } from 'next/font/google'
 import './globals.css'
 import { CloudTransition } from '@/components/layout/CloudTransition'
+import { ThemeGuard } from '@/components/layout/ThemeGuard'
 import { event, venue } from '@/content/event'
 import { CLOUDS_BOOT } from '@/lib/clouds'
 import { THEME_BOOT } from '@/lib/theme'
@@ -57,6 +58,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
           Skip to content
         </a>
         {children}
+        <ThemeGuard />
         <CloudTransition />
       </body>
     </html>
