@@ -459,7 +459,7 @@ Kept current as work lands. Everything else in this file is the plan, this secti
 |---|---|
 | Sandbox backend | deployed: table, Cognito pool, reconcile Lambda, hourly schedule |
 | Amplify Hosting | building from `main`, live at https://awsscdhyd.in with a compute role and production env vars attached |
-| Landing page | ported from the design handoff (Landing Bitmap). Its own header and footer, theme in localStorage under `scd-theme`, cloud page transition on every route. APPLY TO SPEAK and BECOME A SPONSOR point at `/speak` and `/sponsor` per the handoff route map and 404 until those screens are ported |
+| Landing page | ported from the design handoff (Landing Bitmap). Its own header and footer, theme in localStorage under `scd-theme`, cloud page transition on every route. APPLY TO SPEAK and BECOME A SPONSOR open a mail to awssbgvjit@gmail.com with a fixed subject until the `/speak` and `/sponsor` screens are ported |
 | Schedule, speakers, sponsors, code of conduct, register, pass, admin | built on the pre-handoff layout, kept under `src/app/(site)/` with the old chrome until each is ported |
 | Pass page, QR, session picker, seat transaction | built, race test passes |
 | Payments | Razorpay, test keys. Our form at `/register`, order + pending record, webhook the only writer, reconcile hourly. Verified in test mode: capture, replay x3, tamper, wrong amount, failure, refund, lost webhook. Registration stays closed until `registrationOpen` flips, and the launch guard refuses to sell in production on a test key, an unpriced tier, or `RAZORPAY_TEST_AMOUNT_PAISE` being set, each verified to block alone. Prices are set in `content/passes.ts` and single sourced; `check:launch` no longer reports `unpriced-tier`. |

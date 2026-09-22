@@ -445,7 +445,11 @@ export function Landing({ registrationOpen, prices }: Props) {
             <div style={{border:'3px solid #9FE3B6',background:'var(--panel-mint)',padding:'16px',display:'flex',flexDirection:'column',gap:'12px',justifyContent:'center',transition:'transform .14s steps(3),box-shadow .14s steps(3)'}} className="lp-hv-lift3-sh">
               <div style={{fontFamily:'var(--font-display)',fontSize:'25px',lineHeight:'1.05',color:'var(--ink)'}}>WANT THIS SLOT?</div>
               <p style={{margin:'0',fontSize:'13.5px',lineHeight:'1.55',color:'var(--body)'}}>Call for speakers is open: students and working engineers both.</p>
-              <Link href="/speak" style={{display:'inline-flex',alignItems:'center',justifyContent:'center',minHeight:'48px',background:'#9FE3B6',color:'var(--on-fill)',fontFamily:'var(--font-display)',fontSize:'18px',boxShadow:'5px 5px 0 var(--line)',cursor:'pointer',transition:'transform .1s steps(2),box-shadow .1s steps(2)'}} className="lp-hv-mint-btn lp-ac-press">APPLY TO SPEAK</Link>
+              {/* /speak and /sponsor are handoff screens not yet ported. Until they
+              are, these CTAs open a mail with a fixed subject, so the two most
+              time sensitive audiences never hit a 404. Swap the hrefs back when
+              the screens land; the buttons themselves are unchanged. */}
+          <a href="mailto:awssbgvjit@gmail.com?subject=Speaker%20-%20AWS%20SCD%20Hyderabad" style={{display:'inline-flex',alignItems:'center',justifyContent:'center',minHeight:'48px',background:'#9FE3B6',color:'var(--on-fill)',fontFamily:'var(--font-display)',fontSize:'18px',boxShadow:'5px 5px 0 var(--line)',cursor:'pointer',transition:'transform .1s steps(2),box-shadow .1s steps(2)'}} className="lp-hv-mint-btn lp-ac-press">APPLY TO SPEAK</a>
             </div>
           </div>
         </div>
@@ -506,7 +510,7 @@ export function Landing({ registrationOpen, prices }: Props) {
             <div style={{border:'3px solid #9FE3B6',background:'var(--panel-mint)',padding:'24px 22px',display:'flex',flexDirection:'column',gap:'12px',justifyContent:'center',transition:'transform .14s steps(3),box-shadow .14s steps(3)'}} className="lp-hv-lift4-sh">
               <span style={{fontFamily:'var(--font-display)',fontSize:'25px',lineHeight:'1.05',color:'var(--ink)'}}>BACK THE DAY</span>
               <p style={{margin:'0',fontSize:'13.5px',lineHeight:'1.55',color:'var(--body)'}}>Food, event and swag sponsorships are all open. Tell us which one fits.</p>
-              <Link href="/sponsor" style={{display:'inline-flex',alignItems:'center',justifyContent:'center',minHeight:'48px',background:'#9FE3B6',color:'var(--on-fill)',fontFamily:'var(--font-display)',fontSize:'18px',boxShadow:'5px 5px 0 var(--line)',cursor:'pointer',transition:'transform .1s steps(2),box-shadow .1s steps(2)'}} className="lp-hv-mint-btn lp-ac-press">BECOME A SPONSOR</Link>
+              <a href="mailto:awssbgvjit@gmail.com?subject=Sponsor%20-%20AWS%20SCD%20Hyderabad" style={{display:'inline-flex',alignItems:'center',justifyContent:'center',minHeight:'48px',background:'#9FE3B6',color:'var(--on-fill)',fontFamily:'var(--font-display)',fontSize:'18px',boxShadow:'5px 5px 0 var(--line)',cursor:'pointer',transition:'transform .1s steps(2),box-shadow .1s steps(2)'}} className="lp-hv-mint-btn lp-ac-press">BECOME A SPONSOR</a>
             </div>
           </div>
         </div>
@@ -596,8 +600,8 @@ export function Landing({ registrationOpen, prices }: Props) {
               <span style={{fontFamily:'var(--font-mono)',fontSize:'10px',letterSpacing:'.18em',textTransform:'uppercase',color:'var(--muted)'}}>Take part</span>
               <Link href="/register" style={{color:'var(--ink)',fontFamily:'var(--font-display)',fontSize:'17px',minHeight:'30px',display:'inline-flex',alignItems:'center'}}>REGISTER</Link>
               <a href="#passes" style={{color:'var(--ink)',fontFamily:'var(--font-display)',fontSize:'17px',minHeight:'30px',display:'inline-flex',alignItems:'center'}}>PASSES</a>
-              <Link href="/speak" style={{color:'var(--ink)',fontFamily:'var(--font-display)',fontSize:'17px',minHeight:'30px',display:'inline-flex',alignItems:'center'}}>APPLY TO SPEAK</Link>
-              <Link href="/sponsor" style={{color:'var(--ink)',fontFamily:'var(--font-display)',fontSize:'17px',minHeight:'30px',display:'inline-flex',alignItems:'center'}}>SPONSOR US</Link>
+              <a href="mailto:awssbgvjit@gmail.com?subject=Speaker%20-%20AWS%20SCD%20Hyderabad" style={{color:'var(--ink)',fontFamily:'var(--font-display)',fontSize:'17px',minHeight:'30px',display:'inline-flex',alignItems:'center'}}>APPLY TO SPEAK</a>
+              <a href="mailto:awssbgvjit@gmail.com?subject=Sponsor%20-%20AWS%20SCD%20Hyderabad" style={{color:'var(--ink)',fontFamily:'var(--font-display)',fontSize:'17px',minHeight:'30px',display:'inline-flex',alignItems:'center'}}>SPONSOR US</a>
               <a href="#sponsors" style={{color:'var(--ink)',fontFamily:'var(--font-display)',fontSize:'17px',minHeight:'30px',display:'inline-flex',alignItems:'center'}}>OUR SPONSORS</a>
             </div>
             <div style={{display:'flex',flexDirection:'column',gap:'11px'}}>
