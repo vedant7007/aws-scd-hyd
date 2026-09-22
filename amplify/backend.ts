@@ -3,6 +3,7 @@ import { Duration, RemovalPolicy, Stack } from 'aws-cdk-lib'
 import { AttributeType, BillingMode, ProjectionType, Table } from 'aws-cdk-lib/aws-dynamodb'
 import { PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam'
 import { HostedZone, MxRecord, TxtRecord } from 'aws-cdk-lib/aws-route53'
+import { BlockPublicAccess, Bucket, BucketEncryption, HttpMethods } from 'aws-cdk-lib/aws-s3'
 import { ConfigurationSet, ConfigurationSetEventDestination, EmailSendingEvent, EventDestination } from 'aws-cdk-lib/aws-ses'
 import { Topic } from 'aws-cdk-lib/aws-sns'
 import { LambdaSubscription } from 'aws-cdk-lib/aws-sns-subscriptions'
@@ -50,6 +51,27 @@ table.addGlobalSecondaryIndex({
   partitionKey: { name: 'GSI1PK', type: AttributeType.STRING },
   sortKey: { name: 'GSI1SK', type: AttributeType.STRING },
   projectionType: ProjectionType.ALL,
+})
+
+/**
+ * UPI payment screenshots. They carry the payer's bank, account holder and
+ * UPI id, so: private, encrypted, SSL only, never listed, and read only by an
+ * admin through a presigned URL minted inside requireAdmin. The browser
+ * uploads straight to the bucket with a presigned PUT, so the bytes never
+ * pass through the Next.js server. Every object is deleted 30 days after the
+ * event date, whatever else happens.
+ */
+const EVENT_DATE_PLUS_30 = new Date('2026-11-29T00:00:00Z')
+const siteOrigins = [process.env.NEXT_PUBLIC_SITE_URL, 'http://localhost:3000', 'http://localhost:3123', 'http://localhost:3124'].filter(
+  (o): o is string => Boolean(o),
+)
+const screenshots = new Bucket(data, 'Screenshots', {
+  blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
+  encryption: BucketEncryption.S3_MANAGED,
+  enforceSSL: true,
+  removalPolicy: RemovalPolicy.RETAIN,
+  lifecycleRules: [{ id: 'delete-30-days-after-the-event', expirationDate: EVENT_DATE_PLUS_30 }],
+  cors: [{ allowedMethods: [HttpMethods.PUT], allowedOrigins: siteOrigins, allowedHeaders: ['content-type'], maxAge: 3600 }],
 })
 
 /* ---------------------------------------------------------------------------
@@ -138,6 +160,8 @@ for (const [key, value] of Object.entries(emailEnv)) backend.reconcile.addEnviro
 for (const key of ['RAZORPAY_KEY_ID', 'RAZORPAY_KEY_SECRET'] as const) {
   backend.reconcile.addEnvironment(key, process.env[key] ?? '')
 }
+// Which way money moves. Manual unless the deploying environment says otherwise.
+backend.reconcile.addEnvironment('PAYMENT_MODE', process.env.PAYMENT_MODE ?? 'manual')
 
 /**
  * The role the Next.js server runs as in Amplify Hosting. SPEC.md section 13.
@@ -152,6 +176,7 @@ const ssrCompute = new Role(mail, 'SsrCompute', {
   description: 'Amplify Hosting compute role for the aws-scd-hyd Next.js server',
 })
 table.grantReadWriteData(ssrCompute)
+screenshots.grantReadWrite(ssrCompute)
 ssrCompute.addToPolicy(sesSend)
 
 /* ---------------------------------------------------------------------------
@@ -256,6 +281,7 @@ if (process.env.SCD_MANAGE_DNS === 'true') {
 backend.addOutput({
   custom: {
     scdTableName: table.tableName,
+    scdScreenshotBucket: screenshots.bucketName,
     scdRegion: Stack.of(table).region,
     sesConfigurationSet: outbound.configurationSetName,
     ssrComputeRoleArn: ssrCompute.roleArn,
