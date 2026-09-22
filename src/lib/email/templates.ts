@@ -1,4 +1,5 @@
 import { event, venue } from '../../content/event'
+import { tierLabel } from '../../content/passes'
 import type { Tier } from '../db/types'
 import { siteUrl } from '../site'
 import type { Mail } from './send'
@@ -55,7 +56,7 @@ const footerHtml = `<hr><p>${esc(event.host)}<br>${esc(event.disclaimer)}</p>`
 /** Ticket confirmation, sent once on creation. SPEC.md section 8 step 4. */
 export function confirmation(r: Recipient): Body {
   const link = passLink(r.passToken)
-  const tier = r.tier ? `${r.tier} pass` : 'pass'
+  const tier = r.tier ? `${tierLabel(r.tier)} pass` : 'pass'
 
   return {
     subject: `Your ${event.shortName} pass`,

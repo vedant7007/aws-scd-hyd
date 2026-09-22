@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ScanResult } from '@/app/api/admin/scan/route'
+import { tierLabel } from '@/content/passes'
 import {
   drainQueue,
   enqueue,
@@ -226,7 +227,7 @@ export function Scanner({ roster }: { roster: RosterEntry[] }) {
           <p className="display text-step-4">{feedback.name ?? feedback.ticketRef}</p>
           {feedback.name ? (
             <p className="display text-step-2">
-              {feedback.tier} , {feedback.food}
+              {feedback.tier ? tierLabel(feedback.tier) : feedback.tier} , {feedback.food}
             </p>
           ) : null}
           <p className="mono text-step--1">{feedback.ticketRef}</p>

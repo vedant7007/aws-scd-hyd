@@ -1,4 +1,4 @@
-import { sessionsAllowedFor } from '@/content/passes'
+import { sessionsAllowedFor, tierLabel } from '@/content/passes'
 import { getAttendeeByToken, getAttendeeWithSelections, getSessionsInSlot } from '@/lib/db/queries'
 import type { SeatCount, Session } from '@/lib/db/types'
 import { claimSeat, getSelection } from '@/lib/db/seats'
@@ -59,7 +59,7 @@ export async function POST(
       return json(409, {
         ok: false,
         code: 'allowance',
-        message: `Your ${attendee.tier} pass covers ${allowance} session${allowance === 1 ? '' : 's'}. Release one first.`,
+        message: `Your ${tierLabel(attendee.tier)} pass covers ${allowance} session${allowance === 1 ? '' : 's'}. Release one first.`,
         sessions: counts(sessions),
       })
     }

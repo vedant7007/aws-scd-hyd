@@ -1,3 +1,4 @@
+import { tierLabel } from '@/content/passes'
 import { currentAdmin } from '@/lib/auth/admin'
 import { loadDashboard, toCsv } from '@/lib/db/stats'
 
@@ -22,7 +23,7 @@ export async function GET(): Promise<Response> {
     ['Ticket', 'Name', 'Email', 'College', 'Tier', 'Food', 'Payment status'],
     ...d.attendees
       .filter((a) => a.paymentStatus === 'paid')
-      .map((a) => [a.ticketRef, a.name, a.email, a.college, a.tier, a.foodPreference, a.paymentStatus]),
+      .map((a) => [a.ticketRef, a.name, a.email, a.college, tierLabel(a.tier), a.foodPreference, a.paymentStatus]),
   ])
 
   const stamp = new Date().toISOString().slice(0, 10)

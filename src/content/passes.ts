@@ -1,7 +1,9 @@
 import type { Tier } from '../lib/db/types'
 
 export type Pass = {
+  /** The stored key. It is in DynamoDB records, CSV exports, order notes and the seed, and is never shown to a person. */
   id: Tier
+  /** What a person sees. Rendering the key anywhere is a bug; go through tierLabel. */
   name: string
   /**
    * In paise, the unit the gateway bills in, so the amount charged and the
@@ -32,15 +34,17 @@ export const earlyBirdEndsAt: string | null = null
  * Prices are confirmed (22 September 2026) and this is their only home: the
  * landing page and the checkout both read them from here.
  *
- * TODO(vedant): names, inclusions and swag levels are still unconfirmed here.
- * The landing page carries the handoff's names (Regular, Platinum) and
- * inclusion lists as static copy; bring these fields in line with it. Setting
- * `passes` to [] renders the announced soon state.
+ * Names are confirmed: Regular, Premium, Platinum, VIP.
+ *
+ * TODO(vedant): inclusions and swag levels are still unconfirmed here. The
+ * landing page carries the handoff's inclusion lists as static copy; bring
+ * `includes` in line with it. Setting `passes` to [] renders the announced
+ * soon state.
  */
 export const passes: Pass[] = [
   {
     id: 'basic',
-    name: 'Basic',
+    name: 'Regular',
     pricePaise: 39900,
     includes: ['Entry to all three tracks'],
     swag: null,
@@ -57,7 +61,7 @@ export const passes: Pass[] = [
   },
   {
     id: 'ultra',
-    name: 'Ultra',
+    name: 'Platinum',
     pricePaise: 129900,
     includes: ['Entry to all three tracks', 'Reserved seating', 'Workshop access'],
     swag: null,
@@ -83,6 +87,12 @@ export const formatInr = (paise: number) =>
 export const tierIds = passes.map((p) => p.id)
 
 export const passFor = (tier: Tier): Pass | undefined => passes.find((p) => p.id === tier)
+
+/**
+ * The name a person sees for a stored tier key. Falls back to the key only for
+ * a value that is not a tier at all, which a typed record cannot hold.
+ */
+export const tierLabel = (tier: Tier | string): string => passes.find((p) => p.id === tier)?.name ?? tier
 
 /**
  * SPEC.md section 9. How many slots a tier may fill, read from here and never

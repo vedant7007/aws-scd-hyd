@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { tierLabel } from '@/content/passes'
 
 export type AttendeeRow = {
   ticketRef: string
@@ -21,7 +22,7 @@ export function AttendeeTable({ rows }: { rows: AttendeeRow[] }) {
     const q = query.trim().toLowerCase()
     if (!q) return rows
     return rows.filter((r) =>
-      [r.ticketRef, r.name, r.email, r.college, r.tier, r.foodPreference].some((f) =>
+      [r.ticketRef, r.name, r.email, r.college, tierLabel(r.tier), r.foodPreference].some((f) =>
         f.toLowerCase().includes(q),
       ),
     )
@@ -73,7 +74,7 @@ export function AttendeeTable({ rows }: { rows: AttendeeRow[] }) {
                   <td>{r.name}</td>
                   <td>{r.email}</td>
                   <td>{r.college}</td>
-                  <td>{r.tier}</td>
+                  <td>{tierLabel(r.tier)}</td>
                   <td>{r.foodPreference}</td>
                   <td>{r.paymentStatus}</td>
                   <td>{r.checkedIn ? 'yes' : 'no'}</td>

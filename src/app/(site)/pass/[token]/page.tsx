@@ -5,6 +5,7 @@ import { Container } from '@/components/layout/Container'
 import { QrPass } from '@/components/pass/QrPass'
 import { SessionPicker, type PickerSlot } from '@/components/pass/SessionPicker'
 import { event, halls, slots as fallbackSlots, venue } from '@/content/event'
+import { tierLabel } from '@/content/passes'
 import { getAttendeeByToken, getAttendeeWithSelections, getConfig, getSessionsInSlot } from '@/lib/db/queries'
 
 /** A pass link is private. It must never be indexed or appear in the sitemap. */
@@ -61,7 +62,7 @@ export default async function PassPage({ params }: PageProps<'/pass/[token]'>) {
             <p className="eyebrow">{event.shortName}</p>
             <h1 className="ticket-name mt-1">{attendee.name}</h1>
           </div>
-          <span className="badge">{attendee.tier}</span>
+          <span className="badge">{tierLabel(attendee.tier)}</span>
         </div>
 
         <QrPass ticketRef={attendee.ticketRef} />

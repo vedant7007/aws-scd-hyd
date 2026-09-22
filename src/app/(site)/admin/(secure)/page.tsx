@@ -1,5 +1,6 @@
 import { AttendeeTable, type AttendeeRow } from '@/components/admin/AttendeeTable'
 import { Container } from '@/components/layout/Container'
+import { tierLabel } from '@/content/passes'
 import { requireAdmin } from '@/lib/auth/admin'
 import { loadDashboard } from '@/lib/db/stats'
 import { launchStatus } from '@/lib/tickets/launch'
@@ -85,7 +86,7 @@ export default async function AdminDashboardPage() {
 
         <dl className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {d.byTier.map((t) => (
-            <Stat key={t.tier} label={`Tier, ${t.tier}`} value={t.count} />
+            <Stat key={t.tier} label={`Tier, ${tierLabel(t.tier)}`} value={t.count} />
           ))}
         </dl>
       </section>
