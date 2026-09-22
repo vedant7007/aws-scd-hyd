@@ -354,7 +354,7 @@ Layout is minimal. Whitespace and type size carry the hierarchy. No card grids, 
 
 In order, each its own component file.
 
-1. **Hero.** Name, Hyderabad, date, venue, CTA to passes, countdown to `2026-10-30T09:00:00+05:30`, and a pointer-reactive canvas background that animates gently on its own on mobile. Keep the background in one swappable component, the visual is `TODO(vedant)`.
+1. **Hero.** Name, Hyderabad, date, venue, CTA to passes, countdown to `event.startsAt` (2026-10-30T09:30:00+05:30, doors confirmed 09:30), and a pointer-reactive canvas background that animates gently on its own on mobile. Keep the background in one swappable component, the visual is `TODO(vedant)`.
 2. **Ticker.** Marquee band in accent colour.
 3. **About.** Three or four sentences. Not a wall.
 4. **Tracks.** AI and agents, cloud engineering, careers. Large type, hairline separated, no cards.

@@ -1,4 +1,5 @@
 import { Landing } from '@/components/landing/Landing'
+import { doorsLabel } from '@/content/event'
 import { formatInr, passes } from '@/content/passes'
 import type { Tier } from '@/lib/db/types'
 import { eventJsonLd } from '@/lib/jsonld'
@@ -19,7 +20,7 @@ export default function HomePage() {
         // JSON.stringify output built from typed content, never user input.
         dangerouslySetInnerHTML={{ __html: eventJsonLd() }}
       />
-      <Landing registrationOpen={registrationIsOpen()} prices={prices} />
+      <Landing registrationOpen={registrationIsOpen()} doors={doorsLabel} prices={prices} />
     </>
   )
 }

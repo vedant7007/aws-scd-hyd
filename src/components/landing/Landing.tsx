@@ -27,11 +27,13 @@ import { mountLanding } from './mount'
  */
 type Props = {
   registrationOpen: boolean
+  /** Doors, "09:30", from content/event.ts. */
+  doors: string
   /** Formatted price per tier, null while a tier is unpriced. The page reads them from content/passes.ts. */
   prices: Record<Tier, string | null>
 }
 
-export function Landing({ registrationOpen, prices }: Props) {
+export function Landing({ registrationOpen, doors, prices }: Props) {
   const rootRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -158,7 +160,7 @@ export function Landing({ registrationOpen, prices }: Props) {
           </div>
           <div style={{border:'3px solid var(--line)',background:'var(--surface)',padding:'18px 20px',display:'flex',flexDirection:'column',gap:'5px',transition:'transform .12s steps(2),border-color .12s steps(2),box-shadow .12s steps(2)'}} className="lp-hv-stat-card">
             <span style={{fontFamily:'var(--font-mono)',fontSize:'10px',letterSpacing:'.2em',color:'var(--muted)'}}>DOORS</span>
-            <span style={{fontFamily:'var(--font-mono)',fontSize:'clamp(20px,5vw,26px)',color:'var(--ink)'}}>09:30 IST</span>
+            <span style={{fontFamily:'var(--font-mono)',fontSize:'clamp(20px,5vw,26px)',color:'var(--ink)'}}>{doors} IST</span>
           </div>
           <div style={{border:'3px solid var(--line)',background:'var(--surface)',padding:'18px 20px',display:'flex',flexDirection:'column',gap:'5px',transition:'transform .12s steps(2),border-color .12s steps(2),box-shadow .12s steps(2)'}} className="lp-hv-stat-card">
             <span style={{fontFamily:'var(--font-mono)',fontSize:'10px',letterSpacing:'.2em',color:'var(--muted)'}}>SEATS</span>
@@ -223,7 +225,7 @@ export function Landing({ registrationOpen, prices }: Props) {
             <div style={{border:'3px solid var(--line)',background:'var(--surface)',padding:'26px 24px',display:'flex',flexDirection:'column',gap:'11px',transition:'transform .14s steps(3),border-color .14s steps(2)'}} className="lp-hv-pink-edge">
               <span style={{fontFamily:'var(--font-display)',fontSize:'40px',lineHeight:'.9',color:'var(--pink-ink)'}}>D</span>
               <span style={{fontFamily:'var(--font-display)',fontSize:'22px',color:'var(--ink)'}}>DAY</span>
-              <p style={{margin:'0',fontSize:'14px',lineHeight:'1.55',color:'var(--body)'}}>One Friday, 30 October. Doors at 09:30, three halls, sessions all day, lunch in the middle.</p>
+              <p style={{margin:'0',fontSize:'14px',lineHeight:'1.55',color:'var(--body)'}}>One Friday, 30 October. Doors at {doors}, three halls, sessions all day, lunch in the middle.</p>
             </div>
             <div style={{border:'3px solid #9FE3B6',background:'var(--panel-mint)',padding:'26px 24px',display:'flex',flexDirection:'column',gap:'11px',justifyContent:'center',transition:'transform .14s steps(3),box-shadow .14s steps(3)'}} className="lp-hv-lift3-sh">
               <span style={{fontFamily:'var(--font-display)',fontSize:'22px',lineHeight:'1.1',color:'var(--ink)'}}>FIRST ONE?</span>
@@ -522,7 +524,7 @@ export function Landing({ registrationOpen, prices }: Props) {
             <span style={{fontFamily:'var(--font-mono)',fontSize:'10.5px',letterSpacing:'.22em',textTransform:'uppercase',color:'var(--mint-ink)'}}>{'// THE PLACE'}</span>
             <div style={{display:'flex',alignItems:'flex-start',gap:'12px'}}>
               <span style={{fontFamily:'var(--font-mono)',fontSize:'clamp(76px,20vw,180px)',lineHeight:'.78',color:'var(--ink)',textShadow:'5px 5px 0 #F6C899'}}>30</span>
-              <span style={{fontFamily:'var(--font-mono)',fontSize:'clamp(11px,2.6vw,13px)',letterSpacing:'.18em',textTransform:'uppercase',paddingTop:'10px',color:'var(--body)'}}>OCT<br />2026<br />09:30</span>
+              <span style={{fontFamily:'var(--font-mono)',fontSize:'clamp(11px,2.6vw,13px)',letterSpacing:'.18em',textTransform:'uppercase',paddingTop:'10px',color:'var(--body)'}}>OCT<br />2026<br />{doors}</span>
             </div>
             <p style={{margin:'0',maxWidth:'40ch',fontSize:'clamp(15px,3.8vw,17px)',lineHeight:'1.65',color:'var(--body)'}}>Vidya Jyothi Institute of Technology, Aziznagar Village Road, Aziznagar, Hyderabad, Telangana 500075.</p>
             <a href="https://maps.app.goo.gl/PAPnu2YHVdWE2pvQ6" style={{display:'inline-flex',alignSelf:'flex-start',alignItems:'center',minHeight:'52px',padding:'0 22px',background:'var(--ink-fill)',color:'var(--bg)',fontFamily:'var(--font-display)',fontSize:'18px',boxShadow:'5px 5px 0 #9FE3B6',transition:'transform .1s steps(2),box-shadow .1s steps(2)'}} className="lp-hv-pin">OPEN THE GATE PIN</a>
