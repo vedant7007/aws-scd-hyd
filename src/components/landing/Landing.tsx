@@ -172,7 +172,7 @@ export function Landing({ registrationOpen, doors, prices }: Props) {
           </div>
         </div>
 
-        <p data-in="1" style={{margin:'0',maxWidth:'50ch',fontSize:'clamp(15px,4vw,18.5px)',lineHeight:'1.6',color:'var(--body)'}}>Three tracks, three halls, one Friday. Open to students from any college in Hyderabad, lunch included on every pass.</p>
+        <p data-in="1" style={{margin:'0',maxWidth:'50ch',fontSize:'clamp(15px,4vw,18.5px)',lineHeight:'1.6',color:'var(--body)'}}>Three tracks, one Friday. Open to students from any college in Hyderabad, lunch included on every pass.</p>
 
         <div data-in="1" style={{display:'flex',flexWrap:'wrap',gap:'12px',alignItems:'center'}}>
           <Link href="/register" style={{display:'inline-flex',alignItems:'center',justifyContent:'center',minHeight:'56px',padding:'0 26px',background:'#FF9900',color:'var(--on-fill)',fontFamily:'var(--font-display)',fontSize:'clamp(17px,4.4vw,21px)',fontWeight:'700',boxShadow:'6px 6px 0 var(--line),6px 6px 0 3px #9FE3B6',cursor:'pointer',transition:'transform .1s steps(2),box-shadow .1s steps(2),background .1s steps(2)'}} className="lp-hv-hero-cta lp-ac-hero-cta">&gt; REGISTER NOW</Link>
@@ -192,8 +192,8 @@ export function Landing({ registrationOpen, doors, prices }: Props) {
 
       <div style={{position:'relative',zIndex:'10',overflow:'hidden',background:'#FF9900',borderTop:'4px solid var(--line)',borderBottom:'4px solid var(--line)'}}>
         <div style={{display:'flex',width:'max-content',fontFamily:'var(--font-display)',fontSize:'clamp(16px,4vw,21px)',color:'var(--on-fill)',padding:'8px 0',animation:'bm-march 22s linear infinite'}}>
-          <span style={{display:'flex',gap:'22px',paddingRight:'22px'}}><span>AI + AGENTS</span><span>◆</span><span>CLOUD ENGINEERING</span><span>◆</span><span>CAREERS</span><span>◆</span><span>3 HALLS</span><span>◆</span><span>300 SEATS</span><span>◆</span></span>
-          <span style={{display:'flex',gap:'22px',paddingRight:'22px'}}><span>AI + AGENTS</span><span>◆</span><span>CLOUD ENGINEERING</span><span>◆</span><span>CAREERS</span><span>◆</span><span>3 HALLS</span><span>◆</span><span>300 SEATS</span><span>◆</span></span>
+          <span style={{display:'flex',gap:'22px',paddingRight:'22px'}}><span>AI + AGENTS</span><span>◆</span><span>CLOUD ENGINEERING</span><span>◆</span><span>CAREERS</span><span>◆</span><span>300 SEATS</span><span>◆</span></span>
+          <span style={{display:'flex',gap:'22px',paddingRight:'22px'}}><span>AI + AGENTS</span><span>◆</span><span>CLOUD ENGINEERING</span><span>◆</span><span>CAREERS</span><span>◆</span><span>300 SEATS</span><span>◆</span></span>
         </div>
       </div>
 
@@ -225,7 +225,7 @@ export function Landing({ registrationOpen, doors, prices }: Props) {
             <div style={{border:'3px solid var(--line)',background:'var(--surface)',padding:'26px 24px',display:'flex',flexDirection:'column',gap:'11px',transition:'transform .14s steps(3),border-color .14s steps(2)'}} className="lp-hv-pink-edge">
               <span style={{fontFamily:'var(--font-display)',fontSize:'40px',lineHeight:'.9',color:'var(--pink-ink)'}}>D</span>
               <span style={{fontFamily:'var(--font-display)',fontSize:'22px',color:'var(--ink)'}}>DAY</span>
-              <p style={{margin:'0',fontSize:'14px',lineHeight:'1.55',color:'var(--body)'}}>One Friday, 30 October. Doors at {doors}, three halls, sessions all day, lunch in the middle.</p>
+              <p style={{margin:'0',fontSize:'14px',lineHeight:'1.55',color:'var(--body)'}}>One Friday, 30 October. Doors at {doors}, sessions all day, lunch in the middle.</p>
             </div>
             <div style={{border:'3px solid #9FE3B6',background:'var(--panel-mint)',padding:'26px 24px',display:'flex',flexDirection:'column',gap:'11px',justifyContent:'center',transition:'transform .14s steps(3),box-shadow .14s steps(3)'}} className="lp-hv-lift3-sh">
               <span style={{fontFamily:'var(--font-display)',fontSize:'22px',lineHeight:'1.1',color:'var(--ink)'}}>FIRST ONE?</span>
