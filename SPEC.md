@@ -261,6 +261,10 @@ Every entry point asks `registrationIsOpen()`, which is `registrationOpen` **and
 
 Every tier in `content/passes.ts` is priced (Rs 399, 799, 1,299, 1,699, confirmed 22 September 2026) and that file is the only source: the landing page and the checkout both format from it. A tier with `pricePaise: null` would be charged `RAZORPAY_TEST_AMOUNT_PAISE`, default 100, one rupee, with a warning on every order and a "Test price, placeholder" label on the form; the launch guard refuses to sell in production while that could apply, so the fallback stays as the safety net for a tier added without a price.
 
+### Early bird and coupons: none
+
+No early bird is offered and there is no discount logic. `earlyBirdEndsAt` stays null. The design handoff's Register screen carries demo coupon codes (EARLYBIRD, SBGVJIT, CAMPUS5) that its own notes flag as invented; they must not come across when that screen is ported.
+
 ### Reconciliation, not optional
 
 Lambda in `amplify/functions/reconcile`, hourly.

@@ -40,13 +40,19 @@ export const earlyBirdEndsAt: string | null = null
  * landing page carries the handoff's inclusion lists as static copy; bring
  * `includes` in line with it. Setting `passes` to [] renders the announced
  * soon state.
+ *
+ * No tier promises workshops: none are decided. No tier states how many
+ * tracks or sessions it covers: that is sessionsAllowed, still null. No early
+ * bird and no coupons: earlyBirdEndsAt stays null and there is no discount
+ * logic. The handoff's Register screen carries demo codes (EARLYBIRD,
+ * SBGVJIT, CAMPUS5) that must not come across when it is ported.
  */
 export const passes: Pass[] = [
   {
     id: 'basic',
     name: 'Regular',
     pricePaise: 39900,
-    includes: ['Entry to all three tracks'],
+    includes: [],
     swag: null,
     sessionsAllowed: null,
   },
@@ -54,7 +60,7 @@ export const passes: Pass[] = [
     id: 'premium',
     name: 'Premium',
     pricePaise: 79900,
-    includes: ['Entry to all three tracks', 'Reserved seating'],
+    includes: ['Reserved seating'],
     swag: null,
     sessionsAllowed: null,
     recommended: true,
@@ -63,7 +69,7 @@ export const passes: Pass[] = [
     id: 'ultra',
     name: 'Platinum',
     pricePaise: 129900,
-    includes: ['Entry to all three tracks', 'Reserved seating', 'Workshop access'],
+    includes: ['Reserved seating'],
     swag: null,
     sessionsAllowed: null,
   },
@@ -71,7 +77,7 @@ export const passes: Pass[] = [
     id: 'vip',
     name: 'VIP',
     pricePaise: 169900,
-    includes: ['Entry to all three tracks', 'Reserved seating', 'Workshop access', 'Speaker dinner'],
+    includes: ['Reserved seating', 'Speaker dinner'],
     swag: null,
     sessionsAllowed: null,
   },
