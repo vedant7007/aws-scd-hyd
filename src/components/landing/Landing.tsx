@@ -571,7 +571,9 @@ export function Landing({ registrationOpen, doors, prices }: Props) {
             </details>
             <details style={{border:'3px solid var(--line)',background:'var(--surface)'}}>
               <summary style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:'14px',padding:'20px 22px',cursor:'pointer',fontFamily:'var(--font-display)',fontSize:'clamp(17px,4.2vw,21px)',color:'var(--ink)'}}>How do I register?<span data-faq-plus="1" style={{flex:'none',fontFamily:'var(--font-mono)',fontSize:'18px',color:'var(--amber-ink)',transition:'transform .16s steps(3)'}}>+</span></summary>
-              <div style={{padding:'0 22px 22px',fontSize:'15px',lineHeight:'1.65',color:'var(--body)',maxWidth:'68ch'}}>Registration is open now. Pick a tier, fill in your details, and pay by UPI, card or netbanking. Your pass link arrives by email once the payment confirms. There are 300 seats in total and the cheaper tiers go first.</div>
+              <div style={{padding:'0 22px 22px',fontSize:'15px',lineHeight:'1.65',color:'var(--body)',maxWidth:'68ch'}}>{registrationOpen
+                ? 'Registration is open now. Pick a tier, fill in your details, and pay by UPI, card or netbanking. Your pass link arrives by email once the payment confirms. There are 300 seats in total and the cheaper tiers go first.'
+                : 'Not yet. Registration opens soon, and this page will say so the moment it does. When it opens you pick a tier, fill in your details, and pay by UPI, card or netbanking. Your pass link arrives by email once the payment confirms.'}</div>
             </details>
             <details style={{border:'3px solid var(--line)',background:'var(--surface)'}}>
               <summary style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:'14px',padding:'20px 22px',cursor:'pointer',fontFamily:'var(--font-display)',fontSize:'clamp(17px,4.2vw,21px)',color:'var(--ink)'}}>Is this run by AWS?<span data-faq-plus="1" style={{flex:'none',fontFamily:'var(--font-mono)',fontSize:'18px',color:'var(--amber-ink)',transition:'transform .16s steps(3)'}}>+</span></summary>
