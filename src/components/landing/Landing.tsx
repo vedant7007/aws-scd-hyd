@@ -113,7 +113,10 @@ export function Landing({ registrationOpen }: { registrationOpen: boolean }) {
 
       <div style={{position:'fixed',top:'0',left:'0',right:'0',height:'8px',background:'var(--bar)',zIndex:'50',display:'flex'}}><div style={{height:'100%',background:'#FF9900',transformOrigin:'0 50%',transform:'scaleX(calc(var(--prog)))',boxShadow:'0 0 0 0 #FF9900'}}></div></div>
 
-      <header style={{position:'sticky',top:'8px',zIndex:'40',display:'flex',alignItems:'center',justifyContent:'space-between',gap:'10px',flexWrap:'wrap',padding:'12px clamp(14px,5vw,56px)',background:'var(--surface)',backdropFilter:'blur(10px)',borderBottom:'3px solid var(--line)'}}>
+      {/* The handoff also set backdrop-filter:blur(10px) here. Behind an opaque
+        --surface it draws nothing, but it makes the GPU re-blur the animated
+        background every frame, which cost frames on the transition. Dropped. */}
+    <header style={{position:'sticky',top:'8px',zIndex:'40',display:'flex',alignItems:'center',justifyContent:'space-between',gap:'10px',flexWrap:'wrap',padding:'12px clamp(14px,5vw,56px)',background:'var(--surface)',borderBottom:'3px solid var(--line)'}}>
         <span style={{fontFamily:'var(--font-display)',fontSize:'clamp(17px,4.4vw,23px)',fontWeight:'700',letterSpacing:'.02em',color:'var(--ink)'}}>SCD<span style={{color:'var(--amber-ink)'}}>.</span>HYD<span style={{color:'var(--mint-ink)'}}>26</span></span>
         <nav style={{display:'flex',alignItems:'center',flexWrap:'wrap',justifyContent:'flex-end',gap:'clamp(7px,2vw,20px)',minWidth:'0',fontFamily:'var(--font-display)',fontSize:'clamp(13px,3.2vw,16px)'}}>
           <button type="button" onClick={toggleTheme} aria-label="Toggle dark mode" style={{display:'inline-flex',alignItems:'center',gap:'7px',height:'38px',padding:'0 12px',background:'transparent',border:'3px solid var(--line)',color:'var(--ink)',fontFamily:'var(--font-display)',fontSize:'14px',cursor:'pointer',transition:'transform .1s steps(2)'}} className="lp-hv-lift2">

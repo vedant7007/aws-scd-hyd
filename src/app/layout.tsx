@@ -3,6 +3,7 @@ import { IBM_Plex_Mono, Pixelify_Sans, Roboto } from 'next/font/google'
 import './globals.css'
 import { CloudTransition } from '@/components/layout/CloudTransition'
 import { event, venue } from '@/content/event'
+import { CLOUDS_BOOT } from '@/lib/clouds'
 import { THEME_BOOT } from '@/lib/theme'
 
 /**
@@ -45,8 +46,11 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
     // the client hydrates against differs from the server's. That is expected.
     <html lang="en" suppressHydrationWarning className={`${display.variable} ${body.variable} ${mono.variable} h-full`}>
       <body className="flex min-h-full flex-col">
-        {/* Theme before anything paints. Inline and synchronous on purpose. */}
+        {/* Theme, then the cloud overlay, before anything paints. Inline and
+            synchronous on purpose: the clouds are over the page in its first
+            frame and part from there, and the theme is set before they read it. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
+        <script dangerouslySetInnerHTML={{ __html: CLOUDS_BOOT }} />
         {/* First tab stop, so a keyboard user is not walked through the nav on
             every page before reaching the content. */}
         <a href="#main" className="skip-link">

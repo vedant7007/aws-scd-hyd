@@ -44,11 +44,11 @@ const normalise = (file) => relative('.', file).replace(/\\/g, '/')
  * Screens ported from the design handoff keep the handoff's own inline
  * literals: its fill colours, shadow offsets and pixel sizes are the design,
  * and the tokens they sit beside come from the theme file. The page transition
- * overlay carries the handoff's two gradient literals for the same reason.
+ * engine carries the handoff's two gradient literals for the same reason.
  */
 const HANDOFF_FILES = [
   ...globSync('src/components/landing/**/*.{ts,tsx}').map(normalise),
-  'src/components/layout/CloudTransition.tsx',
+  'src/lib/clouds.ts',
 ]
 
 /** '*' exempts the file entirely, otherwise only the named rules are skipped. */
