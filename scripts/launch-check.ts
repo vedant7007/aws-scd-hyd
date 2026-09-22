@@ -58,5 +58,4 @@ assert.deepEqual(
 )
 
 console.log('launch guard: 14 assertions passed')
-const here = fromEnvironment()
-console.log(`this environment (${here.mode} mode): ${codes(here).join(', ') || 'no blockers'}`)
+fromEnvironment().then((here) => console.log(`this environment (${here.mode} mode): ${codes(here).join(', ') || 'no blockers'}`))

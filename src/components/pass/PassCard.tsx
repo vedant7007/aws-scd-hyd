@@ -25,7 +25,7 @@ type Props = {
   sessionsNote?: string
 }
 
-export const FOOD_LABEL: Record<FoodPreference, string> = { veg: 'Veg', nonveg: 'Non-veg', jain: 'Jain' }
+export const FOOD_LABEL: Record<FoodPreference, string> = { veg: 'Veg', nonveg: 'Non-veg' }
 
 /** "30 OCT", from the one date in content/event.ts. */
 const DAY = new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', timeZone: 'Asia/Kolkata' })

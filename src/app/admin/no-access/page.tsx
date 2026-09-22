@@ -1,11 +1,10 @@
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { signOutAction } from '@/app/admin/login/actions'
-import { Container } from '@/components/layout/Container'
-import { currentAdmin } from '@/lib/auth/admin'
+import { currentCrew } from '@/lib/auth/admin'
 
 export const metadata: Metadata = {
-  title: 'Not an organiser account',
+  title: 'Not a crew account',
   robots: { index: false, follow: false },
 }
 
@@ -18,26 +17,26 @@ export const dynamic = 'force-dynamic'
  * would still be in the response.
  */
 export default async function NoAccessPage() {
-  const session = await currentAdmin()
+  const session = await currentCrew()
   if (session.status === 'signed-out') redirect('/admin/login')
-  if (session.status === 'ok') redirect('/admin')
+  if (session.status === 'ok') redirect(session.role === 'admin' ? '/admin' : '/admin/scan')
 
   return (
-    <Container className="measure flex flex-col gap-6 py-24">
-      <h1 className="display text-step-3">Not an organiser account</h1>
-      <p className="text-step-1 text-muted">
-        You are signed in as {session.email}, but that address is not on the organiser list, so the
-        dashboard stays closed.
-      </p>
-      <p className="text-muted">
-        If that is wrong, ask Vedant to add it to ADMIN_EMAILS. It takes effect within a few seconds, or
-        straight away if you sign out and back in.
-      </p>
+    <div className="page rise">
+      <div className="flex flex-col gap-2.5">
+        <span className="eye eye-amber">{'// NO ACCESS'}</span>
+        <h1 className="h1">NOT A CREW ACCOUNT</h1>
+        <p className="lede">You are signed in as {session.email}, but that address is on no crew list, so nothing here opens.</p>
+        <p className="copy">
+          If that is wrong, ask an admin to add you on the crew page. It takes effect within a few seconds, or straight away if you sign out
+          and back in.
+        </p>
+      </div>
       <form action={signOutAction}>
-        <button type="submit" className="cta-quiet">
-          Sign out
+        <button type="submit" className="btn">
+          SIGN OUT
         </button>
       </form>
-    </Container>
+    </div>
   )
 }

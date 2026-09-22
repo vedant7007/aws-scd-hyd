@@ -16,8 +16,9 @@ const backend = defineBackend({ auth, reconcile, emailEvents })
 
 /**
  * Organisers only. Self sign up is off, so an account exists only because an
- * admin created it, and /admin still checks the email against ADMIN_EMAILS
- * afterwards. Two gates, because Cognito membership alone is not authorisation.
+ * admin created it from the crew page, and /admin still looks the email up
+ * in the table for a role afterwards. Two gates, because Cognito membership
+ * alone is not authorisation.
  */
 const { cfnUserPool, cfnUserPoolClient } = backend.auth.resources.cfnResources
 cfnUserPool.adminCreateUserConfig = { allowAdminCreateUserOnly: true }
@@ -178,6 +179,14 @@ const ssrCompute = new Role(mail, 'SsrCompute', {
 table.grantReadWriteData(ssrCompute)
 screenshots.grantReadWrite(ssrCompute)
 ssrCompute.addToPolicy(sesSend)
+// The crew page creates and removes sign-in accounts. Create, set the
+// discarded initial password, delete: nothing that reads a password back.
+ssrCompute.addToPolicy(
+  new PolicyStatement({
+    actions: ['cognito-idp:AdminCreateUser', 'cognito-idp:AdminSetUserPassword', 'cognito-idp:AdminDeleteUser'],
+    resources: [backend.auth.resources.userPool.userPoolArn],
+  }),
+)
 
 /* ---------------------------------------------------------------------------
    Deliverability. DMARC, and a custom MAIL FROM so SPF aligns with the From

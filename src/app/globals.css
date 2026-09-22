@@ -287,7 +287,7 @@ html[data-theme="dark"] [data-theme-label="dark"] { display:none; }
 .btn-xl { min-height:64px; font-size:24px; }
 .btn-mono { font-family:var(--font-mono); font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; min-height:44px; padding:0 13px; border-color:var(--line-soft); }
 .btn-mono:hover { border-color:var(--amber-ink); }
-.btn-mono-sm { font-family:var(--font-mono); font-size:10px; letter-spacing:.14em; text-transform:uppercase; min-height:38px; padding:0 10px; border-width:2px; }
+.btn-mono-sm { font-family:var(--font-mono); font-size:10px; letter-spacing:.14em; text-transform:uppercase; min-height:44px; padding:0 10px; border-width:2px; }
 .btn:disabled { opacity:.45; cursor:not-allowed; transform:none; }
 .btn-primary:disabled { box-shadow:5px 5px 0 var(--line); }
 .btn-block { width:100%; }
@@ -2002,3 +2002,15 @@ select.inp { background-image:linear-gradient(45deg,transparent 50%,var(--ink) 5
     border-top: var(--rule-weight) solid var(--border);
   }
 }
+
+/* The handoff's tick box: a square that fills mint with an x when on. */
+.tick { flex:none; width:26px; height:26px; border:3px solid var(--line); display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-size:17px; background:var(--surface); color:transparent; box-sizing:border-box; }
+.tick[data-on="true"] { background:var(--mint-fill); color:var(--on-fill); }
+label:has(> .sr-only:focus-visible) > .tick { outline:3px solid var(--focus); outline-offset:3px; }
+
+/* The crew bar under the site bar on every signed-in crew screen. */
+.crew-bar { position:relative; z-index:10; background:var(--panel); border-bottom:3px solid var(--line); padding:8px clamp(14px,4vw,32px); }
+.crew-bar-in { max-width:1180px; margin:0 auto; display:flex; align-items:center; gap:10px 14px; flex-wrap:wrap; }
+.crew-nav { display:flex; align-items:center; flex-wrap:wrap; gap:2px 6px; margin-left:auto; font-family:var(--font-display); font-size:14px; }
+.crew-nav a { display:inline-flex; align-items:center; min-height:44px; padding:0 7px; color:var(--ink); }
+.crew-nav a:hover { color:var(--mint-ink); }

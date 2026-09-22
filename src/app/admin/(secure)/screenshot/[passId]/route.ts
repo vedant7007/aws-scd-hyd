@@ -1,4 +1,4 @@
-import { currentAdmin } from '@/lib/auth/admin'
+import { currentCrew } from '@/lib/auth/admin'
 import { normalisePassId } from '@/lib/db/keys'
 import { getAttendee } from '@/lib/db/queries'
 import { presignView } from '@/lib/registration/screenshots'
@@ -10,8 +10,9 @@ import { presignView } from '@/lib/registration/screenshots'
  * kind is in either response.
  */
 export async function GET(_req: Request, ctx: RouteContext<'/admin/screenshot/[passId]'>): Promise<Response> {
-  const session = await currentAdmin()
-  if (session.status !== 'ok') return new Response('forbidden', { status: 403, headers: { 'cache-control': 'no-store' } })
+  // Admin only: the screenshot carries the payer's bank details. A volunteer gets the same 403 as a stranger.
+  const session = await currentCrew()
+  if (session.status !== 'ok' || session.role !== 'admin') return new Response('forbidden', { status: 403, headers: { 'cache-control': 'no-store' } })
 
   const { passId: raw } = await ctx.params
   const passId = normalisePassId(raw)

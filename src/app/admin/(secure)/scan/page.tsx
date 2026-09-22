@@ -1,12 +1,12 @@
 import { Scanner } from '@/components/admin/Scanner'
 import { Container } from '@/components/layout/Container'
-import { requireAdmin } from '@/lib/auth/admin'
+import { requireCrew } from '@/lib/auth/admin'
 import { listAttendees } from '@/lib/db/queries'
 import type { RosterEntry } from '@/lib/scan-queue'
 
 export default async function ScanPage() {
   // Guard first, before the roster is loaded or serialised.
-  await requireAdmin()
+  await requireCrew()
 
   const attendees = await listAttendees()
 

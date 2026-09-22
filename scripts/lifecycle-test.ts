@@ -11,7 +11,15 @@
  * deleted at the end, whatever happened.
  */
 import assert from 'node:assert/strict'
+import {
+  AdminCreateUserCommand,
+  AdminDeleteUserCommand,
+  AdminSetUserPasswordCommand,
+  CognitoIdentityProviderClient,
+  InitiateAuthCommand,
+} from '@aws-sdk/client-cognito-identity-provider'
 import { DeleteCommand, GetCommand, PutCommand, TransactWriteCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
+import { randomBytes } from 'node:crypto'
 import { ddb, tableName } from '../src/lib/db/client'
 import { gsi1, keys, newPassId, normalisePassId } from '../src/lib/db/keys'
 import { getAttendee, getAttendeeWithSeats, getTrackCounters } from '../src/lib/db/queries'
@@ -19,18 +27,28 @@ import { releaseItems } from '../src/lib/db/seats'
 import type { Attendee, RegistrationState, Session, Track, TrackCounter } from '../src/lib/db/types'
 import * as send from '../src/lib/email/send'
 import { RECEIPT_FORBIDDEN_WORDS, receipt, rejection } from '../src/lib/email/templates'
-import { adminReject, adminVerify, changeSelection, sendSessionsLive, sweepAbandoned, validatePicks } from '../src/lib/registration/flow'
+import { addUser, adminCount, getUser, removeUser, setRole } from '../src/lib/auth/crew'
+import { REFUND_POLICY } from '../src/content/passes'
+import { confirmation } from '../src/lib/email/templates'
+import { adminReject, adminVerify, changeSelection, sendSessionsLive, stepOne, stepTwo, sweepAbandoned, validatePicks } from '../src/lib/registration/flow'
+import { slotLabel, slotTime } from '../src/lib/utils'
+import { outputs } from '../src/lib/outputs'
 import {
   TRANSITIONS,
   abandon,
+  earlyBirdCounter,
+  ensureEarlyBirdCounter,
   registerStepOne,
   reinstate,
   reject,
   selectSessions,
+  setRegistrationOpen,
+  setTrackRoom,
   submitUtr,
   verify,
   verifyByProvider,
 } from '../src/lib/registration/state'
+import { launchStatus } from '../src/lib/tickets/launch'
 import { slots } from '../src/content/event'
 
 const table = () => tableName()
@@ -59,6 +77,8 @@ async function seedIn(state: RegistrationState, extra: Partial<Attendee> = {}): 
     email: `${passId.toLowerCase()}@scd-test.example`,
     phone: '+919000000000',
     college: 'Test',
+    yearOfStudy: '2',
+    over18: true,
     tier: 'basic',
     homeTrack: 'ai',
     foodPreference: 'veg',
@@ -105,6 +125,7 @@ const sends = (email: string) => sent.get(email.toLowerCase()) ?? 0
 
 async function cleanup(): Promise<void> {
   console.info = realInfo
+  for (const k of submitKeys) await ddb.send(new DeleteCommand({ TableName: table(), Key: { PK: `SUBMIT#${k}`, SK: 'REG' } }))
   for (const passId of created) {
     const { attendee, seats } = await getAttendeeWithSeats(passId)
     if (!attendee) continue
@@ -169,7 +190,7 @@ async function stateMachine(): Promise<void> {
 
   // Double-submitted form: one record, counter +1.
   const c0 = (await counter('ai')).registered
-  const reg = { name: 'Double', email: 'double@scd-test.example', phone: '+919000000001', college: 'T', tier: 'basic' as const, homeTrack: 'ai' as const, foodPreference: 'veg' as const }
+  const reg = { name: 'Double', email: 'double@scd-test.example', phone: '+919000000001', college: 'T', tier: 'basic' as const, homeTrack: 'ai' as const, foodPreference: 'veg' as const, yearOfStudy: '2' as const, over18: true as const }
   const key = `dbl${Date.now()}`
   const setup = { mode: 'manual' as const, amountPaise: 39900, holdUntil: new Date(Date.now() + 3600e3).toISOString(), submissionKey: key }
   const [r1, r2] = await Promise.all([registerStepOne(newPassId(), reg, setup), registerStepOne(newPassId(), reg, setup)])
@@ -181,6 +202,8 @@ async function stateMachine(): Promise<void> {
   }
   assert.equal((await counter('ai')).registered, c0 + 1, 'counter moved by exactly one')
   await ddb.send(new DeleteCommand({ TableName: table(), Key: { PK: `SUBMIT#${key}`, SK: 'REG' } }))
+  // The record is deleted at cleanup; the place it counted is given back here so repeated runs do not fill the track.
+  await ddb.send(new UpdateCommand({ TableName: table(), Key: keys.trackCounter('ai'), UpdateExpression: 'SET registered = registered - :one', ConditionExpression: 'registered > :zero', ExpressionAttributeValues: { ':one': 1, ':zero': 0 } }))
   ok('double-submitted form: one record, counter +1')
 }
 
@@ -190,7 +213,7 @@ async function trackCounter(): Promise<void> {
   console.log('\ntrack counter')
   const orig = await counter('career')
   await setCounter('career', orig.registered, orig.registered + 2)
-  const reg = (n: number) => ({ name: `Fill ${n}`, email: `fill${n}@scd-test.example`, phone: '+919000000002', college: 'T', tier: 'basic' as const, homeTrack: 'career' as const, foodPreference: 'veg' as const })
+  const reg = (n: number) => ({ name: `Fill ${n}`, email: `fill${n}@scd-test.example`, phone: '+919000000002', college: 'T', tier: 'basic' as const, homeTrack: 'career' as const, foodPreference: 'veg' as const, yearOfStudy: '2' as const, over18: true as const })
   const setup = (k: string) => ({ mode: 'manual' as const, amountPaise: 39900, holdUntil: new Date(Date.now() + 3600e3).toISOString(), submissionKey: k })
   const a = await registerStepOne(newPassId(), reg(1), setup(`f1${Date.now()}`))
   const b = await registerStepOne(newPassId(), reg(2), setup(`f2${Date.now()}`))
@@ -419,6 +442,296 @@ async function http(): Promise<void> {
   ok('a full session answers 409 naming it with fresh counts and no partial claim; a free one claims and moves the state; a repeat is refused')
 }
 
+/* ---- round 2: early bird, the switch, roles, times ----------------------- */
+
+const EB_KEY = keys.earlyBird()
+async function setEarlyBird(claimed: number, ceiling: number): Promise<void> {
+  await ddb.send(new PutCommand({ TableName: table(), Item: { ...EB_KEY, claimed, ceiling } }))
+}
+const submitKey = (tag: string) => `${tag}${Date.now()}${randomBytes(4).toString('hex')}`
+const regFor = (n: number, track: Track) => ({
+  name: `Bird ${n}`,
+  email: `bird${n}.${Date.now()}@scd-test.example`,
+  phone: '+919000000003',
+  college: 'Test',
+  yearOfStudy: '1' as const,
+  tier: 'basic' as const,
+  homeTrack: track,
+  foodPreference: 'veg' as const,
+  over18: true as const,
+})
+const submitKeys: string[] = []
+
+async function earlyBird(): Promise<void> {
+  console.log('\nearly bird')
+  await ensureEarlyBirdCounter()
+  const pool0 = (await earlyBirdCounter())!
+  const track: Track = 'ai'
+  const c0 = await counter(track)
+  // Room for 60 on the track, a pool of exactly 50.
+  await setCounter(track, c0.registered, c0.registered + 60)
+  await setEarlyBird(0, 50)
+
+  // 51 registrations at once. 50 get the discount, one gets full price with the miss recorded, none fail.
+  const runs = await Promise.all(
+    Array.from({ length: 51 }, (_, i) => {
+      const k = submitKey(`eb${i}`)
+      submitKeys.push(k)
+      return stepOne(regFor(i, track), k)
+    }),
+  )
+  const okRuns = runs.filter((r) => r.ok)
+  assert.equal(okRuns.length, 51, 'every registration completed')
+  for (const r of okRuns) if (r.ok) created.push(r.attendee.passId)
+  const records = await Promise.all(okRuns.map((r) => (r.ok ? getAttendee(r.attendee.passId) : null)))
+  const discounted = records.filter((a) => a?.earlyBird === true)
+  const full = records.filter((a) => a && a.earlyBird !== true)
+  assert.equal(discounted.length, 50, 'exactly 50 discounted')
+  assert.ok(discounted.every((a) => a!.amountPaise === 34900 && a!.listPricePaise === 39900), 'discounted records carry 34900 with the list price beside it')
+  assert.equal(full.length, 1, 'exactly one at full price')
+  assert.equal(full[0]!.amountPaise, 39900)
+  assert.equal(full[0]!.earlyBirdMissed, true, 'the 51st is marked as having missed the pool')
+  assert.equal((await earlyBirdCounter())!.claimed, 50, 'the pool is exactly full')
+  assert.equal((await counter(track)).registered, c0.registered + 51, 'the track counted all 51')
+  ok('51 concurrent registrations: 50 discounted, the 51st at full price and told so, none failed, pool at 50')
+
+  // Abandon one discounted record: its place comes back, and the next registration gets it.
+  const victim = discounted[0]!
+  await ddb.send(new UpdateCommand({ TableName: table(), Key: keys.attendee(victim.passId), UpdateExpression: 'SET holdUntil = :h', ExpressionAttributeValues: { ':h': new Date(Date.now() - 1000).toISOString() } }))
+  assert.equal((await abandon(victim.passId)).abandoned, true)
+  assert.equal((await earlyBirdCounter())!.claimed, 49, 'abandon returned the early bird place')
+  const k2 = submitKey('eb52')
+  submitKeys.push(k2)
+  const next = await stepOne(regFor(52, track), k2)
+  assert.ok(next.ok)
+  if (next.ok) {
+    created.push(next.attendee.passId)
+    assert.equal(next.attendee.earlyBird, true, 'the next registration got the returned place')
+    assert.equal(next.attendee.amountPaise, 34900)
+  }
+  assert.equal((await earlyBirdCounter())!.claimed, 50)
+  ok('an abandoned record returns its slot and the next registration gets the discount')
+
+  // The price is locked at step one: empty the pool, verify, and the record still says 34900.
+  const locked = discounted[1]!
+  await setEarlyBird(50, 50)
+  const utr = await submitUtr(locked.passId, nextUtr(), `screenshots/${locked.passId}/t.jpg`)
+  assert.ok(utr.ok)
+  const v = await verify(locked.passId, 'test@admin')
+  assert.ok(v.ok)
+  const after = (await getAttendee(locked.passId))!
+  assert.equal(after.state, 'VERIFIED')
+  assert.equal(after.amountPaise, 34900, 'the stored amount is what the admin verifies against, pool empty or not')
+  assert.equal(after.earlyBird, true)
+  ok('the amount stored at step one survives the pool emptying and is what verification records')
+
+  // Reinstate with the pool empty: full price, and the caller is told. With a place free: the discount is re-claimed.
+  await ddb.send(new UpdateCommand({ TableName: table(), Key: keys.attendee(victim.passId), UpdateExpression: 'SET #s = :s', ExpressionAttributeNames: { '#s': 'state' }, ExpressionAttributeValues: { ':s': 'ABANDONED' } }))
+  const backFull = await reinstate(victim.passId, 'test@admin', nextUtr())
+  assert.ok(backFull.ok && backFull.priced === 'full', 'reinstate into an empty pool falls back to full price')
+  if (backFull.ok) {
+    assert.equal(backFull.attendee.amountPaise, 39900)
+    assert.equal(backFull.attendee.earlyBird, false)
+  }
+  const other = discounted[2]!
+  await ddb.send(new UpdateCommand({ TableName: table(), Key: keys.attendee(other.passId), UpdateExpression: 'SET #s = :s', ExpressionAttributeNames: { '#s': 'state' }, ExpressionAttributeValues: { ':s': 'ABANDONED' } }))
+  await setEarlyBird(49, 50)
+  const backEarly = await reinstate(other.passId, 'test@admin', nextUtr())
+  assert.ok(backEarly.ok && backEarly.priced === 'early', 'reinstate with a place free keeps the discount')
+  assert.equal((await earlyBirdCounter())!.claimed, 50)
+  ok('reinstate: full price when the pool is empty (and the admin is told), the stored discount when a place is free')
+
+  await setCounter(track, c0.registered, c0.ceiling ?? c0.registered + 4)
+  await setEarlyBird(pool0.claimed, pool0.ceiling)
+}
+
+async function theSwitch(): Promise<void> {
+  console.log('\nregistration switch')
+  const before = (await launchStatus()).registrationOpen
+  await setRegistrationOpen(false, 'test@admin')
+  assert.equal((await launchStatus()).registrationOpen, false, 'closed on the very next read')
+
+  // A record made before the close still submits its UTR, verification still works.
+  const inFlight = await seedIn('AWAITING_PAYMENT')
+  const two = await stepTwo(inFlight.passId, nextUtr(), `screenshots/${inFlight.passId}/t.jpg`)
+  assert.ok(two.ok, 'UTR accepted while closed')
+  assert.equal((await getAttendee(inFlight.passId))?.state, 'PENDING_VERIFICATION')
+  const v = await verify(inFlight.passId, 'test@admin')
+  assert.ok(v.ok, 'verification works while closed')
+  ok('closed: an in-flight record submits its UTR and is verified as normal')
+
+  if (BASE) {
+    const email = `closed.${Date.now()}@scd-test.example`
+    const r = await fetch(`${BASE}/api/register`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ ...regFor(99, 'ai'), email, submissionKey: submitKey('closed') }),
+    })
+    assert.equal(r.status, 403)
+    const body = (await r.json()) as { reason?: string }
+    assert.equal(body.reason, 'closed')
+    const rows = await import('../src/lib/db/queries').then((m) => m.listAttendees())
+    assert.ok(!rows.some((a) => a.email === email), 'no record was created by the refused POST')
+    ok('closed: a direct POST to step one is a 403 and creates nothing')
+  }
+
+  await setRegistrationOpen(before, 'test@admin')
+  assert.equal((await launchStatus()).registrationOpen, before)
+}
+
+async function rooms(): Promise<void> {
+  console.log('\nrooms')
+  const track: Track = 'career'
+  const c0 = await counter(track)
+  const slotIds = slots.map((s) => s.id)
+  // C block first floor sells 85. Ninety registered: refused, naming the count.
+  await setCounter(track, 90, 94)
+  const refused = await setTrackRoom(track, 'c-1', 'test@admin', slotIds)
+  assert.deepEqual(refused, { ok: false, reason: 'below-registered', registered: 90, ceiling: 85 })
+  assert.equal((await counter(track)).ceiling, 94, 'nothing changed')
+  // Ten registered: accepted, ceiling 85.
+  await setCounter(track, 10, 14)
+  const accepted = await setTrackRoom(track, 'c-1', 'test@admin', slotIds)
+  assert.deepEqual(accepted, { ok: true, ceiling: 85 })
+  assert.equal((await counter(track)).ceiling, 85)
+  await setCounter(track, c0.registered, c0.ceiling ?? c0.registered + 4)
+  ok('a track cannot move to a room whose ceiling is below its registered count; a fitting room sets the ceiling')
+}
+
+async function roles(): Promise<void> {
+  console.log('\nroles')
+  const stamp = Date.now()
+  const a = `admin.a.${stamp}@scd-test.example`
+  const b = `admin.b.${stamp}@scd-test.example`
+  const vol = `vol.${stamp}@scd-test.example`
+  const cleanupUsers = async () => {
+    for (const e of [a, b, vol]) await ddb.send(new DeleteCommand({ TableName: table(), Key: keys.user(e) }))
+  }
+  const admins0 = await adminCount()
+  const metaKey = keys.usersMeta()
+  try {
+    assert.ok((await addUser(a, 'admin', 'test')).ok)
+    assert.ok((await addUser(vol, 'volunteer', 'test')).ok)
+    assert.equal((await getUser(vol))?.role, 'volunteer')
+    if (admins0 === 0) {
+      assert.equal((await setRole(a, 'volunteer', a)).ok, false, 'the last admin cannot demote themselves')
+      assert.equal((await removeUser(a, a)).ok, false, 'the last admin cannot remove themselves')
+      assert.equal((await getUser(a))?.role, 'admin', 'still an admin')
+    }
+    assert.ok((await addUser(b, 'admin', a)).ok)
+    assert.ok((await setRole(a, 'volunteer', a)).ok, 'with a second admin present, demotion goes through')
+    assert.equal((await adminCount()), admins0 + 1)
+    if (admins0 === 0) assert.equal((await removeUser(b, b)).ok, false, 'b is now the last admin and cannot be removed')
+    ok(`last admin protected: demote and remove refused while alone, allowed once another admin exists${admins0 ? ' (table already had admins, only the allowed path checked)' : ''}`)
+  } finally {
+    await cleanupUsers()
+    await ddb.send(new UpdateCommand({ TableName: table(), Key: metaKey, UpdateExpression: 'SET admins = :n', ExpressionAttributeValues: { ':n': admins0 } }))
+  }
+
+  // No password in the create flow: whatever is logged and returned while an account is made and removed.
+  const admin = await import('../src/lib/auth/admin')
+  const lines: string[] = []
+  const grab = (...args: unknown[]) => lines.push(args.map(String).join(' '))
+  const saved = { log: console.log, warn: console.warn, error: console.error, info: console.info }
+  console.log = grab
+  console.warn = grab
+  console.error = grab
+  console.info = grab
+  let made: unknown
+  try {
+    made = await admin.createCrewAccount(vol)
+    await admin.deleteCrewAccount(vol)
+  } finally {
+    Object.assign(console, saved)
+  }
+  assert.deepEqual(Object.keys(made as object), ['created'], 'the create call returns nothing but the flag')
+  assert.ok(!lines.some((l) => /password/i.test(l)), 'nothing logged mentions a password')
+  assert.equal(sends(vol), 0, 'the application emailed nothing')
+  ok('account creation returns and logs no password and sends no email')
+}
+
+async function volunteerHttp(): Promise<void> {
+  if (!BASE) return
+  console.log('\nvolunteer over http')
+  const out = outputs()
+  const poolId = out?.auth?.user_pool_id ?? process.env.COGNITO_USER_POOL_ID
+  const clientId = out?.auth?.user_pool_client_id ?? process.env.COGNITO_USER_POOL_CLIENT_ID
+  if (!poolId || !clientId) {
+    console.log('  skipped: no Cognito pool in amplify_outputs.json')
+    return
+  }
+  const cognito = new CognitoIdentityProviderClient({ region: process.env.AWS_REGION ?? 'ap-south-1' })
+  const vol = `gate.${Date.now()}@scd-test.example`
+  const password = `T${randomBytes(12).toString('base64url')}a1!`
+  const pend = await seedIn('PENDING_VERIFICATION')
+  try {
+    await cognito.send(new AdminCreateUserCommand({ UserPoolId: poolId, Username: vol, MessageAction: 'SUPPRESS', UserAttributes: [{ Name: 'email', Value: vol }, { Name: 'email_verified', Value: 'true' }] }))
+    await cognito.send(new AdminSetUserPasswordCommand({ UserPoolId: poolId, Username: vol, Password: password, Permanent: true }))
+    assert.ok((await addUser(vol, 'volunteer', 'test')).ok)
+    const auth = await cognito.send(new InitiateAuthCommand({ AuthFlow: 'USER_PASSWORD_AUTH', ClientId: clientId, AuthParameters: { USERNAME: vol, PASSWORD: password } }))
+    const refresh = auth.AuthenticationResult?.RefreshToken
+    assert.ok(refresh, 'volunteer signed in')
+    const as = (path: string, init: RequestInit = {}) => fetch(`${BASE}${path}`, { ...init, redirect: 'manual', headers: { ...(init.headers ?? {}), cookie: `scd_admin=${refresh}` } })
+
+    // The chrome names the public contact address and the crew bar names the volunteer. Nobody else may appear.
+    const noLeak = async (r: Response, what: string) => {
+      const body = await r.text()
+      const addresses = [...new Set(body.match(/[w.+-]+@[w-]+(?:.[w-]+)+/g) ?? [])].filter((a) => a !== vol && a !== 'awssbgvjit@gmail.com')
+      assert.deepEqual(addresses, [], `${what}: body carries an address`)
+      assert.ok(!body.includes(pend.passId), `${what}: body carries a pass id`)
+      assert.ok(!/scd-test.example|example.test/.test(body.replace(vol, '')), `${what}: body carries an attendee domain`)
+    }
+    for (const path of ['/admin', '/admin/users', '/admin/settings']) {
+      const r = await as(path)
+      assert.ok(r.status >= 300 && r.status < 400, `${path} is not a redirect for a volunteer: ${r.status}`)
+      assert.equal(new URL(r.headers.get('location') ?? '', BASE).pathname, '/admin/scan')
+      await noLeak(r, path)
+    }
+    const csv = await as('/api/admin/food-csv')
+    assert.equal(csv.status, 403)
+    await noLeak(csv, 'food-csv')
+    const shot = await as(`/admin/screenshot/${pend.passId}`)
+    assert.equal(shot.status, 403)
+    await noLeak(shot, 'screenshot')
+    const scanPage = await as('/admin/scan')
+    assert.equal(scanPage.status, 200, 'the scanner is the volunteer\'s page')
+    const scan = await as('/api/admin/scan', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ passId: pend.passId, action: 'lookup' }) })
+    assert.equal(scan.status, 200, 'the scan route serves a volunteer')
+    ok('volunteer: dashboard, crew and settings redirect to the scanner, export and screenshot are 403, no address or id in any body, scanner works')
+  } finally {
+    await removeUser(vol, 'test')
+    try {
+      await cognito.send(new AdminDeleteUserCommand({ UserPoolId: poolId, Username: vol }))
+    } catch {
+      // Never created.
+    }
+  }
+}
+
+async function times(): Promise<void> {
+  console.log('\ntimes')
+  assert.equal(slotTime({ startsAt: null, endsAt: null }), null)
+  assert.equal(slotTime({ startsAt: 'not a date', endsAt: null }), null)
+  assert.equal(slotTime({ startsAt: '', endsAt: '' }), null)
+  assert.equal(slotLabel({ label: '' }, 2), 'Slot 3')
+  assert.equal(slotLabel({ label: '  ' }, 0), 'Slot 1')
+  assert.equal(slotLabel({ label: 'Morning' }, 0), 'Morning')
+  assert.ok(confirmation({ passId: 'SCD-TESTTESTTE', name: 'Test Person', email: 'x@scd-test.example', tier: 'basic', homeTrack: 'ai' } as Parameters<typeof confirmation>[0]).text.includes(REFUND_POLICY), 'confirmation carries the refund policy')
+  ok('an unset or unparseable slot time renders as nothing, a blank label falls back to Slot N, email 2 carries the refund wording')
+
+  if (!BASE) return
+  const ver = await seedIn('VERIFIED', { tier: 'vip', homeTrack: 'ai' })
+  for (const path of ['/', '/schedule', `/pass/${ver.passId}`, '/register']) {
+    const html = await (await fetch(`${BASE}${path}`)).text()
+    const text = html.replace(/<script[\s\S]*?<\/script>/g, '').replace(/<style[\s\S]*?<\/style>/g, '')
+    assert.ok(!/Invalid Date/.test(text), `${path} renders Invalid Date`)
+    const times = (text.match(/\b\d{1,2}:\d{2}\b/g) ?? []).filter((t) => t !== '09:30')
+    assert.deepEqual(times, [], `${path} renders a session time: ${times.join(', ')}`)
+    assert.ok(!/Slot (?:\d+)?\s*[-–]\s*</.test(text), `${path} renders a dash for a slot time`)
+  }
+  ok('no public page renders a session time, an empty slot label, a dash or an invalid date while times are unset')
+}
+
 /* ---- run ------------------------------------------------------------------ */
 
 async function main(): Promise<void> {
@@ -428,6 +741,12 @@ async function main(): Promise<void> {
     await emails()
     await sessions()
     await http()
+    await earlyBird()
+    await theSwitch()
+    await rooms()
+    await roles()
+    await volunteerHttp()
+    await times()
     console.log(`\n${passed} checks passed`)
   } finally {
     await cleanup()

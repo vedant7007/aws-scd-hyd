@@ -54,6 +54,8 @@ async function contender(name: string): Promise<Attendee> {
     email: `${name}@example.test`,
     phone: '+919000000000',
     college: 'Race',
+    yearOfStudy: '3',
+    over18: true,
     tier: 'vip',
     homeTrack: 'career',
     foodPreference: 'veg',

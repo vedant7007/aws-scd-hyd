@@ -14,7 +14,8 @@ export const payment = {
 
 /**
  * Amendment 1 section 2.3. How long an AWAITING_PAYMENT record keeps its
- * place against the track counter before the sweep abandons it. The sweep
- * runs hourly, so the effective hold is this to this plus sixty minutes.
+ * place against the track counter before the sweep abandons it. Ninety
+ * minutes by the organiser's decision. The sweep runs hourly, so the
+ * effective hold is this to this plus sixty minutes.
  */
-export const holdMinutes = 60
+export const holdMinutes = 90

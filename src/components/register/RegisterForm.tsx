@@ -2,12 +2,14 @@
 
 import Link from 'next/link'
 import { useId, useRef, useState, type FormEvent } from 'react'
-import type { FoodPreference, Tier, Track } from '@/lib/db/types'
+import { YEARS_OF_STUDY, type FoodPreference, type Tier, type Track, type YearOfStudy } from '@/lib/db/types'
 
 export type TierOption = {
   id: Tier
   name: string
   priceLabel: string
+  /** The early bird price, set only while the pool has places. */
+  earlyPriceLabel: string | null
   /** True while content/passes.ts has no price and the test amount is in force. */
   placeholder: boolean
   includes: string[]
@@ -21,8 +23,9 @@ export type TrackOption = { id: Track; name: string; blurb: string }
 const FOODS: { id: FoodPreference; label: string }[] = [
   { id: 'veg', label: 'VEG' },
   { id: 'nonveg', label: 'NON-VEG' },
-  { id: 'jain', label: 'JAIN' },
 ]
+
+const YEAR_LABEL: Record<YearOfStudy, string> = { '1': '1st year', '2': '2nd year', '3': '3rd year', '4': '4th year', other: 'Other' }
 
 /** What /api/register hands back. */
 type Registered = {
@@ -61,7 +64,7 @@ function loadCheckout(): Promise<RazorpayCtor> {
   return checkoutJs
 }
 
-const DETAIL_FIELDS = ['name', 'email', 'phone', 'college'] as const
+const DETAIL_FIELDS = ['name', 'email', 'phone', 'college', 'yearOfStudy'] as const
 
 /**
  * Step one of registration: the form and the home track. On success the
@@ -82,16 +85,22 @@ export function RegisterForm({
   preselect,
   eventName,
   contactEmail,
+  earlyBird,
+  refundPolicy,
 }: {
   tiers: TierOption[]
   tracks: TrackOption[]
   preselect?: Tier
   eventName: string
   contactEmail: string
+  /** The pool as read on this request. Null once empty, and then nothing of it is drawn. */
+  earlyBird: { left: number; total: number } | null
+  refundPolicy: string
 }) {
   const [tier, setTier] = useState<Tier | ''>(preselect ?? tiers.find((t) => t.recommended)?.id ?? tiers[0]?.id ?? '')
   const [homeTrack, setHomeTrack] = useState<Track | ''>('')
   const [food, setFood] = useState<FoodPreference | ''>('')
+  const [over18, setOver18] = useState(false)
   const [detailsDone, setDetailsDone] = useState(false)
   const [phase, setPhase] = useState<Phase>({ kind: 'form' })
   const [error, setError] = useState<{ field?: string; message: string } | null>(null)
@@ -146,9 +155,11 @@ export function RegisterForm({
       email: String(fd.get('email') ?? ''),
       phone: String(fd.get('phone') ?? ''),
       college: String(fd.get('college') ?? ''),
+      yearOfStudy: String(fd.get('yearOfStudy') ?? ''),
       tier,
       homeTrack,
       foodPreference: food,
+      over18,
       submissionKey: (submissionKey.current ||= crypto.randomUUID().replace(/-/g, '')),
     }
 
@@ -185,7 +196,8 @@ export function RegisterForm({
   }
 
   const fieldError = (field: string) => (error?.field === field ? error.message : null)
-  const done = [Boolean(tier), detailsDone, Boolean(homeTrack), Boolean(food)]
+  const done = [Boolean(tier), detailsDone, Boolean(homeTrack), Boolean(food) && over18]
+  const payLabel = (t: TierOption) => t.earlyPriceLabel ?? t.priceLabel
   const now = done.indexOf(false)
   const coverage = (t: TierOption) =>
     t.tracksAllowed >= tracks.length
@@ -218,6 +230,11 @@ export function RegisterForm({
             <span className="lbl">Choose a pass</span>
           </legend>
           <h2 className="h1">PICK YOUR PASS</h2>
+          {earlyBird ? (
+            <p className="pill self-start" role="status">
+              {earlyBird.left} of {earlyBird.total} early bird places left
+            </p>
+          ) : null}
           <div className="flex flex-col gap-3" role="radiogroup" aria-label="Pass" aria-describedby={fieldError('tier') ? `${ids}-tier-err` : undefined}>
             {tiers.map((t) => {
               const on = tier === t.id
@@ -226,7 +243,16 @@ export function RegisterForm({
                   <input type="radio" name="tier" value={t.id} checked={on} onChange={() => setTier(t.id)} className="sr-only" />
                   <span className="opt-row">
                     <span className="opt-title opt-title-lg uppercase">{t.name}</span>
-                    <span className="price">{t.priceLabel}</span>
+                    <span className="price">
+                      {t.earlyPriceLabel ? (
+                        <>
+                          <s className="mr-2 opacity-55">{t.priceLabel}</s>
+                          {t.earlyPriceLabel}
+                        </>
+                      ) : (
+                        t.priceLabel
+                      )}
+                    </span>
                   </span>
                   <span className="opt-copy">
                     {coverage(t)}
@@ -363,6 +389,34 @@ export function RegisterForm({
                 </p>
               ) : null}
             </div>
+            <div className="fld">
+              <label htmlFor={`${ids}-year`}>
+                Year of study <span className="req">*</span>
+              </label>
+              <select
+                id={`${ids}-year`}
+                name="yearOfStudy"
+                className="inp"
+                required
+                defaultValue=""
+                aria-invalid={fieldError('yearOfStudy') ? true : undefined}
+                aria-describedby={fieldError('yearOfStudy') ? `${ids}-year-err` : undefined}
+              >
+                <option value="" disabled>
+                  Pick one
+                </option>
+                {YEARS_OF_STUDY.map((y) => (
+                  <option key={y} value={y}>
+                    {YEAR_LABEL[y]}
+                  </option>
+                ))}
+              </select>
+              {fieldError('yearOfStudy') ? (
+                <p id={`${ids}-year-err`} className="err-text">
+                  {fieldError('yearOfStudy')}
+                </p>
+              ) : null}
+            </div>
           </div>
         </fieldset>
 
@@ -432,6 +486,16 @@ export function RegisterForm({
               </p>
             ) : null}
           </div>
+          <div className="panel flex flex-col gap-2 p-4">
+            <label className="flex min-h-11 items-start gap-3">
+              <input type="checkbox" name="over18" checked={over18} onChange={(e) => setOver18(e.target.checked)} className="sr-only" required />
+              <span className="tick" data-on={over18 ? 'true' : undefined} aria-hidden="true">
+                {over18 ? 'x' : ''}
+              </span>
+              <span className="copy pt-0.5 text-ink">I will be 18 or older on the day of the event.</span>
+            </label>
+            {fieldError('over18') ? <p className="err-text">{fieldError('over18')}</p> : null}
+          </div>
         </fieldset>
 
         {error && !error.field ? (
@@ -453,6 +517,7 @@ export function RegisterForm({
             You pay by UPI from your own app on the next screen, then send us the UTR and a screenshot. We check it against the bank
             statement and email your pass link.
           </p>
+          <p className="copy">{refundPolicy}</p>
           <p className="hint">Questions go to {contactEmail}.</p>
         </div>
       </form>
@@ -464,9 +529,9 @@ export function RegisterForm({
               {chosen ? chosen.name : 'No pass picked'}
               {homeTrack ? ` · ${tracks.find((t) => t.id === homeTrack)?.name ?? ''}` : ''}
             </span>
-            <span className="bar-val">{chosen?.priceLabel ?? '-'}</span>
+            <span className="bar-val">{chosen ? payLabel(chosen) : '-'}</span>
           </div>
-          <button type="submit" form={formId} className="btn btn-primary" disabled={busy || !tier || !food || !homeTrack}>
+          <button type="submit" form={formId} className="btn btn-primary" disabled={busy || !tier || !food || !homeTrack || !over18}>
             {submitLabel}
           </button>
         </div>

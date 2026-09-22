@@ -10,6 +10,12 @@ export const keys = {
   /** One per track: how many registrations count against its room. Amendment 1 section 2. */
   trackCounter: (track: Track) => ({ PK: `TRACK#${track}`, SK: 'COUNTER' }),
   config: () => ({ PK: 'CONFIG', SK: 'EVENT' }),
+  earlyBird: () => ({ PK: 'EARLYBIRD', SK: 'COUNTER' }),
+  user: (email: string) => ({ PK: `USER#${normaliseEmail(email)}`, SK: 'PROFILE' }),
+  usersMeta: () => ({ PK: 'USERS', SK: 'META' }),
+  crewAudit: (at: string, target: string) => ({ PK: 'CREWLOG', SK: `${at}#${normaliseEmail(target)}` }),
+  /** Written once by the first-admin bootstrap so it can never run twice. */
+  bootstrap: () => ({ PK: 'BOOTSTRAP', SK: 'ADMIN' }),
   reconcile: () => ({ PK: 'RECONCILE', SK: 'LATEST' }),
   order: (orderId: string) => ({ PK: `ORDER#${orderId}`, SK: 'ATT' }),
   /** One per UTR ever submitted. Its existence is the uniqueness rule. */
@@ -30,6 +36,8 @@ export const gsi1 = {
     GSI1SK: `SESSION#${sessionId}`,
   }),
   subscriberByDate: (createdAt: string) => ({ GSI1PK: 'SUBS', GSI1SK: createdAt }),
+  /** Every crew account, oldest first. */
+  userByDate: (addedAt: string) => ({ GSI1PK: 'USERS', GSI1SK: addedAt }),
   emailEventByType: (type: string, occurredAt: string) => ({
     GSI1PK: `EMAILEVENT#${type}`,
     GSI1SK: occurredAt,

@@ -1,6 +1,7 @@
 import { event, venue } from '../../content/event'
 import { tierLabel } from '../../content/passes'
 import { roomById, trackName } from '../../content/sessions'
+import { REFUND_POLICY } from '../../content/passes'
 import { slotTime } from '../utils'
 import type { Attendee, Session, Slot } from '../db/types'
 import { siteUrl } from '../site'
@@ -127,6 +128,9 @@ When:  ${event.dateLabel}, doors ${doors} IST
 Where: ${venue.name}
 Map:   ${venue.directionsUrl}
 
+REFUNDS
+${REFUND_POLICY}
+
 ${footerText}`,
     html: `<p>Hi ${esc(firstName(r.name))},</p>
 <p>Your registration is confirmed. Your <strong>${esc(tierLabel(r.tier))} pass</strong> for ${esc(event.name)} is yours.</p>
@@ -137,6 +141,8 @@ ${footerText}`,
 <p>Your track is ${esc(trackName(r.homeTrack))}. Sessions for it are announced closer to the day, and you will get an email the moment you can choose yours.</p>
 <h2>When and where</h2>
 <p>${esc(event.dateLabel)}, doors ${doors} IST<br>${esc(venue.name)}<br><a href="${venue.directionsUrl}">Open in Google Maps</a></p>
+<h2>Refunds</h2>
+<p>${esc(REFUND_POLICY)}</p>
 ${footerHtml}`,
   }
 }

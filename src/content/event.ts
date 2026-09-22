@@ -67,11 +67,31 @@ export const rooms: Room[] = [
 ]
 
 /**
- * TODO(vedant): which track runs in which room. Empty until decided. Every
- * room feature reads this: a track without a room says so, and a session in
- * no room has no physical capacity and cannot be sold.
+ * Seats held back from sale in EVERY room, for speakers, sponsors,
+ * organisers, VIP flex and no-shows. Fifteen, by the organiser's decision.
+ * A session's sellable capacity is its room's physical count minus this
+ * unless sessionDetails says otherwise.
  */
-export const roomForTrack: Partial<Record<Track, string>> = {}
+export const ROOM_RESERVE = 15
+
+/**
+ * PROVISIONAL. Which track runs in which room. The organiser has not
+ * decided, and registration opens anyway, so these stand until they do:
+ *
+ *   AI and Agents  ->  C-block ground floor, 400 seats, sells 385
+ *   Cloud          ->  E-block auditorium,   240 seats, sells 225
+ *   Career         ->  C-block first floor,  100 seats, sells  85
+ *
+ * The room may change; the ceiling may only be raised. Once people have
+ * registered against a track, moving it to a smaller room would oversell
+ * it, which is not recoverable on the day, so the admin action that changes
+ * a room refuses any ceiling below the track's registered count.
+ */
+export const roomForTrack: Partial<Record<Track, string>> = {
+  ai: 'c-g',
+  cloud: 'e-aud',
+  career: 'c-1',
+}
 
 /**
  * Four slots. 3 tracks x 4 slots = 12 sessions. TODO(vedant): times are
@@ -90,10 +110,9 @@ export const slots: Slot[] = [
  * field is TODO(vedant) and absent until decided. Titles and speakers arrive
  * with the line-up. The type is never assumed: nothing is a workshop until
  * it is written here. sellableCapacity is how many of the room's physical
- * seats registration may claim, the rest held back for speakers, sponsors,
- * organisers, VIP flex and no-shows; it is always at most the physical count,
- * and a session without it refuses every claim rather than falling back to
- * physical.
+ * seats registration may claim; unset, it is the room's count minus
+ * ROOM_RESERVE, and it is capped at the physical count either way. A session
+ * whose track has no room has no capacity and refuses every claim.
  */
 export type SessionDetail = {
   title?: string
@@ -110,11 +129,16 @@ export const sessionDetails: Partial<Record<string, SessionDetail>> = {}
  */
 export const sessionsReleased: boolean = false
 
-/** TODO(vedant): flip when the registration open date is decided. */
-export const registrationOpen: boolean = false
+/**
+ * Registration is open from the moment the site can take money, and closes
+ * when an admin flips the switch on the settings page, not on a date. This
+ * is only the default for a config item that has never been written; the
+ * switch itself is the registrationOpen field of the config item.
+ */
+export const registrationOpen: boolean = true
 
 export const about = [
   'A one day community conference put on by students, for students, in Hyderabad.',
-  'Three tracks run in parallel across the day: AI and agents, cloud engineering, and careers. You pick one session per slot and keep your seat.',
+  'Three tracks run in parallel across the day: AI and Agents, Cloud, and Career. You pick one session per slot and keep your seat.',
   'It is run by volunteers from the AWS Student Builders Group at VJIT, and it is not an AWS event.',
 ]

@@ -21,7 +21,7 @@ export default async function AdminDashboardPage() {
   // Guard first. Nothing below runs for a refused or signed out caller.
   await requireAdmin()
   const d = await loadDashboard()
-  const launch = launchStatus()
+  const launch = await launchStatus()
 
   // Held sessions for the selected ones, so an admin can see and change them.
   const held = new Map<string, Record<string, string>>()

@@ -63,7 +63,7 @@ export type Dashboard = {
 }
 
 const TIERS: Tier[] = ['basic', 'premium', 'ultra', 'vip']
-const FOODS: FoodPreference[] = ['veg', 'nonveg', 'jain']
+const FOODS: FoodPreference[] = ['veg', 'nonveg']
 
 /**
  * Everything the dashboard shows, in one pass. The attendee list comes from a

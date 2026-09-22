@@ -1,10 +1,16 @@
 export type Tier = 'basic' | 'premium' | 'ultra' | 'vip'
-export type FoodPreference = 'veg' | 'nonveg' | 'jain'
+/** Veg and non-veg only, by the organiser's decision. */
+export type FoodPreference = 'veg' | 'nonveg'
 export type AttendeeSource = 'checkout' | 'reconcile' | 'manual'
 export type Track = 'ai' | 'cloud' | 'career'
 /** TODO(vedant): unset on every session until decided. Nothing is a workshop by default. */
 export type SessionType = 'keynote' | 'talk' | 'qa' | 'workshop' | 'panel'
 export type PaymentMode = 'manual' | 'razorpay'
+/** Year of study, as the form offers it. Five values, stored as typed. */
+export type YearOfStudy = '1' | '2' | '3' | '4' | 'other'
+export const YEARS_OF_STUDY: YearOfStudy[] = ['1', '2', '3', '4', 'other']
+/** Two roles. An admin does everything; a volunteer runs the gate scanner and nothing else. */
+export type CrewRole = 'admin' | 'volunteer'
 
 /**
  * The lifecycle. Amendment 1 section 1. Every transition is a conditional
@@ -61,10 +67,23 @@ export type Attendee = Keyed & {
   /** Chosen at registration. Counts against that track's counter. Selection may draw from more, per tracksAllowed. */
   homeTrack: Track
   foodPreference: FoodPreference
+  yearOfStudy: YearOfStudy
+  /** The 18+ confirmation ticked at registration. Never absent on a record made through the form. */
+  over18: boolean
   state: RegistrationState
   paymentMode: PaymentMode
-  /** What the record is to be paid, in paise, decided by the server from content. Never from the client. */
+  /**
+   * What the record is to be paid, in paise, decided by the server from
+   * content and LOCKED here at step one. Never from the client, never
+   * recomputed: the admin verifies against this number and no other.
+   */
   amountPaise: number
+  /** True when the early bird discount was claimed at step one and amountPaise carries it. */
+  earlyBird?: boolean
+  /** The full price, kept beside a discounted amountPaise so a reinstate can fall back to it. */
+  listPricePaise?: number
+  /** The 50th early bird place went a moment before this record was made; it was charged full price and told so. */
+  earlyBirdMissed?: boolean
   /** Razorpay only. */
   orderId?: string
   /** The provider payment that settled it, or UTR:<utr> for a manual payment. Written by the verify transition. */
@@ -146,6 +165,35 @@ export type TrackCounter = Keyed & {
   ceiling: number | null
 }
 
+/**
+ * The early bird pool, one item, same pattern as the track counter. claimed
+ * is incremented conditionally in the step one transaction and decremented
+ * in the abandon transaction, so the discount can never be given more than
+ * ceiling times.
+ */
+export type EarlyBirdCounter = Keyed & { claimed: number; ceiling: number }
+
+/** One crew account. Role decides what the server will serve them. */
+export type CrewUser = Keyed & {
+  email: string
+  role: CrewRole
+  addedBy: string
+  addedAt: string
+}
+
+/** Race-safe admin count, so two admins cannot demote each other into zero. */
+export type UsersMeta = Keyed & { admins: number }
+
+/** Every change to a crew account or a setting, who, to whom, when. Append only. */
+export type CrewAudit = Keyed & {
+  action: 'add' | 'role' | 'remove' | 'bootstrap' | 'registration-open' | 'registration-close' | 'track-room'
+  by: string
+  target: string
+  role?: CrewRole
+  detail?: string
+  at: string
+}
+
 export type Room = {
   id: string
   name: string
@@ -160,7 +208,10 @@ export type EventConfig = Keyed & {
   rooms: Room[]
   slots: Slot[]
   roomForTrack: Partial<Record<Track, string>>
+  /** The switch. Flipped by an admin from the settings page; enforced in the step one route. */
   registrationOpen: boolean
+  registrationOpenChangedAt?: string
+  registrationOpenChangedBy?: string
   /** Set by the admin release action. Gates the picker and triggers email 3. */
   sessionsReleased: boolean
   sessionsReleasedAt?: string

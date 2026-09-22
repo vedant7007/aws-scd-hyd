@@ -8,9 +8,10 @@ import { absolute } from '@/lib/site'
  */
 const PUBLIC_ROUTES = ['/', '/schedule', '/speakers', '/sponsors', '/code-of-conduct', '/register'] as const
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const lastModified = new Date()
-  return PUBLIC_ROUTES.filter((route) => route !== '/register' || registrationIsOpen()).map((route) => ({
+  const open = await registrationIsOpen()
+  return PUBLIC_ROUTES.filter((route) => route !== '/register' || open).map((route) => ({
     url: absolute(route),
     lastModified,
     changeFrequency: route === '/' ? 'weekly' : 'monthly',

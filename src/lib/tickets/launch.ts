@@ -1,10 +1,12 @@
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
-import { registrationOpen } from '../../content/event'
+import { registrationOpen as contentDefault } from '../../content/event'
 import { passes } from '../../content/passes'
 import { payment } from '../../content/payment'
 import { sessionSpecs } from '../../content/sessions'
 import { tracks } from '../../content/tracks'
+import { adminCount } from '../auth/crew'
+import { getConfig } from '../db/queries'
 import type { PaymentMode } from '../db/types'
 import { VERIFICATION_WINDOW } from '../email/templates'
 import { paymentMode } from './mode'
@@ -12,9 +14,10 @@ import { paymentMode } from './mode'
 /**
  * The guard between a half-configured site and real students.
  *
- * registrationOpen is a content flag. On its own it is one edit away from
- * taking registrations nobody can seat or verify, so it is not allowed to be
- * the only thing that opens the till. Selling is refused while any blocker
+ * The registration switch lives on the config item and is flipped by an
+ * admin. On its own it is one click away from taking registrations nobody
+ * can seat or verify, so it is not allowed to be the only thing that opens
+ * the till. Selling is refused while any blocker
  * for the current payment mode holds. The blockers are computed everywhere
  * and shown on the dashboard everywhere. They are enforced in production,
  * which is what next start and Amplify run; development is exempt so the
@@ -23,8 +26,9 @@ import { paymentMode } from './mode'
  * server.
  *
  * Manual mode: every tier priced, the college QR asset present, the
- * verification wording set, at least one admin to verify, and a room and a
- * sellable capacity for every session so a registration can actually be
+ * verification wording set, at least one admin (in the table, or the
+ * ADMIN_EMAILS fallback while the table has none) to verify, and a room and
+ * a sellable capacity for every session so a registration can actually be
  * counted against a track and later seated.
  *
  * Razorpay mode: the live key, every tier priced, no test amount in the
@@ -52,6 +56,7 @@ export type LaunchInput = {
   testAmount: string | undefined
   qrAssetPresent: boolean
   verificationWindow: string
+  /** Admins able to verify: the table's count, or the fallback list while that is zero. */
   adminEmails: string[]
   /** Tracks with no room, and sessions with no sellable capacity. */
   unassignedTracks: string[]
@@ -87,7 +92,7 @@ export function launchBlockers(input: LaunchInput): LaunchBlocker[] {
       out.push({ code: 'verification-window-unset', detail: 'VERIFICATION_WINDOW in lib/email/templates.ts is empty, so email 1 cannot say when to expect an answer.' })
     }
     if (input.adminEmails.length === 0) {
-      out.push({ code: 'no-admin', detail: 'ADMIN_EMAILS is empty, so nobody can verify a payment.' })
+      out.push({ code: 'no-admin', detail: 'No admin in the table and ADMIN_EMAILS is empty, so nobody can verify a payment.' })
     }
   }
 
@@ -101,8 +106,10 @@ export function launchBlockers(input: LaunchInput): LaunchBlocker[] {
   return out
 }
 
-export const fromEnvironment = (): LaunchInput => {
+export const fromEnvironment = async (): Promise<LaunchInput> => {
   const specs = sessionSpecs()
+  const admins = await adminCount()
+  const fallback = (process.env.ADMIN_EMAILS ?? '').split(',').map((s) => s.trim()).filter(Boolean)
   return {
     mode: paymentMode(),
     keyId: process.env.RAZORPAY_KEY_ID,
@@ -110,7 +117,7 @@ export const fromEnvironment = (): LaunchInput => {
     testAmount: process.env.RAZORPAY_TEST_AMOUNT_PAISE,
     qrAssetPresent: existsSync(join(process.cwd(), 'public', payment.qrAssetPath)),
     verificationWindow: VERIFICATION_WINDOW,
-    adminEmails: (process.env.ADMIN_EMAILS ?? '').split(',').map((s) => s.trim()).filter(Boolean),
+    adminEmails: admins > 0 ? Array.from({ length: admins }, (_, i) => `table admin ${i + 1}`) : fallback,
     unassignedTracks: tracks.filter((t) => !specs.some((s) => s.track === t.id && s.roomId)).map((t) => t.id),
     unsetSessions: specs.filter((s) => s.sellableCapacity === null).map((s) => s.sessionId),
   }
@@ -118,7 +125,7 @@ export const fromEnvironment = (): LaunchInput => {
 
 export type LaunchStatus = {
   mode: PaymentMode
-  /** The content flag, as written. */
+  /** The switch, as the config item holds it (the content default until it is ever written). */
   registrationOpen: boolean
   blockers: LaunchBlocker[]
   /** Whether blockers are refusing registrations here. False only in development. */
@@ -127,13 +134,16 @@ export type LaunchStatus = {
   open: boolean
 }
 
-export function launchStatus(): LaunchStatus {
-  const input = fromEnvironment()
+export async function launchStatus(): Promise<LaunchStatus> {
+  const [input, config] = await Promise.all([fromEnvironment(), getConfig()])
   const blockers = launchBlockers(input)
   const enforced = process.env.NODE_ENV === 'production'
+  // The switch is read from the table on every call, never cached: closing
+  // registration has to take effect on the very next request.
+  const switched = config?.registrationOpen ?? contentDefault
   // The acceptance suite needs step one open against the sandbox. Only ever
   // honoured outside production, where NODE_ENV is set by the runtime.
-  const open = registrationOpen || (!enforced && process.env.SCD_DEV_REGISTRATION_OPEN === '1')
+  const open = switched || (!enforced && process.env.SCD_DEV_REGISTRATION_OPEN === '1')
   return {
     mode: input.mode,
     registrationOpen: open,
@@ -143,5 +153,5 @@ export function launchStatus(): LaunchStatus {
   }
 }
 
-/** The one question every entry point asks. Never read registrationOpen directly for this. */
-export const registrationIsOpen = () => launchStatus().open
+/** The one question every entry point asks. Never read the flag directly for this. */
+export const registrationIsOpen = async () => (await launchStatus()).open

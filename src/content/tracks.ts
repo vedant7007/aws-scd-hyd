@@ -6,21 +6,21 @@ export type TrackContent = {
   blurb: string
 }
 
-/** TODO(vedant): blurbs are drafts, replace with the copy from the team. */
+/** Names are the organiser's, verbatim. TODO(vedant): blurbs are drafts, replace with the copy from the team. */
 export const tracks: TrackContent[] = [
   {
     id: 'ai',
-    name: 'AI and agents',
+    name: 'AI and Agents',
     blurb: 'Building with models and agents, what actually works in production, and what does not.',
   },
   {
     id: 'cloud',
-    name: 'Cloud engineering',
+    name: 'Cloud',
     blurb: 'Architecture, cost, reliability and the day to day of running things on AWS.',
   },
   {
     id: 'career',
-    name: 'Careers',
+    name: 'Career',
     blurb: 'Internships, first roles, certifications and building something worth showing people.',
   },
 ]

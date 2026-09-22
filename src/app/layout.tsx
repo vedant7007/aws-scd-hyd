@@ -38,7 +38,7 @@ const mono = IBM_Plex_Mono({
 
 export const metadata: Metadata = {
   title: event.name,
-  description: `${event.name}, ${event.dateLabel}, at ${venue.name}. A day of AI and agents, cloud engineering and careers, run by ${event.host}.`,
+  description: `${event.name}, ${event.dateLabel}, at ${venue.name}. A day of AI and Agents, Cloud and Career, run by ${event.host}.`,
 }
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {

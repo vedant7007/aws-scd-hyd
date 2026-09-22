@@ -3,48 +3,50 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import type { ReactNode } from 'react'
 import { signOutAction } from '@/app/admin/login/actions'
-import { Container } from '@/components/layout/Container'
-import { currentAdmin } from '@/lib/auth/admin'
+import { currentCrew } from '@/lib/auth/admin'
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false, nocache: true },
 }
 
-/** Every admin view reads live counts. Nothing here may be cached. */
+/** Every crew view reads live counts. Nothing here may be cached. */
 export const dynamic = 'force-dynamic'
 
 /**
- * SPEC.md section 7. Two gates: a valid Cognito session, then the email on the
- * ADMIN_EMAILS allowlist. A signed in user who is not an organiser gets told
- * exactly that, never a blank page and never a silent redirect loop.
+ * SPEC.md section 7. Two gates: a valid Cognito session, then a role in the
+ * table. A signed in user with no role gets told exactly that, never a blank
+ * page and never a silent redirect loop. The role decides which links are
+ * drawn; the pages and actions behind them check it again, so the links are
+ * a convenience and not the guard.
  */
 export default async function SecureAdminLayout({ children }: { children: ReactNode }) {
-  const session = await currentAdmin()
+  const session = await currentCrew()
 
   if (session.status === 'signed-out') redirect('/admin/login')
 
   if (session.status === 'refused') redirect('/admin/no-access')
 
+  const admin = session.role === 'admin'
+
   return (
     <>
-      <Container className="flex flex-wrap items-baseline justify-between gap-4 border-b border-border py-4">
-        <nav aria-label="Organiser" className="flex flex-wrap gap-x-8 gap-y-2">
-          <Link className="link" href="/admin">
-            Dashboard
-          </Link>
-          <Link className="link" href="/admin/scan">
-            Scan
-          </Link>
-        </nav>
-        <div className="flex items-baseline gap-4">
-          <span className="text-step--1 text-muted">{session.email}</span>
-          <form action={signOutAction}>
-            <button type="submit" className="link">
-              Sign out
-            </button>
-          </form>
+      <div className="crew-bar">
+        <div className="crew-bar-in">
+          <span className={admin ? 'pill pill-orange pill-sm' : 'pill pill-violet pill-sm'}>{admin ? 'Admin · full access' : 'Volunteer · gate access'}</span>
+          <span className="num truncate text-[11px] text-muted">{session.email}</span>
+          <nav aria-label="Crew" className="crew-nav">
+            {admin ? <Link href="/admin">DASHBOARD</Link> : null}
+            <Link href="/admin/scan">SCAN</Link>
+            {admin ? <Link href="/admin/users">CREW</Link> : null}
+            {admin ? <Link href="/admin/settings">SETTINGS</Link> : null}
+            <form action={signOutAction}>
+              <button type="submit" className="btn btn-mono-sm">
+                Sign out
+              </button>
+            </form>
+          </nav>
         </div>
-      </Container>
+      </div>
       {children}
     </>
   )

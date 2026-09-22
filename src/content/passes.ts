@@ -36,8 +36,20 @@ export type Pass = {
  */
 export const ALWAYS_INCLUDED = ['Lunch on the day']
 
-/** TODO(vedant): early bird expiry undecided. The price rise note is hidden until this is set. */
-export const earlyBirdEndsAt: string | null = null
+/**
+ * Early bird, by the organiser's decision: fifty rupees off every tier for
+ * the first fifty registrations across all tiers combined, live from the
+ * moment registration opens. The pool is the EARLYBIRD counter item; these
+ * two numbers are its ceiling and the discount the step one transaction
+ * locks into the record.
+ */
+export const EARLY_BIRD_TOTAL = 50
+export const EARLY_BIRD_DISCOUNT_PAISE = 5000
+export const earlyBirdPrice = (pricePaise: number) => Math.max(0, pricePaise - EARLY_BIRD_DISCOUNT_PAISE)
+
+/** Verbatim, on the registration page before the pay button and in the confirmation email. */
+export const REFUND_POLICY =
+  'Refunds are available if you tell us at least two weeks before the event. Write to awssbgvjit@gmail.com with your pass ID.'
 
 /**
  * Prices are confirmed (22 September 2026) and this is their only home: the
@@ -51,10 +63,10 @@ export const earlyBirdEndsAt: string | null = null
  * soon state.
  *
  * No tier promises workshops: none are decided. No tier states how many
- * tracks or sessions it covers: that is sessionsAllowed, still null. No early
- * bird and no coupons: earlyBirdEndsAt stays null and there is no discount
- * logic. The handoff's Register screen carries demo codes (EARLYBIRD,
- * SBGVJIT, CAMPUS5) that must not come across when it is ported.
+ * tracks or sessions it covers: that is sessionsAllowed, still null. No
+ * coupons: the handoff's Register screen carries demo codes (EARLYBIRD,
+ * SBGVJIT, CAMPUS5) that must not come across. The only discount is the
+ * early bird pool above.
  */
 export const passes: Pass[] = [
   {

@@ -3,7 +3,7 @@ import { payment } from '@/content/payment'
 import { trackName } from '@/content/sessions'
 import { tracks as trackList } from '@/content/tracks'
 import { callerIp, withinRateLimit } from '@/lib/db/rate-limit'
-import type { FoodPreference, Tier, Track } from '@/lib/db/types'
+import { YEARS_OF_STUDY, type FoodPreference, type Tier, type Track, type YearOfStudy } from '@/lib/db/types'
 import { stepOne } from '@/lib/registration/flow'
 import type { Registration } from '@/lib/registration/state'
 import { launchStatus } from '@/lib/tickets/launch'
@@ -29,8 +29,8 @@ import { paymentMode } from '@/lib/tickets/mode'
 const PER_EMAIL_PER_HOUR = 5
 const PER_IP_PER_HOUR = 500
 
-const FIELDS = ['name', 'email', 'phone', 'college', 'tier', 'homeTrack', 'foodPreference', 'submissionKey'] as const
-const FOODS: FoodPreference[] = ['veg', 'nonveg', 'jain']
+const FIELDS = ['name', 'email', 'phone', 'college', 'yearOfStudy', 'tier', 'homeTrack', 'foodPreference', 'over18', 'submissionKey'] as const
+const FOODS: FoodPreference[] = ['veg', 'nonveg']
 const TRACK_IDS = trackList.map((t) => t.id)
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 const SUBMISSION_KEY = /^[A-Za-z0-9_-]{16,64}$/
@@ -78,6 +78,9 @@ function validate(body: unknown): { reg: Registration; submissionKey: string } |
   const college = str('college', 2, 120)
   if (!college) return { error: { field: 'college', message: 'Your college or organisation.' } }
 
+  const year = b.yearOfStudy
+  if (typeof year !== 'string' || !YEARS_OF_STUDY.includes(year as YearOfStudy)) return { error: { field: 'yearOfStudy', message: 'Pick your year of study.' } }
+
   const tier = b.tier
   if (typeof tier !== 'string' || !tierIds.includes(tier as Tier)) return { error: { field: 'tier', message: 'Pick a pass.' } }
 
@@ -87,18 +90,24 @@ function validate(body: unknown): { reg: Registration; submissionKey: string } |
   const food = b.foodPreference
   if (typeof food !== 'string' || !FOODS.includes(food as FoodPreference)) return { error: { field: 'foodPreference', message: 'Pick a food preference.' } }
 
+  // The 18+ confirmation. Anything but a literal true is a refusal, not a default.
+  if (b.over18 !== true) return { error: { field: 'over18', message: 'Attendees must be 18 or older on the day. Tick the box to confirm.' } }
+
   const submissionKey = b.submissionKey
   if (typeof submissionKey !== 'string' || !SUBMISSION_KEY.test(submissionKey)) return { error: { field: 'submissionKey', message: 'Reload the form and try again.' } }
 
   return {
-    reg: { name, email, phone, college, tier: tier as Tier, homeTrack: homeTrack as Track, foodPreference: food as FoodPreference },
+    reg: { name, email, phone, college, yearOfStudy: year as YearOfStudy, tier: tier as Tier, homeTrack: homeTrack as Track, foodPreference: food as FoodPreference, over18: true },
     submissionKey,
   }
 }
 
 export async function POST(req: Request): Promise<Response> {
-  const launch = launchStatus()
-  if (!launch.registrationOpen) return json(403, { ok: false, message: 'Registration is not open yet.' })
+  // The switch, read from the table on this request. A direct POST while
+  // closed is refused here and creates nothing; hiding the button is not
+  // the enforcement.
+  const launch = await launchStatus()
+  if (!launch.registrationOpen) return json(403, { ok: false, reason: 'closed', message: 'Registrations are closed.' })
 
   // The guard. registrationOpen is true and the configuration cannot seat or
   // verify anyone. Refuse, say why in the log, and tell the visitor nothing
@@ -144,7 +153,7 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   const a = out.attendee
-  console.info(`[register] ${a.passId} awaiting payment, ${a.amountPaise} paise, ${a.homeTrack}${out.duplicate ? ' (duplicate submission, same record)' : ''}${out.placeholder ? ' PLACEHOLDER' : ''}`)
+  console.info(`[register] ${a.passId} awaiting payment, ${a.amountPaise} paise${a.earlyBird ? ' (early bird)' : out.earlyBirdMissed ? ' (early bird ran out, full price)' : ''}, ${a.homeTrack}${out.duplicate ? ' (duplicate submission, same record)' : ''}${out.placeholder ? ' PLACEHOLDER' : ''}`)
 
   return json(200, {
     ok: true,
@@ -152,6 +161,8 @@ export async function POST(req: Request): Promise<Response> {
     passId: a.passId,
     amountPaise: a.amountPaise,
     placeholder: out.placeholder,
+    earlyBird: a.earlyBird === true,
+    earlyBirdMissed: out.earlyBirdMissed,
     holdUntil: a.holdUntil,
     payUrl: `/register/pay/${a.passId}`,
     upi: { qr: payment.qrAssetPath, upiId: payment.upiId, payee: payment.payeeName, note: a.passId },

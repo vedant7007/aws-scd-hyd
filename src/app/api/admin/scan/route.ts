@@ -1,6 +1,6 @@
 import { ConditionalCheckFailedException } from '@aws-sdk/client-dynamodb'
 import { GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
-import { currentAdmin } from '@/lib/auth/admin'
+import { currentCrew } from '@/lib/auth/admin'
 import { ddb, tableName } from '@/lib/db/client'
 import { keys, normalisePassId } from '@/lib/db/keys'
 import type { Attendee } from '@/lib/db/types'
@@ -36,9 +36,10 @@ const summarise = (a: Attendee) => ({
  */
 export async function POST(req: Request): Promise<Response> {
   // API, so a refusal is a status code rather than a redirect.
-  const session = await currentAdmin()
+  // Any crew role: the scanner is what a volunteer is for.
+  const session = await currentCrew()
   if (session.status !== 'ok') {
-    return json(403, { ok: false, message: 'Not an organiser account.' })
+    return json(403, { ok: false, message: 'Not a crew account.' })
   }
 
   const body: unknown = await req.json().catch(() => null)

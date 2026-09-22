@@ -1,5 +1,5 @@
 import type { Room, Session, Track } from '../lib/db/types'
-import { roomForTrack, rooms, sessionDetails, slots } from './event'
+import { ROOM_RESERVE, roomForTrack, rooms, sessionDetails, slots } from './event'
 import { tracks } from './tracks'
 
 /** "<slot>-<track>", the one place the session id is spelled. */
@@ -20,8 +20,9 @@ export const trackRooms = () => rooms.filter((r) => r.role === 'track')
  * whatever detail sessionDetails carries. The seed writes these; the launch
  * guard checks them; the picker and schedule read the table copies.
  *
- * sellableCapacity is capped at the room's physical count so content cannot
- * oversell a room by typo.
+ * sellableCapacity is the room's physical count minus ROOM_RESERVE unless
+ * sessionDetails sets it, and is capped at the physical count either way so
+ * content cannot oversell a room by typo.
  */
 export type SessionSpec = Omit<Session, 'PK' | 'SK' | 'GSI1PK' | 'GSI1SK' | 'seatsTaken'>
 
@@ -33,7 +34,7 @@ export function sessionSpecs(): SessionSpec[] {
       const detail = sessionDetails[sessionId] ?? {}
       const physical = room?.physicalCapacity ?? null
       const sellable =
-        detail.sellableCapacity === undefined ? null : physical === null ? null : Math.min(detail.sellableCapacity, physical)
+        physical === null ? null : Math.min(detail.sellableCapacity ?? physical - ROOM_RESERVE, physical)
       return {
         sessionId,
         slotId: slot.id,

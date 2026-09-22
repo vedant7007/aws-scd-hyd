@@ -20,11 +20,13 @@ import { createHmac } from 'node:crypto'
 import { BatchWriteCommand, QueryCommand, ScanCommand } from '@aws-sdk/lib-dynamodb'
 import { ddb, tableName } from '../src/lib/db/client'
 import { gsi1, keys, newPassId, PASS_ALPHABET, PASS_LENGTH } from '../src/lib/db/keys'
-import type { Attendee, EventConfig, FoodPreference, RegistrationState, Room, Seat, Session, Tier, Track, TrackCounter } from '../src/lib/db/types'
+import { YEARS_OF_STUDY, type Attendee, type EventConfig, type FoodPreference, type RegistrationState, type Room, type Seat, type Session, type Tier, type Track, type TrackCounter } from '../src/lib/db/types'
 import { registrationOpen, roomForTrack, rooms, sessionsReleased, slots } from '../src/content/event'
-import { passes, tracksAllowedFor } from '../src/content/passes'
+import { EARLY_BIRD_TOTAL, passes, tracksAllowedFor } from '../src/content/passes'
+import { holdMinutes } from '../src/content/payment'
 import { sessionSpecs } from '../src/content/sessions'
 import { tracks } from '../src/content/tracks'
+import { ensureEarlyBirdCounter } from '../src/lib/registration/state'
 
 const ATTENDEE_COUNT = 50
 const TEST_MODEL = process.env.SEED_TEST_MODEL === '1'
@@ -58,7 +60,7 @@ const FIRST = ['Aarav', 'Diya', 'Rohan', 'Ananya', 'Kabir', 'Meera', 'Arjun', 'S
 const LAST = ['Reddy', 'Rao', 'Sharma', 'Naidu', 'Iyer', 'Khan', 'Gupta', 'Menon', 'Das', 'Verma']
 const COLLEGES = ['VJIT', 'CBIT', 'JNTUH', 'Vasavi', 'MGIT', 'CVR', 'GRIET']
 const TIERS: Tier[] = ['basic', 'premium', 'ultra', 'vip']
-const FOODS: FoodPreference[] = ['veg', 'nonveg', 'jain']
+const FOODS: FoodPreference[] = ['veg', 'nonveg']
 const TRACKS: Track[] = tracks.map((t) => t.id)
 /** Weighted towards the states an organiser looks at most. */
 const STATES: RegistrationState[] = [
@@ -107,6 +109,8 @@ function buildAttendees(createdAt: string): { attendees: Attendee[]; seats: Seat
       tier,
       homeTrack,
       foodPreference: pick(FOODS, i),
+      yearOfStudy: pick(YEARS_OF_STUDY, i),
+      over18: true,
       state,
       paymentMode: 'manual',
       amountPaise: passes.find((p) => p.id === tier)?.pricePaise ?? 0,
@@ -116,7 +120,7 @@ function buildAttendees(createdAt: string): { attendees: Attendee[]; seats: Seat
       receiptSentAt: createdAt,
       confirmationSentAt: createdAt,
     }
-    if (state === 'AWAITING_PAYMENT') a.holdUntil = new Date(Date.now() + 60 * 60_000).toISOString()
+    if (state === 'AWAITING_PAYMENT') a.holdUntil = new Date(Date.now() + holdMinutes * 60_000).toISOString()
     if (state !== 'AWAITING_PAYMENT' && state !== 'ABANDONED') {
       a.utr = utr
       a.utrSubmittedAt = createdAt
@@ -294,11 +298,14 @@ async function main(): Promise<void> {
   await clearStale(new Set(sessions.map((s) => s.PK)), attendees.map((a) => a.passId))
   const utrClaims = attendees.filter((a) => a.utr).map((a) => ({ ...keys.utr(a.utr!), utr: a.utr!, passId: a.passId, submittedAt: createdAt }))
   await put([buildConfig(), ...sessions, ...counters, ...attendees, ...seats, ...utrClaims])
+  // The early bird pool, created if absent and never reset by a reseed: the
+  // count of places already given away is a fact about real registrations.
+  await ensureEarlyBirdCounter()
 
   const byState = Object.fromEntries(STATES.map((s) => [s, attendees.filter((a) => a.state === s).length]))
   console.log(`seeded ${table}`)
   console.log(`  config     1 item, ${rooms.length} rooms (${rooms.filter((r) => r.role === 'buffer').length} buffer), ${slots.length} slots`)
-  console.log(`  sessions   ${sessions.length}, counters ${counters.length}`)
+  console.log(`  sessions   ${sessions.length}, counters ${counters.length}, early bird pool of ${EARLY_BIRD_TOTAL} ensured`)
   console.log(`  attendees  ${attendees.length} ${JSON.stringify(byState)}, holding ${seats.length} seats`)
   const sel = attendees.find((a) => a.state === 'SESSIONS_SELECTED')!
   const ver = attendees.find((a) => a.state === 'VERIFIED')!

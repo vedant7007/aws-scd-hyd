@@ -11,6 +11,7 @@ import {
   type ActionState,
 } from '@/app/admin/(secure)/actions'
 import type { RegistrationState } from '@/lib/db/types'
+import { REJECTION_REASONS, rejectionCodes } from '@/lib/registration/reasons'
 
 export type Row = {
   passId: string
@@ -192,8 +193,18 @@ function RowCard({ row, slots }: { row: Row; slots: SlotOption[] }) {
           <form action={reject} className="flex flex-wrap items-end gap-2">
             <input type="hidden" name="passId" value={row.passId} />
             <label className="flex flex-col text-step--1">
-              <span className="text-muted">Reason for the student</span>
-              <input name="reason" className="field" maxLength={300} placeholder="No payment with this UTR in the statement" />
+              <span className="text-muted">Reason</span>
+              <select name="reasonCode" className="field" defaultValue="not-found">
+                {rejectionCodes.map((c) => (
+                  <option key={c} value={c}>
+                    {REJECTION_REASONS[c]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col text-step--1">
+              <span className="text-muted">Note (required for Other)</span>
+              <input name="reason" className="field" maxLength={300} />
             </label>
             <button type="submit" className="cta-quiet" disabled={busy}>
               Reject

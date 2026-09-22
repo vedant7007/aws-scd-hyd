@@ -1,7 +1,7 @@
 import { UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import { sessionsReleased as contentReleased, slots } from '../../content/event'
 import { holdMinutes } from '../../content/payment'
-import { tracksAllowedFor } from '../../content/passes'
+import { earlyBirdPrice, tracksAllowedFor } from '../../content/passes'
 import { sessionIdFor } from '../../content/sessions'
 import { tracks } from '../../content/tracks'
 import { ddb, tableName } from '../db/client'
@@ -17,6 +17,7 @@ import { createOrder } from '../tickets/razorpay'
 import {
   abandon,
   adminChangeSelection,
+  earlyBirdLeft,
   markSent,
   registerStepOne,
   reinstate,
@@ -52,7 +53,15 @@ async function mail(a: Attendee, body: Omit<Parameters<typeof sendEmail>[0], 'to
 /* ---- step one ---------------------------------------------------------- */
 
 export type StepOne =
-  | { ok: true; attendee: Attendee; duplicate: boolean; placeholder: boolean; order?: { orderId: string; keyId: string; currency: string } }
+  | {
+      ok: true
+      attendee: Attendee
+      duplicate: boolean
+      placeholder: boolean
+      /** The 50th early bird place went a moment before this record: charged full price, and the pay page says so. */
+      earlyBirdMissed: boolean
+      order?: { orderId: string; keyId: string; currency: string }
+    }
   | { ok: false; reason: 'track-full'; track: Track }
   | { ok: false; reason: 'provider'; message: string }
 
@@ -61,32 +70,59 @@ export type StepOne =
  * content, and creates the AWAITING_PAYMENT record against its track
  * counter. In Razorpay mode the provider order is created first (an order
  * with no record is harmless, a record with no order can never be paid).
+ *
+ * Early bird: if the pool shows a place, the discounted price is offered
+ * and the place claimed in the record's own transaction. If that claim
+ * fails because the last place went a moment earlier, the same registration
+ * is retried once at full price (a fresh provider order in Razorpay mode)
+ * and the record is marked so the pay page can say what happened. The
+ * price a record carries is the price it was charged; nothing recomputes
+ * it later.
  */
 export async function stepOne(reg: Registration, submissionKey: string): Promise<StepOne> {
   const mode = paymentMode()
-  const amount = amountFor(reg.tier)
+  const full = amountFor(reg.tier)
   const holdUntil = new Date(Date.now() + holdMinutes * 60_000).toISOString()
 
-  let order: Awaited<ReturnType<typeof createOrder>> | undefined
-  if (mode === 'razorpay') {
-    const passId = newPassId()
-    try {
-      order = await createOrder({ ticketRef: passId, amountPaise: amount.amountPaise, tier: reg.tier })
-    } catch (err) {
-      console.error('[register] order creation failed', err)
-      return { ok: false, reason: 'provider', message: 'The payment provider did not respond. Nothing was charged. Try again.' }
-    }
-    const out = await registerStepOne(passId, reg, { mode, amountPaise: order.amountPaise, orderId: order.orderId, holdUntil, submissionKey })
-    if (!out.ok) return out.reason === 'id-collision' ? stepOne(reg, submissionKey) : out
-    return { ok: true, attendee: out.attendee, duplicate: out.duplicate, placeholder: amount.placeholder, order: { orderId: order.orderId, keyId: order.keyId, currency: order.currency } }
-  }
+  let earlyBird = !full.placeholder && (await earlyBirdLeft()) > 0
+  let earlyBirdMissed = false
 
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const out = await registerStepOne(newPassId(), reg, { mode, amountPaise: amount.amountPaise, holdUntil, submissionKey })
-    if (out.ok) return { ok: true, attendee: out.attendee, duplicate: out.duplicate, placeholder: amount.placeholder }
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const price = earlyBird
+      ? { amountPaise: earlyBirdPrice(full.amountPaise), earlyBird: { listPricePaise: full.amountPaise } }
+      : { amountPaise: full.amountPaise, earlyBirdMissed }
+    const passId = newPassId()
+
+    let order: Awaited<ReturnType<typeof createOrder>> | undefined
+    if (mode === 'razorpay') {
+      try {
+        order = await createOrder({ ticketRef: passId, amountPaise: price.amountPaise, tier: reg.tier })
+      } catch (err) {
+        console.error('[register] order creation failed', err)
+        return { ok: false, reason: 'provider', message: 'The payment provider did not respond. Nothing was charged. Try again.' }
+      }
+    }
+
+    const out = await registerStepOne(passId, reg, { mode, ...price, orderId: order?.orderId, holdUntil, submissionKey })
+    if (out.ok) {
+      return {
+        ok: true,
+        attendee: out.attendee,
+        duplicate: out.duplicate,
+        placeholder: full.placeholder,
+        earlyBirdMissed: out.attendee.earlyBirdMissed === true,
+        ...(order ? { order: { orderId: order.orderId, keyId: order.keyId, currency: order.currency } } : {}),
+      }
+    }
+    if (out.reason === 'early-bird-out') {
+      // The pool emptied between the read and the write. Once more, at full price, and say so.
+      earlyBird = false
+      earlyBirdMissed = true
+      continue
+    }
     if (out.reason !== 'id-collision') return out
   }
-  throw new Error('pass id collided three times in a row, which should not be possible')
+  throw new Error('step one could not complete in four attempts, which should not be possible')
 }
 
 /* ---- step two ---------------------------------------------------------- */
@@ -131,6 +167,7 @@ export async function adminReject(passId: string, by: string, reason: string): P
 }
 
 export async function adminReinstate(passId: string, by: string, utr: string): Promise<ReinstateOutcome & { emailed?: boolean }> {
+  // The receipt goes out again on reinstate, at whatever price the record now carries.
   const clean = utr.replace(/\s+/g, '')
   if (!UTR.test(clean)) return { ok: false, reason: 'utr-used' }
   const out = await reinstate(passId, by, clean)

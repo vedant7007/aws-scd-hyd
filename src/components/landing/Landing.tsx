@@ -29,11 +29,26 @@ type Props = {
   registrationOpen: boolean
   /** Doors, "09:30", from content/event.ts. */
   doors: string
-  /** Formatted price per tier, null while a tier is unpriced. The page reads them from content/passes.ts. */
-  prices: Record<Tier, string | null>
+  /** Formatted prices per tier, null while a tier is unpriced. The page reads them from content/passes.ts. early is set only while the pool has places. */
+  prices: Record<Tier, { list: string | null; early: string | null }>
+  /** The early bird pool, read from the counter on this request. Null once it is empty: nothing of it is drawn then. */
+  earlyBird: { left: number; total: number } | null
 }
 
-export function Landing({ registrationOpen, doors, prices }: Props) {
+/** Full price struck through with the early bird price beside it while the pool lasts; the one price otherwise. */
+function Price({ price }: { price: { list: string | null; early: string | null } }) {
+  if (price.early && price.list) {
+    return (
+      <>
+        <s style={{opacity:'.55',marginRight:'.4em'}}>{price.list}</s>
+        {price.early}
+      </>
+    )
+  }
+  return <>{price.list ?? 'Announced soon'}</>
+}
+
+export function Landing({ registrationOpen, doors, prices, earlyBird }: Props) {
   const rootRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -192,8 +207,8 @@ export function Landing({ registrationOpen, doors, prices }: Props) {
 
       <div style={{position:'relative',zIndex:'10',overflow:'hidden',background:'#FF9900',borderTop:'4px solid var(--line)',borderBottom:'4px solid var(--line)'}}>
         <div style={{display:'flex',width:'max-content',fontFamily:'var(--font-display)',fontSize:'clamp(16px,4vw,21px)',color:'var(--on-fill)',padding:'8px 0',animation:'bm-march 22s linear infinite'}}>
-          <span style={{display:'flex',gap:'22px',paddingRight:'22px'}}><span>AI + AGENTS</span><span>◆</span><span>CLOUD ENGINEERING</span><span>◆</span><span>CAREERS</span><span>◆</span><span>300 SEATS</span><span>◆</span></span>
-          <span style={{display:'flex',gap:'22px',paddingRight:'22px'}}><span>AI + AGENTS</span><span>◆</span><span>CLOUD ENGINEERING</span><span>◆</span><span>CAREERS</span><span>◆</span><span>300 SEATS</span><span>◆</span></span>
+          <span style={{display:'flex',gap:'22px',paddingRight:'22px'}}><span>AI AND AGENTS</span><span>◆</span><span>CLOUD</span><span>◆</span><span>CAREER</span><span>◆</span><span>300 SEATS</span><span>◆</span></span>
+          <span style={{display:'flex',gap:'22px',paddingRight:'22px'}}><span>AI AND AGENTS</span><span>◆</span><span>CLOUD</span><span>◆</span><span>CAREER</span><span>◆</span><span>300 SEATS</span><span>◆</span></span>
         </div>
       </div>
 
@@ -267,7 +282,7 @@ export function Landing({ registrationOpen, doors, prices }: Props) {
                   <span style={{height:'10px',background:'#D6CFC5'}}></span><span style={{height:'10px',background:'#D6CFC5'}}></span><span style={{height:'10px',background:'#9FE3B6'}}></span><span style={{height:'10px',background:'#FF9900'}}></span>
                 </span>
               </div>
-              <h3 style={{margin:'0',fontFamily:'var(--font-display)',fontWeight:'700',fontSize:'clamp(30px,7vw,60px)',lineHeight:'.94',color:'var(--ink)'}}>CLOUD ENGINEERING</h3>
+              <h3 style={{margin:'0',fontFamily:'var(--font-display)',fontWeight:'700',fontSize:'clamp(30px,7vw,60px)',lineHeight:'.94',color:'var(--ink)'}}>CLOUD</h3>
               <p style={{margin:'0',maxWidth:'44ch',fontSize:'clamp(15px,3.8vw,18px)',lineHeight:'1.6',color:'var(--body)'}}>Architecture, cost, reliability and the day to day of running things on AWS.</p>
               <div style={{marginTop:'auto',display:'flex',gap:'8px',flexWrap:'wrap',fontFamily:'var(--font-mono)',fontSize:'10px',letterSpacing:'.16em',textTransform:'uppercase',color:'var(--muted)'}}>
                 <span style={{border:'2px solid #D6CFC5',padding:'7px 10px'}}>TALKS + Q&amp;A</span>
@@ -283,7 +298,7 @@ export function Landing({ registrationOpen, doors, prices }: Props) {
                   <span style={{height:'10px',background:'#D6CFC5'}}></span><span style={{height:'10px',background:'#C4AEF2'}}></span><span style={{height:'10px',background:'#FF9900'}}></span><span style={{height:'10px',background:'#D6CFC5'}}></span>
                 </span>
               </div>
-              <h3 style={{margin:'0',fontFamily:'var(--font-display)',fontWeight:'700',fontSize:'clamp(30px,7vw,60px)',lineHeight:'.94',color:'var(--ink)'}}>CAREERS</h3>
+              <h3 style={{margin:'0',fontFamily:'var(--font-display)',fontWeight:'700',fontSize:'clamp(30px,7vw,60px)',lineHeight:'.94',color:'var(--ink)'}}>CAREER</h3>
               <p style={{margin:'0',maxWidth:'44ch',fontSize:'clamp(15px,3.8vw,18px)',lineHeight:'1.6',color:'var(--body)'}}>Internships, first roles, certifications and building something worth showing people.</p>
               <div style={{marginTop:'auto',display:'flex',gap:'8px',flexWrap:'wrap',fontFamily:'var(--font-mono)',fontSize:'10px',letterSpacing:'.16em',textTransform:'uppercase',color:'var(--muted)'}}>
                 <span style={{border:'2px solid #D6CFC5',padding:'7px 10px'}}>TALKS + Q&amp;A</span>
@@ -310,7 +325,7 @@ export function Landing({ registrationOpen, doors, prices }: Props) {
             <p style={{margin:'0'}}>Run by volunteers from the AWS Student Builders Group at VJIT. Not an AWS event, and we are not pretending otherwise.</p>
             <div style={{display:'flex',flexWrap:'wrap',gap:'8px',paddingTop:'4px',fontFamily:'var(--font-display)',fontSize:'15px',color:'var(--on-fill)'}}>
               <span style={{background:'#9FE3B6',padding:'6px 10px'}}>LUNCH, EVERY TIER</span>
-              <span style={{background:'#F6C899',padding:'6px 10px'}}>VEG / NON-VEG / JAIN</span>
+              <span style={{background:'#F6C899',padding:'6px 10px'}}>VEG / NON-VEG</span>
               <span style={{background:'#C4AEF2',padding:'6px 10px'}}>ANY COLLEGE</span>
             </div>
           </div>
@@ -324,7 +339,10 @@ export function Landing({ registrationOpen, doors, prices }: Props) {
               <span style={{fontFamily:'var(--font-mono)',fontSize:'10.5px',letterSpacing:'.22em',textTransform:'uppercase',color:'var(--mint-ink)'}}>{'// SELECT YOUR PASS'}</span>
               <h2 style={{margin:'0',fontFamily:'var(--font-display)',fontWeight:'700',fontSize:'clamp(30px,7.6vw,62px)',lineHeight:'.94',color:'var(--ink)'}}>FOUR WAYS IN</h2>
             </div>
-            <span style={{fontFamily:'var(--font-mono)',fontSize:'10.5px',letterSpacing:'.18em',textTransform:'uppercase',color:'var(--muted)'}}>LUNCH ON EVERY ONE</span>
+            <span style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:'8px',fontFamily:'var(--font-mono)',fontSize:'10.5px',letterSpacing:'.18em',textTransform:'uppercase',color:'var(--muted)'}}>
+              <span>LUNCH ON EVERY ONE</span>
+              {earlyBird ? <span style={{background:'#9FE3B6',color:'var(--on-fill)',padding:'6px 10px'}}>{earlyBird.left} OF {earlyBird.total} EARLY BIRD PLACES LEFT</span> : null}
+            </span>
           </div>
           <div data-grid4="1" style={{display:'grid',gap:'clamp(16px,2.2vw,24px)',alignItems:'stretch'}}>
             <article data-rv="1" style={{border:'3px solid var(--line)',background:'var(--surface)',padding:'26px 24px',display:'flex',flexDirection:'column',gap:'14px',transition:'transform .14s steps(3),border-color .14s steps(2),box-shadow .14s steps(3)',minHeight:'360px'}} className="lp-hv-card">
@@ -332,7 +350,7 @@ export function Landing({ registrationOpen, doors, prices }: Props) {
                 <h3 style={{margin:'0',fontFamily:'var(--font-display)',fontSize:'28px'}} className="bm-gold">REGULAR</h3>
                 <span style={{display:'flex',gap:'3px'}} aria-hidden="true"><span style={{width:'9px',height:'9px',background:'#9FE3B6'}}></span><span style={{width:'9px',height:'9px',background:'var(--bar)'}}></span><span style={{width:'9px',height:'9px',background:'var(--bar)'}}></span><span style={{width:'9px',height:'9px',background:'var(--bar)'}}></span></span>
               </div>
-              <span style={{fontFamily:'var(--font-mono)',fontSize:'26px',color:'var(--bg)',background:'var(--ink-fill)',alignSelf:'flex-start',padding:'4px 10px'}}>{prices.basic ?? 'Announced soon'}</span>
+              <span style={{fontFamily:'var(--font-mono)',fontSize:'26px',color:'var(--bg)',background:'var(--ink-fill)',alignSelf:'flex-start',padding:'4px 10px'}}><Price price={prices.basic} /></span>
               <ul style={{margin:'0',padding:'0',listStyle:'none',display:'flex',flexDirection:'column',gap:'8px',fontSize:'14px',lineHeight:'1.5',color:'var(--body)'}}><li>+ Full-day event access</li><li>+ Keynote and sessions</li><li>+ Food and refreshments</li><li>+ Swag level tier 1</li></ul>
               <Link href="/register" style={{marginTop:'auto',display:'inline-flex',alignItems:'center',justifyContent:'center',minHeight:'50px',border:'3px solid #9FE3B6',color:'var(--ink)',fontFamily:'var(--font-display)',fontSize:'18px',cursor:'pointer',transition:'background .12s steps(2),color .12s steps(2)'}} className="lp-hv-mint-fill">REGISTER</Link>
             </article>
@@ -341,7 +359,7 @@ export function Landing({ registrationOpen, doors, prices }: Props) {
                 <h3 style={{margin:'0',fontFamily:'var(--font-display)',fontSize:'28px'}} className="bm-gold">PREMIUM</h3>
                 <span style={{display:'flex',gap:'3px'}} aria-hidden="true"><span style={{width:'9px',height:'9px',background:'#FF9900'}}></span><span style={{width:'9px',height:'9px',background:'#FF9900'}}></span><span style={{width:'9px',height:'9px',background:'#3A2E12'}}></span><span style={{width:'9px',height:'9px',background:'#3A2E12'}}></span></span>
               </div>
-              <span style={{fontFamily:'var(--font-mono)',fontSize:'26px',color:'var(--bg)',background:'var(--ink-fill)',alignSelf:'flex-start',padding:'4px 10px'}}>{prices.premium ?? 'Announced soon'}</span>
+              <span style={{fontFamily:'var(--font-mono)',fontSize:'26px',color:'var(--bg)',background:'var(--ink-fill)',alignSelf:'flex-start',padding:'4px 10px'}}><Price price={prices.premium} /></span>
               <ul style={{margin:'0',padding:'0',listStyle:'none',display:'flex',flexDirection:'column',gap:'8px',fontSize:'14px',lineHeight:'1.5',color:'var(--body)'}}><li>+ Priority check-in</li><li>+ Preferred seating</li><li>+ Swag level tier 2</li><li>+ Everything in Regular</li></ul>
               <Link href="/register" style={{marginTop:'auto',display:'inline-flex',alignItems:'center',justifyContent:'center',minHeight:'50px',border:'3px solid #9FE3B6',color:'var(--ink)',fontFamily:'var(--font-display)',fontSize:'18px',cursor:'pointer',transition:'background .12s steps(2),color .12s steps(2)'}} className="lp-hv-mint-fill">REGISTER</Link>
             </article>
@@ -350,7 +368,7 @@ export function Landing({ registrationOpen, doors, prices }: Props) {
                 <h3 style={{margin:'0',fontFamily:'var(--font-display)',fontSize:'28px'}} className="bm-gold">PLATINUM</h3>
                 <span style={{display:'flex',gap:'3px'}} aria-hidden="true"><span style={{width:'9px',height:'9px',background:'#F2A7C3'}}></span><span style={{width:'9px',height:'9px',background:'#F2A7C3'}}></span><span style={{width:'9px',height:'9px',background:'#F2A7C3'}}></span><span style={{width:'9px',height:'9px',background:'var(--bar)'}}></span></span>
               </div>
-              <span style={{fontFamily:'var(--font-mono)',fontSize:'26px',color:'var(--bg)',background:'var(--ink-fill)',alignSelf:'flex-start',padding:'4px 10px'}}>{prices.ultra ?? 'Announced soon'}</span>
+              <span style={{fontFamily:'var(--font-mono)',fontSize:'26px',color:'var(--bg)',background:'var(--ink-fill)',alignSelf:'flex-start',padding:'4px 10px'}}><Price price={prices.ultra} /></span>
               <ul style={{margin:'0',padding:'0',listStyle:'none',display:'flex',flexDirection:'column',gap:'8px',fontSize:'14px',lineHeight:'1.5',color:'var(--body)'}}><li>+ Dedicated help desk</li><li>+ Swag level tier 3</li><li>+ Everything in Premium</li></ul>
               <Link href="/register" style={{marginTop:'auto',display:'inline-flex',alignItems:'center',justifyContent:'center',minHeight:'50px',border:'3px solid #F2A7C3',color:'var(--ink)',fontFamily:'var(--font-display)',fontSize:'18px',cursor:'pointer',transition:'background .12s steps(2),color .12s steps(2)'}} className="lp-hv-pink-fill">REGISTER</Link>
             </article>
@@ -370,7 +388,7 @@ export function Landing({ registrationOpen, doors, prices }: Props) {
                 <h3 style={{margin:'0',fontFamily:'var(--font-display)',fontSize:'30px'}} className="bm-gold">VIP</h3>
                 <span style={{display:'flex',gap:'3px'}} aria-hidden="true"><span style={{width:'9px',height:'9px',background:'#9FE3B6'}}></span><span style={{width:'9px',height:'9px',background:'#FF9900'}}></span><span style={{width:'9px',height:'9px',background:'#C4AEF2'}}></span><span style={{width:'9px',height:'9px',background:'var(--ink-fill)'}}></span></span>
               </div>
-              <span style={{fontFamily:'var(--font-mono)',fontSize:'27px',color:'var(--on-fill)',background:'var(--gold)',alignSelf:'flex-start',padding:'4px 10px'}}>{prices.vip ?? 'Announced soon'}</span>
+              <span style={{fontFamily:'var(--font-mono)',fontSize:'27px',color:'var(--on-fill)',background:'var(--gold)',alignSelf:'flex-start',padding:'4px 10px'}}><Price price={prices.vip} /></span>
               <ul style={{margin:'0',padding:'0',listStyle:'none',display:'flex',flexDirection:'column',gap:'8px',fontSize:'14px',lineHeight:'1.5',color:'var(--body-gold)'}}><li>+ Reserved front-row seating</li><li>+ Speaker meet and greet</li><li>+ Speaker group photograph</li><li>+ Dedicated VIP assistance</li><li>+ Swag level tier 4</li><li>+ Everything in Platinum</li></ul>
               <Link href="/register" style={{marginTop:'auto',display:'inline-flex',alignItems:'center',justifyContent:'center',minHeight:'50px',background:'var(--gold)',color:'var(--on-fill)',fontFamily:'var(--font-display)',fontSize:'19px',fontWeight:'700',boxShadow:'5px 5px 0 var(--line)',cursor:'pointer',transition:'transform .1s steps(2),box-shadow .1s steps(2),background .1s steps(2)'}} className="lp-hv-vip-btn lp-ac-press">REGISTER</Link>
             </article>
@@ -421,7 +439,7 @@ export function Landing({ registrationOpen, doors, prices }: Props) {
               </div>
                 <div data-px-back="1" style={{position:'absolute',inset:'0',display:'none',flexDirection:'column',justifyContent:'center',gap:'8px',padding:'14px',background:'#FF9900'}}>
                   <span style={{fontFamily:'var(--font-mono)',fontSize:'9.5px',letterSpacing:'.18em',color:'#14161C'}}>TRACK 02</span>
-                  <span style={{fontFamily:'var(--font-display)',fontSize:'20px',lineHeight:'1.05',color:'#14161C'}}>CLOUD ENGINEERING</span>
+                  <span style={{fontFamily:'var(--font-display)',fontSize:'20px',lineHeight:'1.05',color:'#14161C'}}>CLOUD</span>
                   <span style={{fontFamily:'var(--font-mono)',fontSize:'9px',letterSpacing:'.16em',color:'#14161C',opacity:'.75'}}>SPEAKER SOON</span>
                 </div>
                 <div data-px-grid="1" style={{position:'absolute',inset:'0',pointerEvents:'none'}}></div></div>
@@ -437,7 +455,7 @@ export function Landing({ registrationOpen, doors, prices }: Props) {
               </div>
                 <div data-px-back="1" style={{position:'absolute',inset:'0',display:'none',flexDirection:'column',justifyContent:'center',gap:'8px',padding:'14px',background:'#C4AEF2'}}>
                   <span style={{fontFamily:'var(--font-mono)',fontSize:'9.5px',letterSpacing:'.18em',color:'#14161C'}}>TRACK 03</span>
-                  <span style={{fontFamily:'var(--font-display)',fontSize:'20px',lineHeight:'1.05',color:'#14161C'}}>CAREERS</span>
+                  <span style={{fontFamily:'var(--font-display)',fontSize:'20px',lineHeight:'1.05',color:'#14161C'}}>CAREER</span>
                   <span style={{fontFamily:'var(--font-mono)',fontSize:'9px',letterSpacing:'.16em',color:'#14161C',opacity:'.75'}}>SPEAKER SOON</span>
                 </div>
                 <div data-px-grid="1" style={{position:'absolute',inset:'0',pointerEvents:'none'}}></div></div>
@@ -563,7 +581,7 @@ export function Landing({ registrationOpen, doors, prices }: Props) {
             </details>
             <details style={{border:'3px solid var(--line)',background:'var(--surface)'}}>
               <summary style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:'14px',padding:'20px 22px',cursor:'pointer',fontFamily:'var(--font-display)',fontSize:'clamp(17px,4.2vw,21px)',color:'var(--ink)'}}>Is food included?<span data-faq-plus="1" style={{flex:'none',fontFamily:'var(--font-mono)',fontSize:'18px',color:'var(--amber-ink)',transition:'transform .16s steps(3)'}}>+</span></summary>
-              <div style={{padding:'0 22px 22px',fontSize:'15px',lineHeight:'1.65',color:'var(--body)',maxWidth:'68ch'}}>Yes, on every tier. You choose veg, non-veg or jain when you register, and that choice goes straight to the caterer, so pick it carefully.</div>
+              <div style={{padding:'0 22px 22px',fontSize:'15px',lineHeight:'1.65',color:'var(--body)',maxWidth:'68ch'}}>Yes, on every tier. You choose veg or non-veg when you register, and that choice goes straight to the caterer, so pick it carefully.</div>
             </details>
             <details style={{border:'3px solid var(--line)',background:'var(--surface)'}}>
               <summary style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:'14px',padding:'20px 22px',cursor:'pointer',fontFamily:'var(--font-display)',fontSize:'clamp(17px,4.2vw,21px)',color:'var(--ink)'}}>What is in the swag?<span data-faq-plus="1" style={{flex:'none',fontFamily:'var(--font-mono)',fontSize:'18px',color:'var(--amber-ink)',transition:'transform .16s steps(3)'}}>+</span></summary>

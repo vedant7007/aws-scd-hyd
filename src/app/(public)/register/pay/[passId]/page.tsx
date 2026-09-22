@@ -74,6 +74,12 @@ export default async function PayPage({ params }: PageProps<'/register/pay/[pass
         <p className="lede">Keep the pass ID below. It is how we find your registration, and it opens your pass once the payment is checked.</p>
       </div>
       <PassIdNote passId={passId} />
+      {attendee.earlyBirdMissed ? (
+        <p role="status" className="card-dash copy px-4 py-3">
+          Early bird just ran out a moment before your registration, so the price is the normal {formatInr(attendee.amountPaise)}. Nothing else
+          changes.
+        </p>
+      ) : null}
       <PayStep
         passId={passId}
         amountLabel={formatInr(attendee.amountPaise)}

@@ -1,6 +1,6 @@
 import { tierLabel } from '@/content/passes'
 import { trackName } from '@/content/sessions'
-import { currentAdmin } from '@/lib/auth/admin'
+import { currentCrew } from '@/lib/auth/admin'
 import { loadDashboard, toCsv } from '@/lib/db/stats'
 
 /**
@@ -8,9 +8,10 @@ import { loadDashboard, toCsv } from '@/lib/db/stats'
  * this is the whole attendee roster with names and emails in it.
  */
 export async function GET(): Promise<Response> {
-  const session = await currentAdmin()
-  if (session.status !== 'ok') {
-    return new Response('Not an organiser account.', { status: 403 })
+  // Admin only. The roster with names and emails never reaches a volunteer.
+  const session = await currentCrew()
+  if (session.status !== 'ok' || session.role !== 'admin') {
+    return new Response('Not an admin account.', { status: 403, headers: { 'cache-control': 'no-store' } })
   }
 
   const d = await loadDashboard()

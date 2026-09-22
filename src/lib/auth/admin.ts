@@ -1,14 +1,27 @@
 import {
+  AdminCreateUserCommand,
+  AdminDeleteUserCommand,
+  AdminSetUserPasswordCommand,
+  CodeMismatchException,
   CognitoIdentityProviderClient,
+  ConfirmForgotPasswordCommand,
+  ExpiredCodeException,
+  ForgotPasswordCommand,
   InitiateAuthCommand,
+  InvalidPasswordException,
+  LimitExceededException,
   NotAuthorizedException,
   UserNotFoundException,
+  UsernameExistsException,
 } from '@aws-sdk/client-cognito-identity-provider'
 import { CognitoJwtVerifier } from 'aws-jwt-verify'
+import { randomBytes } from 'node:crypto'
 import { cookies } from 'next/headers'
 import { cache } from 'react'
 import { redirect } from 'next/navigation'
+import type { CrewRole } from '../db/types'
 import { required } from '../outputs'
+import { BOOTSTRAP_ADMIN, adminCount, bootstrapFirstAdmin, getUser } from './crew'
 
 // Server only. SPEC.md section 7: no AWS SDK call ever runs in the browser, so
 // the whole sign in round trip happens here and the browser only ever holds an
@@ -35,8 +48,9 @@ function idTokenVerifier() {
 }
 
 /**
- * The allowlist from SPEC.md section 7. Cognito membership alone is not
- * authorisation: an account can exist and still not be an organiser.
+ * The fallback allowlist. It counts ONLY while the table holds zero admins,
+ * so a wiped table does not lock everyone out; once one admin exists in the
+ * table, this variable grants nothing.
  */
 export function adminEmails(): string[] {
   return (process.env.ADMIN_EMAILS ?? '')
@@ -45,8 +59,16 @@ export function adminEmails(): string[] {
     .filter(Boolean)
 }
 
-export function isAllowed(email: string): boolean {
-  return adminEmails().includes(email.trim().toLowerCase())
+/**
+ * The one place a role is decided. The table first; the environment only
+ * when the table has no admin at all. Cognito membership alone grants
+ * nothing: an account can exist and still be nobody here.
+ */
+export async function resolveRole(email: string): Promise<CrewRole | null> {
+  const user = await getUser(email)
+  if (user) return user.role
+  if ((await adminCount()) === 0 && adminEmails().includes(email.trim().toLowerCase())) return 'admin'
+  return null
 }
 
 /**
@@ -54,25 +76,25 @@ export function isAllowed(email: string): boolean {
  * ap-south-1. The result is held in process so a burst of scans at the gate
  * pays it once rather than once per tap.
  *
- * Five seconds, not sixty. This window is the delay before a removal from
- * ADMIN_EMAILS takes effect, and on event day pulling someone's access has to
+ * Five seconds, not sixty. This window is the delay before a removal or a
+ * demotion takes effect, and on event day pulling someone's access has to
  * be immediate. A slower dashboard is a much cheaper problem than a revoked
  * organiser who still has the roster for another minute. Sign out clears the
  * entry outright.
  */
 const SESSION_TTL_MS = 5_000
 const SESSION_CACHE_MAX = 100
-const sessionCache = new Map<string, { at: number; session: AdminSession }>()
+const sessionCache = new Map<string, { at: number; session: CrewSession }>()
 
-export type AdminSession =
-  | { status: 'ok'; email: string }
+export type CrewSession =
+  | { status: 'ok'; email: string; role: CrewRole }
   /** No usable session. Show the sign in form. */
   | { status: 'signed-out' }
-  /** Signed in to Cognito but not an organiser. Show an explicit refusal. */
+  /** Signed in to Cognito but on no crew list. Show an explicit refusal. */
   | { status: 'refused'; email: string }
 
 /**
- * Resolves the caller on every admin request.
+ * Resolves the caller on every crew request.
  *
  * The cookie holds only a refresh token, so an id token is minted server side
  * per request and verified against the pool's JWKS. That means no hourly re
@@ -82,7 +104,7 @@ export type AdminSession =
  * and the page both need it, and without this every admin page load made two
  * round trips to Cognito instead of one.
  */
-export const currentAdmin = cache(async (): Promise<AdminSession> => {
+export const currentCrew = cache(async (): Promise<CrewSession> => {
   const refreshToken = (await cookies()).get(REFRESH_COOKIE)?.value
   if (!refreshToken) return { status: 'signed-out' }
 
@@ -115,9 +137,8 @@ export const currentAdmin = cache(async (): Promise<AdminSession> => {
 
   if (!email) return { status: 'signed-out' }
 
-  const session: AdminSession = isAllowed(email)
-    ? { status: 'ok', email }
-    : { status: 'refused', email }
+  const role = await resolveRole(email)
+  const session: CrewSession = role ? { status: 'ok', email, role } : { status: 'refused', email }
 
   // Only decided answers are cached. A signed out result is cheap anyway.
   if (sessionCache.size >= SESSION_CACHE_MAX) sessionCache.clear()
@@ -125,12 +146,13 @@ export const currentAdmin = cache(async (): Promise<AdminSession> => {
   return session
 })
 
-export type SignInResult = { ok: true; email: string } | { ok: false; message: string }
+export type SignInResult = { ok: true; email: string; role: CrewRole } | { ok: false; message: string }
 
 /**
- * Authenticates against Cognito and, only if the email is on the allowlist,
- * stores the refresh token. A valid Cognito user who is not an organiser is
- * told so plainly rather than handed a session that every page then rejects.
+ * Authenticates against Cognito and, only if the email has a role, stores the
+ * refresh token. A valid Cognito user with no role is told so plainly rather
+ * than handed a session that every page then rejects. The first admin is
+ * seeded on their first sign in; that runs once and never again.
  */
 export async function signIn(email: string, password: string): Promise<SignInResult> {
   const trimmed = email.trim().toLowerCase()
@@ -146,7 +168,7 @@ export async function signIn(email: string, password: string): Promise<SignInRes
       }),
     )
     if (res.ChallengeName) {
-      return { ok: false, message: `This account needs to finish setup in Cognito first (${res.ChallengeName}).` }
+      return { ok: false, message: 'This account has no password yet. Use "Forgot password" below to set one.' }
     }
     refreshToken = res.AuthenticationResult?.RefreshToken
   } catch (err) {
@@ -159,11 +181,11 @@ export async function signIn(email: string, password: string): Promise<SignInRes
 
   if (!refreshToken) return { ok: false, message: 'Sign in did not return a session. Try again.' }
 
-  if (!isAllowed(trimmed)) {
-    return {
-      ok: false,
-      message: `${trimmed} is not on the organiser list. Ask Vedant to add it to ADMIN_EMAILS.`,
-    }
+  if (trimmed === BOOTSTRAP_ADMIN) await bootstrapFirstAdmin()
+
+  const role = await resolveRole(trimmed)
+  if (!role) {
+    return { ok: false, message: `${trimmed} is not on the crew list. Ask an admin to add you.` }
   }
 
   const store = await cookies()
@@ -175,7 +197,7 @@ export async function signIn(email: string, password: string): Promise<SignInRes
     maxAge: 60 * 60 * 24 * 30,
   })
 
-  return { ok: true, email: trimmed }
+  return { ok: true, email: trimmed, role }
 }
 
 export async function signOut(): Promise<void> {
@@ -187,18 +209,114 @@ export async function signOut(): Promise<void> {
   store.delete(REFRESH_COOKIE)
 }
 
+/** Forgets every cached decision. Called after a role change so it lands within the request, not the TTL. */
+export function forgetSessions(): void {
+  sessionCache.clear()
+}
+
 /**
- * Guard for every admin page and route handler. Call it BEFORE loading any
+ * Guard for every admin page and server action. Call it BEFORE loading any
  * data.
  *
  * Returning a refusal from the layout is not enough: Next still renders the
  * child page, and its data lands in the RSC payload of the response. That
  * leaked the full attendee roster to a refused account until this existed.
  * redirect() throws, so nothing after this line runs and nothing is fetched.
+ * A volunteer is sent to the one screen they may use.
  */
 export async function requireAdmin(): Promise<{ email: string }> {
-  const session = await currentAdmin()
+  const session = await currentCrew()
   if (session.status === 'signed-out') redirect('/admin/login')
   if (session.status === 'refused') redirect('/admin/no-access')
+  if (session.role !== 'admin') redirect('/admin/scan')
   return { email: session.email }
+}
+
+/** Guard for the scanner and its route: any crew role. */
+export async function requireCrew(): Promise<{ email: string; role: CrewRole }> {
+  const session = await currentCrew()
+  if (session.status === 'signed-out') redirect('/admin/login')
+  if (session.status === 'refused') redirect('/admin/no-access')
+  return { email: session.email, role: session.role }
+}
+
+/* ---------------------------------------------------------------------------
+   Cognito accounts. Created and removed here so the user management page
+   never handles a password: Cognito is told to send nothing, the account is
+   given a random permanent password that is discarded on the spot (Cognito
+   refuses a password reset for an account that has never had one), and the
+   person sets their own through the forgot password flow. No password is
+   printed, logged, returned or emailed by this application.
+   --------------------------------------------------------------------------- */
+
+/** Creates the sign-in account for a crew email. Idempotent: an existing account is left as it is. */
+export async function createCrewAccount(email: string): Promise<{ created: boolean }> {
+  const clean = email.trim().toLowerCase()
+  try {
+    await cognito.send(
+      new AdminCreateUserCommand({
+        UserPoolId: userPoolId(),
+        Username: clean,
+        UserAttributes: [
+          { Name: 'email', Value: clean },
+          { Name: 'email_verified', Value: 'true' },
+        ],
+        MessageAction: 'SUPPRESS',
+      }),
+    )
+  } catch (err) {
+    if (err instanceof UsernameExistsException) return { created: false }
+    throw err
+  }
+  await cognito.send(
+    new AdminSetUserPasswordCommand({
+      UserPoolId: userPoolId(),
+      Username: clean,
+      Password: `${randomBytes(24).toString('base64url')}Aa1!`,
+      Permanent: true,
+    }),
+  )
+  return { created: true }
+}
+
+/** Removes the sign-in account. Idempotent. */
+export async function deleteCrewAccount(email: string): Promise<void> {
+  try {
+    await cognito.send(new AdminDeleteUserCommand({ UserPoolId: userPoolId(), Username: email.trim().toLowerCase() }))
+  } catch (err) {
+    if (!(err instanceof UserNotFoundException)) throw err
+  }
+}
+
+export type ResetResult = { ok: true } | { ok: false; message: string }
+
+/** Step one of forgot password: Cognito emails a code. One answer whether or not the account exists. */
+export async function startPasswordReset(email: string): Promise<ResetResult> {
+  const clean = email.trim().toLowerCase()
+  if (!clean) return { ok: false, message: 'Enter your email.' }
+  try {
+    await cognito.send(new ForgotPasswordCommand({ ClientId: clientId(), Username: clean }))
+  } catch (err) {
+    if (err instanceof UserNotFoundException) return { ok: true }
+    if (err instanceof LimitExceededException) return { ok: false, message: 'Too many attempts. Wait a while and try again.' }
+    if (err instanceof NotAuthorizedException) return { ok: false, message: 'This account cannot reset its password yet. Ask an admin to remove and re-add it.' }
+    throw err
+  }
+  return { ok: true }
+}
+
+/** Step two: the code from the email and the new password, straight to Cognito. Nothing is kept. */
+export async function finishPasswordReset(email: string, code: string, password: string): Promise<ResetResult> {
+  const clean = email.trim().toLowerCase()
+  if (!clean || !code.trim() || !password) return { ok: false, message: 'Enter your email, the code and a new password.' }
+  try {
+    await cognito.send(new ConfirmForgotPasswordCommand({ ClientId: clientId(), Username: clean, ConfirmationCode: code.trim(), Password: password }))
+  } catch (err) {
+    if (err instanceof CodeMismatchException || err instanceof ExpiredCodeException) return { ok: false, message: 'That code is wrong or has expired. Request a new one.' }
+    if (err instanceof InvalidPasswordException) return { ok: false, message: 'Cognito refused that password. Use at least eight characters with upper and lower case, a number and a symbol.' }
+    if (err instanceof UserNotFoundException) return { ok: false, message: 'That code is wrong or has expired. Request a new one.' }
+    if (err instanceof LimitExceededException) return { ok: false, message: 'Too many attempts. Wait a while and try again.' }
+    throw err
+  }
+  return { ok: true }
 }

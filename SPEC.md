@@ -143,6 +143,7 @@ RAZORPAY_TEST_AMOUNT_PAISE=100
 # Send only. There is no mailbox on awsscdhyd.in, so replies must go elsewhere.
 SES_FROM="AWS SBG VJIT <vjit@awsscdhyd.in>"
 SES_REPLY_TO=awssbgvjit@gmail.com
+# Fallback only. Roles live in the table; this list grants nothing while the table holds one admin.
 ADMIN_EMAILS=
 CRON_SECRET=
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
@@ -195,7 +196,7 @@ Every transition is a conditional write asserting the current state. An attempt 
 |---|---|---|
 | (new) | `AWAITING_PAYMENT` | step one of registration |
 | `AWAITING_PAYMENT` | `PENDING_VERIFICATION` | student submits UTR and screenshot |
-| `AWAITING_PAYMENT` | `ABANDONED` | the hourly sweep, after the 60 minute hold |
+| `AWAITING_PAYMENT` | `ABANDONED` | the hourly sweep, after the 90 minute hold |
 | `AWAITING_PAYMENT` | `VERIFIED` | Razorpay mode only: a signature-verified capture for the recorded amount |
 | `ABANDONED` | `PENDING_VERIFICATION` | admin reinstate with a typed UTR |
 | `PENDING_VERIFICATION` | `VERIFIED` | admin verify |
@@ -247,7 +248,10 @@ The Scan is deliberate. At a few thousand items it costs a fraction of a rupee a
 - Step one of registration is rate limited **per email**, five an hour, because the audience is students on college wifi with hundreds behind one NATed address. A per-IP ceiling of 500 an hour exists only against abuse.
 - Registration is guarded independently of `registrationOpen`, see section 8.
 - `/pass/[passId]` sets `noindex`. Pass URLs never appear in the sitemap.
-- `/admin/*` checks the Cognito session and that the email is in `ADMIN_EMAILS`. A signed-in user not on the list gets an explicit refusal, not a blank page. Every admin action is logged under the attendee with who, when and which UTR.
+- `/admin/*` checks the Cognito session, then looks the email up in the table for a role. **Two roles.** `admin` does everything: verification queue, attendee list, exports, session release, settings, crew management. `volunteer` gets the gate scanner and nothing else: not the attendee list, not any email address, not the payment queue, the exports, the settings or the crew page, by navigation, by direct URL or by API call. The role is enforced in `requireAdmin` / `requireCrew` in `src/lib/auth/admin.ts` and in the route handlers, never in the UI: a volunteer asking for an admin page is redirected to the scanner before any data loads, and an admin API answers 403 with nothing in the body. A signed-in user with no role gets an explicit refusal, not a blank page.
+- **Roles are managed on `/admin/users`** (admin only): list, add by email with a role, change a role, remove. Every change is one transaction with its audit item (who, to whom, when). The admin count is kept race-safe on a META item, so the last admin cannot demote or remove themselves and two admins cannot demote each other into zero at the same instant. Adding someone creates their Cognito account with no password anyone sees; they set their own through the forgot-password flow on the sign-in page. No password is printed, logged, returned or emailed by this application.
+- **Bootstrap.** `vedantidlgave16@gmail.com` is seeded as the first admin the first time that account signs in, in a transaction that also writes a BOOTSTRAP marker conditional on it not existing, so the seed runs once and can never grant admin again. `ADMIN_EMAILS` still works, **only** while the table holds zero admins, so a wiped table does not lock everyone out.
+- Every admin action on a registration is logged under the attendee with who, when and which UTR.
 
 ---
 
@@ -259,15 +263,17 @@ Two modes, switched by `PAYMENT_MODE` (`manual` | `razorpay`), default manual. M
 
 The student fills the form, then leaves the site to pay in their UPI app, then comes back to enter the UTR. That gap is real and it is minutes long.
 
-**Step one.** Form plus home track. The record is created in `AWAITING_PAYMENT` with its pass id, and **in the same transaction the home track's counter is incremented, conditional on `registered < ceiling`**. The ceiling is the sellable capacity of the room that track runs in. If the increment fails, the track is full: no record is created and the student is told which track, before ever seeing the payment screen. This counter is the only thing protecting the event from selling more passes for a track than its room holds, because seats are claimed later, at selection. A submission key minted once per form rides in the transaction too, so a double click or a retry after a timeout resolves to the record the first one made instead of counting twice.
+**Step one.** Form (name, email, phone, college, year of study, tier, track, food preference, 18+ confirmation; final, nothing to add) plus home track. Food is veg or non-veg only. The record is created in `AWAITING_PAYMENT` with its pass id, and **in the same transaction the home track's counter is incremented, conditional on `registered < ceiling`**. The ceiling is the sellable capacity of the room that track runs in. If the increment fails, the track is full: no record is created and the student is told which track, before ever seeing the payment screen. This counter is the only thing protecting the event from selling more passes for a track than its room holds, because seats are claimed later, at selection. A submission key minted once per form rides in the transaction too, so a double click or a retry after a timeout resolves to the record the first one made instead of counting twice.
 
 The student then sees the college QR, the exact amount for their tier, their pass id to put in the UPI note, and the UTR form, at `/register/pay/<passId>`. That page is reachable by pass id alone, because no email exists yet and the id on screen is the only thing they can carry across the gap. It renders only for `AWAITING_PAYMENT` and `REJECTED`; every other state gets the generic not-found.
 
 **Step two.** UTR and screenshot in. `AWAITING_PAYMENT` (or `REJECTED`) to `PENDING_VERIFICATION`, `holdUntil` cleared, email 1 sent.
 
-**The sweep.** The hourly reconcile Lambda moves every `AWAITING_PAYMENT` record whose 60 minute hold has lapsed to `ABANDONED` **and decrements its track counter in the same transaction**. A crash between the two would leak a track place for good, and over forty days of registration that silently shrinks sellable capacity; bound together, either both happen or neither. No email is sent: a student who never paid is not chased. The hold is `holdMinutes` in `content/payment.ts`; with an hourly sweep the effective hold is 60 to 120 minutes.
+**The sweep.** The hourly reconcile Lambda moves every `AWAITING_PAYMENT` record whose **90 minute** hold has lapsed to `ABANDONED` **and decrements its track counter in the same transaction**, giving back its early bird place too if it held one. A crash between the two would leak a track place for good, and over forty days of registration that silently shrinks sellable capacity; bound together, either both happen or neither. No email is sent: a student who never paid is not chased. The hold is `holdMinutes` in `content/payment.ts`; with an hourly sweep the effective hold is 90 to 150 minutes.
 
-**Late payers.** Someone will abandon, pay anyway an hour later, and come back. The admin reinstate action takes an `ABANDONED` record back to `PENDING_VERIFICATION` with a UTR the admin types in, re-incrementing the counter under its ceiling in the same transaction. If the track is now full it fails loudly and nothing changes, so the admin offers a refund or another track rather than quietly overselling the room.
+**Late payers.** Someone will abandon, pay anyway an hour later, and come back. The admin reinstate action takes an `ABANDONED` record back to `PENDING_VERIFICATION` with a UTR the admin types in, re-incrementing the counter under its ceiling in the same transaction. If the track is now full it fails loudly and nothing changes, so the admin offers a refund or another track rather than quietly overselling the room. A record that held an early bird price tries to take a place again in the same transaction; if the pool is empty by then it comes back at the full price stored beside the discount, and the admin is told which happened.
+
+**Refunds.** The wording, on the registration page before the pay button and in email 2, verbatim: *Refunds are available if you tell us at least two weeks before the event. Write to awssbgvjit@gmail.com with your pass ID.* Mispayments get no automatic handling: the admin rejects with a reason from a short list (Could not find this payment; Amount does not match; This payment has already been used for another registration; Other, with a note) and that reason goes into the rejection email.
 
 **Conservative by design.** A Premium or VIP holder counts against their home track's counter even though they may later pick sessions in other rooms. That under-sells slightly, deliberately: under-selling means empty chairs, over-selling means students standing in a corridor.
 
@@ -275,23 +281,35 @@ The student then sees the college QR, the exact amount for their tier, their pas
 
 The admin dashboard's default view is the `PENDING_VERIFICATION` queue, oldest UTR first: name, email, tier, home track, amount expected, UTR, screenshot. Verify moves the record to `VERIFIED` and sends email 2; Reject moves it to `REJECTED` with a reason and sends the rejection email; both are conditional on the current state, so two admins acting at once produce one change and one email. A rejected student resubmits at the pay page and goes back into the queue with the same record.
 
+### The registration switch
+
+Registration is open from the moment the site can take money, and it closes when an admin flips the switch on `/admin/settings`, not on a date. The switch is the `registrationOpen` field of the config item, written with who flipped it and when; closing asks the admin to type CLOSE first, because closing by accident during a promotion push would be expensive. It is **enforced server side in the step one route**: a direct POST while closed is a 403 that creates nothing. Hiding the button is not the enforcement. When closed, `/register` shows a designed "Registrations are closed" page.
+
+Closing stops new registrations and nothing else. An `AWAITING_PAYMENT` record made before the close still submits its UTR until its 90 minutes lapse; verification, session release and session selection all keep working. Closing the door is not shutting the system.
+
 ### The launch guard
 
-`registrationOpen` is one edit in a content file, so it is not allowed to be the only thing between a half-configured site and real students. `src/lib/tickets/launch.ts` refuses to register anyone, in production, while any blocker for the current mode holds.
+The switch is one click, so it is not allowed to be the only thing between a half-configured site and real students. `src/lib/tickets/launch.ts` refuses to register anyone, in production, while any blocker for the current mode holds.
 
-Manual mode: every tier priced, the college QR at `public/assets/upi-qr.png`, `VERIFICATION_WINDOW` set, at least one address in `ADMIN_EMAILS`, a room assigned to every track, and a `sellableCapacity` on every session.
+Manual mode: every tier priced, the college QR at `public/assets/upi-qr.png`, `VERIFICATION_WINDOW` set, at least one admin (in the table, or in `ADMIN_EMAILS` while the table has none), a room assigned to every track, and a `sellableCapacity` on every session.
 
 Razorpay mode: a live key, every tier priced, `RAZORPAY_TEST_AMOUNT_PAISE` absent, plus the room and capacity conditions.
 
-Every entry point asks `registrationIsOpen()`, which is `registrationOpen` **and** no enforced blocker. Enforcement is keyed on `NODE_ENV === 'production'`; development is exempt so the flow can be exercised at all, and `SCD_DEV_REGISTRATION_OPEN=1` opens step one outside production for the acceptance suite. `npm run check:launch` proves each condition blocks on its own.
+Every entry point asks `registrationIsOpen()`, which reads the switch from the table on every call (never cached) **and** requires no enforced blocker. Enforcement is keyed on `NODE_ENV === 'production'`; development is exempt so the flow can be exercised at all, and `SCD_DEV_REGISTRATION_OPEN=1` opens step one outside production for the acceptance suite. `npm run check:launch` proves each condition blocks on its own.
 
 ### Pricing
 
 Every tier in `content/passes.ts` is priced (Rs 399, 799, 1,299, 1,699, confirmed 22 September 2026) and that file is the only source: the landing page, the pay page and the record all read from it. A tier with `pricePaise: null` would be offered at `RAZORPAY_TEST_AMOUNT_PAISE`, default 100, and the launch guard refuses to sell while that could apply.
 
-### Early bird and coupons: none
+### Early bird
 
-No early bird is offered and there is no discount logic. `earlyBirdEndsAt` stays null. The design handoff's Register screen carries demo coupon codes (EARLYBIRD, SBGVJIT, CAMPUS5) that its own notes flag as invented; they must not come across when that screen is ported.
+Fifty rupees off every tier for the first fifty registrations across all tiers combined (Regular 349, Premium 749, Platinum 1,249, VIP 1,649), live from the moment registration opens. `EARLY_BIRD_TOTAL` and `EARLY_BIRD_DISCOUNT_PAISE` live in `content/passes.ts`.
+
+The pool is one counter item, `EARLYBIRD#COUNTER` `{ claimed, ceiling }`, the same pattern as a track counter. **The price is decided and locked into the record at step one, in the same transaction that increments the track counter**: the EARLYBIRD counter is incremented conditional on `claimed < ceiling`, and `amountPaise` is the discounted price only if that item succeeded, with the full price kept beside it as `listPricePaise`. The student pays exactly the number they were shown; the admin verifies against the stored number, never a recomputed one. Abandoning releases the place in the same transaction that releases the track place. Reinstating re-claims a place if one is free, otherwise reinstates at the stored full price and tells the admin. If the fiftieth place goes between the read and the write, the registration is retried once at full price, the record is marked `earlyBirdMissed`, and the pay page says early bird just ran out and the price is now the full one.
+
+Display, on the landing page and the registration page: full price struck through with the early bird price beside it, and a live "X of 50 early bird places left" read from the counter on every request, never cached. When the pool is empty the strikethrough and the label disappear entirely; no badge, no dead markup.
+
+No coupons. The design handoff's Register screen carries demo coupon codes (EARLYBIRD, SBGVJIT, CAMPUS5) that its own notes flag as invented; they must not come across.
 
 ### Reconciliation (Razorpay mode)
 
@@ -300,6 +318,20 @@ The hourly Lambda, in Razorpay mode only, also asks the provider what settled in
 ---
 
 ## 9. Seat claiming
+
+### Rooms and the reserve
+
+**Fifteen seats are held back in every room.** A session's sellable capacity is its room's physical count minus `ROOM_RESERVE` (15) unless `sessionDetails` sets it lower, and a track's counter ceiling is that number.
+
+**Room assignment is PROVISIONAL.** The organiser has not decided which track runs where; registration opens anyway on these, in `content/event.ts`:
+
+| Track | Room | Seats | Sells |
+|---|---|---|---|
+| AI and Agents | C-block ground floor | 400 | 385 |
+| Cloud | E-block auditorium | 240 | 225 |
+| Career | C-block first floor | 100 | 85 |
+
+The room may change; the ceiling may only be raised. An admin moves a track on `/admin/settings`; the counter's ceiling, the config item's assignment and the track's four sessions change in one transaction, conditional on `registered <= ceiling` and on every session's `seatsTaken <= sellable`. A room that sells fewer than the track has registered is refused, and the refusal names the count. Overselling a room is not recoverable on event day.
 
 Seats are claimed at session selection, not at registration. Everyone holds exactly four, one per slot, whatever the tier.
 
@@ -376,13 +408,17 @@ In order, each its own component file.
 1. **Hero.** Name, Hyderabad, date, venue, CTA to passes, countdown to `event.startsAt` (2026-10-30T09:30:00+05:30, doors confirmed 09:30), and a pointer-reactive canvas background that animates gently on its own on mobile. Keep the background in one swappable component, the visual is `TODO(vedant)`.
 2. **Ticker.** Marquee band in accent colour.
 3. **About.** Three or four sentences. Not a wall.
-4. **Tracks.** AI and agents, cloud engineering, careers. Large type, hairline separated, no cards.
+4. **Tracks.** AI and Agents, Cloud, Career, the organiser's names verbatim. Large type, hairline separated, no cards.
 5. **Speakers.** Must render well with zero or one entry, with a real "announced soon" state. No placeholder silhouettes.
 6. **Passes.** Four tiers, each with price, an itemised inclusion list, and swag level. One marked recommended. Early bird expiry date shown, with a plain note that price rises after. Lunch is included on every tier and says so on every tier.
 7. **Sponsors.** Tiered logo wall with an empty state, plus a become-a-sponsor block with a fixed mail subject format.
 8. **Venue.** Address, map, metro, bus, cab, parking.
 9. **FAQ.** Accordion, keyboard operable.
 10. **Footer.** Contact, socials, code of conduct link, and this exact line: *AWS User Groups are run by independent volunteers and are not organized by AWS.*
+
+### Session times
+
+Times are not decided and must not appear on the public site. The only public time is doors at 09:30 on Friday 30 October 2026. The four slots exist structurally for the picker; each has `startsAt` and `endsAt` null until the organiser sets them, and `slotTime()` returns null for an unset or unparseable value, never an empty string, a dash or Invalid Date. A blank slot label falls back to "Slot 1" through "Slot 4" through `slotLabel()`.
 
 ### `/schedule`
 Time down, halls across. On mobile, a per-hall vertical list. Never a horizontally scrolling table.
@@ -406,8 +442,8 @@ The QR appears only in the final state. The pass id is identical in every state;
 
 Step one is the form, section 8. Step two, at the pay page, is reachable by pass id alone and renders the QR, the amount and the UTR form for `AWAITING_PAYMENT` and `REJECTED`, "we have your UTR" for `PENDING_VERIFICATION`, redirects to the pass for `VERIFIED` and `SESSIONS_SELECTED`, and explains the lapse for `ABANDONED`.
 
-### `/admin` and `/admin/scan`
-Cognito sign-in, `ADMIN_EMAILS` allowlist.
+### `/admin`, `/admin/scan`, `/admin/users`, `/admin/settings`
+Cognito sign-in, then a role from the table (section 7). `/admin/scan` is the one screen a volunteer gets; everything else is admin only. `/admin/users` manages the crew; `/admin/settings` holds the registration switch, the early bird pool and the room assignment with its guard.
 
 Dashboard: the `PENDING_VERIFICATION` queue first, oldest first, with Verify and Reject; counts for all six states; a filter for `VERIFIED` attendees who have not chosen sessions, so they can be chased; search by pass id, UTR and email; reinstate for `ABANDONED`; change sessions for `SESSIONS_SELECTED`, releasing and claiming in one transaction; the release-sessions action, which flips the flag and sends email 3; per-track counters against their ceilings; per-session sold, sellable, physical and reserve; **food preference totals with CSV export** (this number goes to the caterer); the last sweep run.
 
@@ -456,7 +492,7 @@ Set `Reply-To` in the SES call itself, not in the template body. Seeded and test
 - The DynamoDB table above, on-demand, PITR enabled, `RemovalPolicy.RETAIN`
 - The Cognito pool via `defineAuth`
 - The reconcile function and its EventBridge hourly schedule
-- Grants: the Amplify SSR compute role gets read and write on the table, plus `ses:SendEmail`
+- Grants: the Amplify SSR compute role gets read and write on the table and the screenshot bucket, `ses:SendEmail`, and the three Cognito admin calls the crew page needs (`AdminCreateUser`, `AdminSetUserPassword`, `AdminDeleteUser`)
 
 Everything is code. Nothing is clicked in the console except the one-time bootstrap, the GitHub connection, and the SES production request.
 
@@ -484,11 +520,10 @@ Done since this was written: `awsscdhyd.in` is registered, attached to Hosting a
 
 | Item | Blocks |
 |---|---|
-| Pass tier names, prices, inclusions, swag levels | Section 11 item 6 |
-| Sessions allowed per tier | Section 9 |
-| Confirmed hall count, names, capacities | Config item, schedule page |
-| Registration open date and early bird expiry | Countdown and urgency copy |
-| Final theme (due 12 Sept) | Section 10 |
+| Pass inclusions and swag levels (names and prices are confirmed) | Section 11 item 6 |
+| Final room per track (provisional assignment in place, section 9) | Config item, schedule page |
+| Session times (none published until set) | Schedule, picker, pass |
+| The college UPI QR at `public/assets/upi-qr.png` | The launch guard: nothing sells without it |
 | Speaker list, sponsor tiers, FAQ, code of conduct copy | Content files |
 
 ---
@@ -524,7 +559,7 @@ Production build, median of five warm requests, local:
 | `/admin/scan` | 20 ms, was 147 ms |
 | scan lookup round trip | 41 ms |
 
-Cognito `InitiateAuth` costs 135 ms from here and DynamoDB 26 to 40 ms, which is why the resolved session is cached. The window is five seconds: it is the delay before an `ADMIN_EMAILS` removal bites, and on event day that has to be near immediate, so most of the latency win is given back on purpose.
+Cognito `InitiateAuth` costs 135 ms from here and DynamoDB 26 to 40 ms, which is why the resolved session is cached. The window is five seconds: it is the delay before a role change bites, and on event day that has to be near immediate, so most of the latency win is given back on purpose.
 
 Landing page ships 186 KB of gzipped JS and CSS across 12 files.
 
