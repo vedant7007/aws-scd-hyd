@@ -75,7 +75,8 @@ const testAssignment = (): Partial<Record<Track, string>> => {
   const trackRooms = rooms.filter((r) => r.role === 'track')
   return Object.fromEntries(TRACKS.map((t, i) => [t, trackRooms[i]!.id])) as Partial<Record<Track, string>>
 }
-const assignment = TEST_MODEL ? testAssignment() : roomForTrack
+// Content now carries the provisional assignment; the test model only invents one while content has none.
+const assignment = TEST_MODEL && Object.keys(roomForTrack).length === 0 ? testAssignment() : roomForTrack
 
 function buildConfig(): EventConfig {
   return { ...keys.config(), rooms, slots, roomForTrack: assignment, registrationOpen, sessionsReleased: TEST_MODEL ? true : sessionsReleased }

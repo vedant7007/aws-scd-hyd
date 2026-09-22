@@ -1,3 +1,4 @@
+import { event } from './event'
 import type { Track } from '../lib/db/types'
 
 export type Speaker = {
@@ -13,3 +14,8 @@ export type Speaker = {
  * no need to wait for a full lineup before publishing the first name.
  */
 export const speakers: Speaker[] = []
+
+/** Fixed subject so applications are filterable in the inbox. The landing page carries the same string. */
+export const SPEAKER_SUBJECT = 'Speaker - AWS SCD Hyderabad'
+
+export const speakerMailto = `mailto:${event.contactEmail}?subject=${encodeURIComponent(SPEAKER_SUBJECT)}`

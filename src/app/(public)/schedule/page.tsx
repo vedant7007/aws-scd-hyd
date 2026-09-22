@@ -1,12 +1,11 @@
 import type { Metadata } from 'next'
-import type { CSSProperties } from 'react'
-import { Container } from '@/components/layout/Container'
+import Link from 'next/link'
 import { event, slots as fallbackSlots } from '@/content/event'
 import { roomById, roomForTrackId } from '@/content/sessions'
 import { tracks } from '@/content/tracks'
 import { getConfig, getSessionsInSlot } from '@/lib/db/queries'
-import type { Session, Track } from '@/lib/db/types'
-import { slotTime } from '@/lib/utils'
+import type { Track } from '@/lib/db/types'
+import { slotLabel, slotTime } from '@/lib/utils'
 
 export const metadata: Metadata = {
   title: `Schedule, ${event.shortName}`,
@@ -16,119 +15,81 @@ export const metadata: Metadata = {
 /** Seat counts move during the day, so this is never served stale. */
 export const dynamic = 'force-dynamic'
 
-/** Titles and speakers are TODO(vedant); a cell says so rather than showing a hole. */
-function Cell({ session }: { session: Session | undefined }) {
-  if (!session) return <p className="text-muted">Nothing scheduled</p>
-  return (
-    <>
-      <p className="agenda-title">{session.title ?? 'Title announced soon'}</p>
-      <p className="agenda-speaker">{session.speaker ?? 'Speaker announced soon'}</p>
-    </>
-  )
-}
-
 /** The room a track runs in, once assigned. Never the buffer room: it is never assigned. */
 function roomName(track: Track, assignment: Partial<Record<Track, string>>): string {
   return roomById(assignment[track])?.name ?? roomForTrackId(track)?.name ?? 'Room announced soon'
 }
 
+/**
+ * One agenda card per track, a row per slot, the handoff's "your day" block
+ * in page form. One markup for every width: the cards stack on a phone and
+ * sit side by side on a laptop, so nothing scrolls sideways and assistive
+ * tech sees one copy. Titles and speakers are TODO(vedant); a row says so
+ * rather than showing a hole, and no time is printed until the organiser
+ * sets one.
+ */
 export default async function SchedulePage() {
   const config = await getConfig()
   const slots = config?.slots ?? fallbackSlots
   const assignment = config?.roomForTrack ?? {}
   const sessionsPerSlot = await Promise.all(slots.map((s) => getSessionsInSlot(s.id)))
-
   const at = (slotIndex: number, track: Track) => sessionsPerSlot[slotIndex]?.find((s) => s.track === track)
 
   return (
-    <Container className="section-tight flex flex-col gap-12">
-      <div className="field-grid">
-        <h1 className="display text-step-4 col-span-full lg:col-span-7">Schedule</h1>
-        <p className="measure text-step-1 text-muted col-span-full lg:col-span-4 lg:col-start-9 lg:self-end">
-          {event.dateLabel}. Three tracks run in parallel, one session each per slot. Times, titles and speakers go up
-          here as they are confirmed.
+    <div className="page page-1180 rise">
+      <div className="flex flex-col gap-3">
+        <span className="eye">{'// THE PROGRAMME'}</span>
+        <h1 className="h1">SCHEDULE</h1>
+        <p className="lede">
+          {event.dateLabel}. Three tracks run in parallel, one session each per slot. Times, titles and speakers go up here as they are
+          confirmed.
         </p>
       </div>
 
       {slots.length === 0 ? (
-        <p className="measure text-muted">The running order is being confirmed and goes up here.</p>
+        <div className="card-dash flex flex-col gap-2 p-4">
+          <span className="lbl eye-amber">Not yet</span>
+          <p className="copy">The running order is being confirmed and goes up here.</p>
+        </div>
       ) : (
-        <>
-          {/*
-            Wide screens get the grid: slots down the left, tracks across, the
-            room named under each track once it has one. Narrow screens get one
-            vertical list per track. Two blocks rather than one table that
-            scrolls sideways, which is unusable at a venue. Only one is ever
-            displayed, so assistive tech sees one copy.
-          */}
-          <div className="schedule-wide">
-            <div
-              className="agenda"
-              style={{ '--hall-count': tracks.length } as CSSProperties}
-              role="table"
-              aria-label="Sessions by slot and track"
-            >
-              <div role="row" style={{ display: 'contents' }}>
-                <span role="columnheader" className="agenda-head">
-                  Slot
-                </span>
-                {tracks.map((track) => (
-                  <span role="columnheader" key={track.id} className="agenda-head">
-                    {track.name}
-                    <br />
-                    <span className="text-muted">{roomName(track.id, assignment)}</span>
-                  </span>
-                ))}
-              </div>
-
-              {slots.map((slot, i) => (
-                <div role="row" key={slot.id} style={{ display: 'contents' }}>
-                  <span role="rowheader" className="agenda-time">
-                    {slot.label}
-                    <br />
-                    {slotTime(slot) ?? 'Time to be confirmed'}
-                  </span>
-                  {tracks.map((track) => {
-                    const session = at(i, track.id)
-                    return (
-                      <div role="cell" key={track.id} className="agenda-cell" data-track={track.id}>
-                        <Cell session={session} />
-                      </div>
-                    )
-                  })}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="schedule-stack flex flex-col gap-12">
-            {tracks.map((track) => (
-              <section key={track.id} aria-labelledby={`track-${track.id}`}>
-                <h2 id={`track-${track.id}`} className="display text-step-2">
-                  {track.name}
+        <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))]">
+          {tracks.map((track) => (
+            <section key={track.id} className="ag-card" aria-labelledby={`track-${track.id}`}>
+              <div className="ag-head">
+                <span className="dot dot-round" data-track={track.id} aria-hidden="true" />
+                <h2 id={`track-${track.id}`} className="ag-track">
+                  {track.name.toUpperCase()}
                 </h2>
-                <p className="text-step--1 text-muted">{roomName(track.id, assignment)}</p>
-                <ul className="mt-4">
-                  {slots.map((slot, i) => {
-                    const session = at(i, track.id)
-                    return (
-                      <li key={slot.id} className="agenda-cell" data-track={track.id}>
-                        <p className="numeral">
-                          {slot.label}
-                          {slotTime(slot) ? `, ${slotTime(slot)}` : ''}
-                        </p>
-                        <div className="mt-1">
-                          <Cell session={session} />
-                        </div>
-                      </li>
-                    )
-                  })}
-                </ul>
-              </section>
-            ))}
-          </div>
-        </>
+                <span className="ag-room">{roomName(track.id, assignment)}</span>
+              </div>
+              {slots.map((slot, i) => {
+                const session = at(i, track.id)
+                const time = slotTime(slot)
+                return (
+                  <div key={slot.id} className="ag-row">
+                    <span className="ag-time">
+                      {slotLabel(slot, i)}
+                      {time ? <span className="ag-time-tbc block">{time}</span> : null}
+                    </span>
+                    <span className="ag-cell">
+                      <span className="ag-title">{session ? (session.title ?? 'Title announced soon') : 'Nothing scheduled'}</span>
+                      <span className="ag-sub">{session ? (session.speaker ?? 'Speaker announced soon') : ''}</span>
+                    </span>
+                  </div>
+                )
+              })}
+            </section>
+          ))}
+        </div>
       )}
-    </Container>
+
+      <div className="card-mint flex flex-col gap-3 p-4">
+        <span className="h3">PICK YOUR SESSIONS AFTER YOU REGISTER</span>
+        <p className="copy">One session per slot, from the tracks your pass covers. Your seat in each is held from the moment you save.</p>
+        <Link href="/register" className="btn btn-primary self-start">
+          REGISTER
+        </Link>
+      </div>
+    </div>
   )
 }
