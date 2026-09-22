@@ -362,7 +362,7 @@ async function http(): Promise<void> {
   assert.equal(unknown.status, pending.status)
   assert.equal(strip(unknown), strip(pending), 'headers differ')
   assert.ok(Buffer.from(ub).equals(Buffer.from(pb)), 'bodies differ')
-  assert.equal(unknown.headers.get('location'), `${BASE}/pass?notfound=1`)
+  assert.equal(unknown.headers.get('location'), '/pass?notfound=1')
   ok(`unknown id and PENDING_VERIFICATION id: byte-identical ${unknown.status} responses (${ub.byteLength} bytes, same headers)`)
 
   const ver = await seedIn('VERIFIED')
@@ -370,7 +370,7 @@ async function http(): Promise<void> {
   for (const f of [ver.passId.toLowerCase(), `scd ${bare.toLowerCase()}`, `SCD${bare}`, `scd-${bare.slice(0, 4)}-${bare.slice(4)}`]) {
     const r = await form(f)
     assert.equal(r.status, 303)
-    assert.equal(r.headers.get('location'), `${BASE}/pass/${ver.passId}`, `${JSON.stringify(f)} did not resolve`)
+    assert.equal(r.headers.get('location'), `/pass/${ver.passId}`, `${JSON.stringify(f)} did not resolve`)
   }
   ok('lowercase, spaced, unhyphenated and re-hyphenated forms of a valid id all resolve to the pass')
 

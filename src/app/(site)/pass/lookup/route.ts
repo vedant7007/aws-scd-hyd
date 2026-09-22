@@ -21,18 +21,19 @@ import { callerIp, withinRateLimit } from '@/lib/db/rate-limit'
  */
 const FAILED_LOOKUPS_PER_IP_PER_HOUR = 300
 
-const notFound = (origin: string) =>
-  new Response(null, { status: 303, headers: { location: `${origin}/pass?notfound=1`, 'cache-control': 'no-store' } })
+// Relative Locations on purpose: behind Amplify Hosting the request URL the
+// server sees is its own localhost, not the public origin. The browser
+// resolves a relative redirect against the origin it actually used.
+const notFound = () => new Response(null, { status: 303, headers: { location: '/pass?notfound=1', 'cache-control': 'no-store' } })
 
 export async function POST(req: Request): Promise<Response> {
-  const origin = new URL(req.url).origin
   const form = await req.formData().catch(() => null)
   const typed = String(form?.get('passId') ?? '')
   const passId = normalisePassId(typed)
 
   const attendee = passId ? await getAttendeeByPass(passId) : null
   if (attendee && (attendee.state === 'VERIFIED' || attendee.state === 'SESSIONS_SELECTED')) {
-    return new Response(null, { status: 303, headers: { location: `${origin}/pass/${attendee.passId}`, 'cache-control': 'no-store' } })
+    return new Response(null, { status: 303, headers: { location: `/pass/${attendee.passId}`, 'cache-control': 'no-store' } })
   }
 
   if (!(await withinRateLimit(callerIp(req), 'LOOKUP', FAILED_LOOKUPS_PER_IP_PER_HOUR))) {
@@ -41,5 +42,5 @@ export async function POST(req: Request): Promise<Response> {
       headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store', 'retry-after': '3600' },
     })
   }
-  return notFound(origin)
+  return notFound()
 }
