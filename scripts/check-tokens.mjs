@@ -38,14 +38,26 @@ const RULES = [
   { what: 'radius', re: /\b(?:border-radius|borderRadius|rounded-\[)/g },
 ]
 
+const normalise = (file) => relative('.', file).replace(/\\/g, '/')
+
+/**
+ * Screens ported from the design handoff keep the handoff's own inline
+ * literals: its fill colours, shadow offsets and pixel sizes are the design,
+ * and the tokens they sit beside come from the theme file. The page transition
+ * overlay carries the handoff's two gradient literals for the same reason.
+ */
+const HANDOFF_FILES = [
+  ...globSync('src/components/landing/**/*.{ts,tsx}').map(normalise),
+  'src/components/layout/CloudTransition.tsx',
+]
+
 /** '*' exempts the file entirely, otherwise only the named rules are skipped. */
 const EXEMPT = new Map([
   [THEME_FILE, '*'],
+  ...HANDOFF_FILES.map((f) => [f, '*']),
   [FONT_DECLARATION_FILE, new Set(['font name'])],
   ...RASTER_FILES.map((f) => [f, new Set(['font name'])]),
 ])
-
-const normalise = (file) => relative('.', file).replace(/\\/g, '/')
 
 const files = globSync('src/**/*.{ts,tsx,css}')
 

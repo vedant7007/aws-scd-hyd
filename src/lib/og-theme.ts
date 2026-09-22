@@ -5,8 +5,7 @@ import { join } from 'node:path'
  * Generated images are raster output, so they cannot reference CSS custom
  * properties. Rather than duplicating the palette here and letting it drift
  * from the theme, the light mode token values are parsed out of globals.css at
- * runtime. When the real theme lands on 12 September the images move with it,
- * which keeps SPEC.md section 2 rule 5 honest.
+ * runtime, which keeps SPEC.md section 2 rule 5 honest.
  */
 export type OgTheme = {
   bg: string
@@ -30,12 +29,15 @@ const FALLBACK: OgTheme = {
 
 let cache: OgTheme | null = null
 
-function readToken(css: string, name: string): string | null {
-  // Only the first :root block, which is the light theme.
-  const rootEnd = css.indexOf('}')
-  const scope = rootEnd === -1 ? css : css.slice(0, rootEnd)
-  const match = new RegExp(`--${name}:\\s*([^;]+);`).exec(scope)
-  return match ? match[1].trim() : null
+function readToken(css: string, name: string, depth = 0): string | null {
+  // The first declaration wins. The light theme is the first block in the
+  // file, and the names the images read are aliases onto it, so one level of
+  // var() indirection is followed.
+  const match = new RegExp(`--${name}:\\s*([^;]+);`).exec(css)
+  if (!match) return null
+  const value = match[1].trim()
+  const ref = /^var\(--([\w-]+)\)$/.exec(value)
+  return ref && depth < 3 ? readToken(css, ref[1], depth + 1) : value
 }
 
 export function ogTheme(): OgTheme {

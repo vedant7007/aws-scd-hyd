@@ -4,34 +4,172 @@
    THE ONLY FILE WITH VISUAL IDENTITY IN IT.  SPEC.md section 10.
 
    Every colour, font, radius, shadow, duration and type step lives here.
-   A component that hardcodes any of them is a bug. The real theme lands from
-   the design team on 12 September and replacing it must stay a one-file edit,
-   so keep it that way.
+   The theme is the design handoff ("Landing Bitmap" and its eight siblings).
+   Its token block is lifted below verbatim, so the whole look is still a
+   one-file edit.
 
-   `npm run check:tokens` fails the build if a literal leaks into a component.
+   `npm run check:tokens` fails the build if a literal leaks into a component,
+   except in the screens ported from the handoff, which keep the handoff's own
+   inline literals on purpose.
+   =========================================================================== */
+
+/* ---------------------------------------------------------------------------
+   Handoff tokens and base rules, from the <style> block of Landing Bitmap.
+   Same names on every screen of the design, so this is the single copy.
+
+   Two edits from the source. Font families resolve through --font-display,
+   --font-body and --font-mono because next/font self hosts the faces and owns
+   their names (see layout.tsx). The unused Windraw @font-face is dropped.
+
+   #FF9900 is a fill colour only, never text. Text on an orange fill uses
+   var(--on-fill). The colour fails contrast as text on the light ground.
+   --------------------------------------------------------------------------- */
+html {
+  --bg:#F5F2EE; --bg2:#F8F4EF; --bg3:#EFE8E0; --surface:#FFFFFF;
+  --panel:#F0EAFB; --panel-mint:#E6F5EB; --panel-gold:#FDF4E3;
+  --slot:#F1EEE9; --slot2:#D7D1C8; --bar:#E3DDD4;
+  --ink:#14161C; --ink-fill:#14161C; --on-fill:#14161C; --body:#33384A; --muted:#464C5C; --body-gold:#2E2A20;
+  --line:#14161C; --line-soft:rgba(20,22,28,.18); --line-dash:rgba(20,22,28,.35);
+  --mint-ink:#1F6540; --violet-ink:#55359F; --pink-ink:#962854; --amber-ink:#8F5200;
+  --gold:#A8711A; --gold2:#7F5407; --gold3:#8E5F0C; --gold4:#6E4A05;
+  --cloud-a:#D9CEF5; --cloud-b:#E4DBFA; --cloud-c:#DDD3F7; --cloud-d:#D2C6F0; --cloud-e:#EDE7FD;
+  --grid:rgba(20,22,28,.06); --grid2:rgba(20,22,28,.045); --scan:rgba(20,22,28,.05);
+  --sh:rgba(20,22,28,.14); --sh-lg:rgba(20,22,28,.26); --focus:#0F6FD1;
+  --h-sh1:#9FE3B6; --h-sh2:#F6C899;
+  color-scheme:light;
+}
+html[data-theme="dark"] {
+  --bg:#0B0D12; --bg2:#111A2B; --bg3:#080B12; --surface:#121926;
+  --panel:#0E131C; --panel-mint:#0C1A17; --panel-gold:#1C1609;
+  --slot:#161D2B; --slot2:#232C40; --bar:#151B28;
+  --ink:#F4F7FB; --ink-fill:#E8ECF2; --on-fill:#0B0D12; --body:#B8C4D6; --muted:#8FA0BA; --body-gold:#E9DEC8;
+  --line:#2A3550; --line-soft:rgba(244,247,251,.16); --line-dash:rgba(244,247,251,.3);
+  --mint-ink:#9FE3B6; --violet-ink:#C4AEF2; --pink-ink:#F2A7C3; --amber-ink:#FFB84D;
+  --gold:#F6D27A; --gold2:#FFE7A8; --gold3:#FFF6DC; --gold4:#F6D27A;
+  --cloud-a:#27365A; --cloud-b:#32436E; --cloud-c:#2B3A61; --cloud-d:#22304F; --cloud-e:#3C4F80;
+  --grid:rgba(159,227,182,.15); --grid2:rgba(255,153,0,.11); --scan:rgba(11,13,18,.5);
+  --sh:rgba(0,0,0,.5); --sh-lg:rgba(0,0,0,.6); --focus:#54B8FF;
+  --h-sh1:rgba(159,227,182,.5); --h-sh2:rgba(255,153,0,.3);
+  color-scheme:dark;
+}
+main, header, footer, section { box-sizing:border-box; }
+/* --- polish pass: states that cannot live inline --- */
+input, select, textarea {
+  transition:border-color .18s ease, box-shadow .18s ease, transform .18s ease, background-color .18s ease;
+}
+input:hover, select:hover, textarea:hover { border-color:var(--amber-ink); }
+input:focus, select:focus, textarea:focus { border-color:#FF9900; box-shadow:5px 5px 0 var(--sh); transform:translate3d(-2px,-2px,0); }
+*:focus-within > label { color:var(--amber-ink); }
+button, a { transition:transform .14s cubic-bezier(.2,.9,.3,1.25), box-shadow .14s ease, background-color .18s ease, color .18s ease, border-color .18s ease, opacity .18s ease; }
+button:active:not([disabled]) { transform:translate3d(2px,2px,0); }
+summary { transition:background-color .18s ease; }
+summary:hover { background-color:var(--panel-mint); }
+details[open] > summary { background-color:var(--panel-mint); }
+::-webkit-scrollbar { width:12px; height:12px; }
+::-webkit-scrollbar-track { background:var(--bar); }
+::-webkit-scrollbar-thumb { background:var(--line-soft); border:3px solid var(--bar); }
+::-webkit-scrollbar-thumb:hover { background:var(--amber-ink); }
+body { margin:0; background:var(--bg); color:var(--ink); font-family:var(--font-body); overflow-x:hidden; image-rendering:pixelated; transition:background .2s steps(2); }
+a { color:var(--mint-ink); text-decoration:none; }
+a:hover { color:var(--amber-ink); }
+::selection { background:#FF9900; color:var(--ink); }
+@keyframes bm-scan { to { transform:translate3d(0,4px,0); } }
+@keyframes bm-blink { 0%,45%{opacity:1} 50%,100%{opacity:0} }
+@keyframes bm-march { to { transform:translate3d(-50%,0,0); } }
+@keyframes bm-bob { 0%,100%{transform:translate3d(0,0,0)} 50%{transform:translate3d(0,-6px,0)} }
+@keyframes bm-flick { 0%,100%{opacity:.5} 50%{opacity:.85} }
+@keyframes bm-float { 0%{transform:translate3d(0,0,0)} 100%{transform:translate3d(0,-120px,0)} }
+@keyframes bm-slide { to { transform:translate3d(-34px,-34px,0); } }
+@keyframes bm-pulse { 0%,100%{opacity:.25;transform:scale(1)} 50%{opacity:.7;transform:scale(1.35)} }
+@keyframes bm-cloud { to { transform:translate3d(calc(100vw + 340px),0,0); } }
+@keyframes bm-drop { 0%{transform:translate3d(0,-180px,0)} 100%{transform:translate3d(0,100vh,0)} }
+@keyframes bm-shine { 0%{background-position:-220% 0} 60%,100%{background-position:220% 0} }
+@keyframes bm-spark { 0%,100%{opacity:0;transform:scale(.6)} 45%{opacity:1;transform:scale(1)} 60%{opacity:.5;transform:scale(.9)} }
+@keyframes bm-glitch { 0%,92%,100%{transform:translate3d(0,0,0)} 93%{transform:translate3d(-3px,1px,0)} 95%{transform:translate3d(3px,-1px,0)} 97%{transform:translate3d(-2px,0,0)} }
+@keyframes bm-caret { 0%,45%{opacity:1} 50%,100%{opacity:0} }
+.bm-gold { background-image:linear-gradient(100deg,var(--gold4) 0%,var(--gold4) 36%,var(--gold3) 48%,var(--gold2) 52%,var(--gold4) 64%,var(--gold4) 100%); background-size:220% 100%; -webkit-background-clip:text; background-clip:text; color:transparent; -webkit-text-fill-color:transparent; animation:bm-shine 4.5s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .bm-gold { animation:none; color:var(--gold4); -webkit-text-fill-color:var(--gold4); background-image:none; } }
+[data-grid4] { grid-template-columns:minmax(0,1fr); }
+@media (min-width:600px) { [data-grid4] { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (min-width:1100px) { [data-grid4] { grid-template-columns:repeat(4,minmax(0,1fr)); } }
+button { font:inherit; -webkit-appearance:none; appearance:none; }
+:focus-visible { outline:3px solid var(--focus); outline-offset:3px; }
+summary:focus-visible { outline:3px solid var(--focus); outline-offset:-3px; }
+summary::-webkit-details-marker { display:none; }
+summary { list-style:none; }
+details[open] [data-faq-plus] { transform:rotate(45deg); }
+[data-anim-paused="1"] *, [data-anim-paused="1"]::before, [data-anim-paused="1"]::after { animation-play-state:paused !important; }
+@media (prefers-reduced-motion: reduce) { *,*::before,*::after { animation:none !important; transition:none !important; } }
+
+/* ---------------------------------------------------------------------------
+   Landing page. The handoff was authored against the browser's default box
+   model; Tailwind's preflight makes everything border-box, which would change
+   every measured width and height on the page, so the page opts back out and
+   the four elements the handoff itself made border-box stay that way.
+   line-height and font-size likewise revert to the browser defaults the
+   handoff was measured against.
+   --------------------------------------------------------------------------- */
+[data-landing], [data-landing] *, [data-landing] *::before, [data-landing] *::after { box-sizing: content-box; }
+[data-landing] :is(main, header, footer, section) { box-sizing: border-box; }
+[data-landing] { font-size: 16px; line-height: normal; }
+
+/* The theme toggle's label and dot follow the html attribute rather than
+   component state, so the button renders identically on the server and the
+   client and never flashes. The label names the theme the click switches to. */
+[data-theme-dot] { background:#FF9900; }
+html[data-theme="dark"] [data-theme-dot] { background:#9FE3B6; }
+[data-theme-label="light"] { display:none; }
+html[data-theme="dark"] [data-theme-label="light"] { display:inline; }
+html[data-theme="dark"] [data-theme-label="dark"] { display:none; }
+
+/* The handoff's style-hover and style-active attributes. Its runtime compiled
+   each into a pseudo-class rule with every declaration !important so it beats
+   the element's inline style; this is that output, named. */
+.lp-hv-lift2:hover { transform:translate3d(-2px,-2px,0) !important; }
+.lp-hv-mint-text:hover { color:var(--mint-ink) !important; }
+.lp-hv-nav-cta:hover { transform:translate3d(-2px,-2px,0) !important; box-shadow:7px 7px 0 var(--line) !important; }
+.lp-hv-date-card:hover { transform:translate3d(-3px,-3px,0) !important; box-shadow:10px 10px 0 var(--line-soft) !important; }
+.lp-hv-stat-card:hover { transform:translate3d(-3px,-3px,0) !important; border-color:var(--mint-ink) !important; box-shadow:6px 6px 0 var(--line-soft) !important; }
+.lp-hv-hero-cta:hover { transform:translate3d(-3px,-3px,0) !important; background:#FFB84D !important; box-shadow:10px 10px 0 var(--line),10px 10px 0 3px #9FE3B6 !important; }
+.lp-hv-mint-fill-lift:hover { background:#9FE3B6 !important; color:var(--on-fill) !important; transform:translate3d(-2px,-2px,0) !important; }
+.lp-hv-mint-edge:hover { transform:translate3d(-3px,-3px,0) !important; border-color:var(--mint-ink) !important; }
+.lp-hv-amber-edge:hover { transform:translate3d(-3px,-3px,0) !important; border-color:var(--amber-ink) !important; }
+.lp-hv-pink-edge:hover { transform:translate3d(-3px,-3px,0) !important; border-color:var(--pink-ink) !important; }
+.lp-hv-violet-edge:hover { transform:translate3d(-3px,-3px,0) !important; border-color:var(--violet-ink) !important; }
+.lp-hv-lift3-sh:hover { transform:translate3d(-3px,-3px,0) !important; box-shadow:8px 8px 0 var(--sh) !important; }
+.lp-hv-lift4-sh:hover { transform:translate3d(-4px,-4px,0) !important; box-shadow:8px 8px 0 var(--sh) !important; }
+.lp-hv-card:hover { transform:translate3d(-4px,-4px,0) !important; border-color:var(--mint-ink) !important; box-shadow:8px 8px 0 var(--sh) !important; }
+.lp-hv-vip-card:hover { transform:translate3d(-4px,-4px,0) !important; box-shadow:13px 13px 0 var(--sh-lg) !important; }
+.lp-hv-mint-fill:hover { background:#9FE3B6 !important; color:var(--on-fill) !important; }
+.lp-hv-pink-fill:hover { background:#F2A7C3 !important; color:var(--on-fill) !important; }
+.lp-hv-orange-fill:hover { background:#FF9900 !important; color:var(--on-fill) !important; }
+.lp-hv-vip-btn:hover { transform:translate3d(-2px,-2px,0) !important; background:var(--gold2) !important; box-shadow:8px 8px 0 var(--line) !important; }
+.lp-hv-mint-btn:hover { transform:translate3d(-2px,-2px,0) !important; box-shadow:8px 8px 0 var(--line) !important; }
+.lp-hv-pin:hover { transform:translate3d(-2px,-2px,0) !important; box-shadow:9px 9px 0 #FF9900 !important; }
+.lp-ac-press:active { transform:translate3d(2px,2px,0) !important; box-shadow:1px 1px 0 var(--line) !important; }
+.lp-ac-hero-cta:active { transform:translate3d(3px,3px,0) !important; box-shadow:2px 2px 0 var(--line),2px 2px 0 3px #9FE3B6 !important; }
+
+/* ===========================================================================
+   Everything below predates the handoff and serves the screens not yet ported
+   to it. Each block goes with the last screen that reads it.
    =========================================================================== */
 
 :root {
-  color-scheme: light;
-
-  /* palette, placeholder until 12 September */
-  --bg: #ffffff;
-  --surface: #f6f6f5;
-  --text: #0a0a0a;
-  --muted: #6b6b6b;
-  --border: #e4e4e3;
-  --accent: #ff9900;
-  --accent-ink: #0a0a0a;
+  /* The names those screens read, pointed at the handoff tokens above. */
+  --text: var(--ink);
+  --border: var(--line);
+  --accent: #FF9900;
+  --accent-ink: var(--on-fill);
 
   /* type. The face itself is loaded and self hosted by next/font in layout.tsx
      and handed over as --font-*-face. The stack, including every fallback, is
      still composed here, so swapping a family stays a change to these lines. */
-  --font-display: var(--font-display-face), system-ui, sans-serif;
+  --font-display: var(--font-display-face), monospace;
   --font-body: var(--font-body-face), system-ui, sans-serif;
-  --font-mono: var(--font-mono-face), ui-monospace, monospace;
+  --font-mono: var(--font-mono-face), monospace;
 
   /* geometry */
-  --radius: 2px;
+  --radius: 0;
   --gutter: clamp(1.25rem, 4vw, 4rem);
   --measure: 68ch;
   --container: 90rem;
@@ -101,32 +239,9 @@
   --qr-ink: #0a0a0a;
 }
 
-/* Dark is first class. No explicit choice means follow the OS. */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    color-scheme: dark;
-    --bg: #0a0a0a;
-    --surface: #141414;
-    --text: #fafafa;
-    --muted: #8a8a8a;
-    --border: #232323;
-    --accent: #ff9900;
-    --accent-ink: #0a0a0a;
-  }
-}
-
-/* An explicit choice wins in both directions. The server writes this attribute
-   from the cookie, so the first paint is already correct and nothing flashes. */
-:root[data-theme="dark"] {
-  color-scheme: dark;
-  --bg: #0a0a0a;
-  --surface: #141414;
-  --text: #fafafa;
-  --muted: #8a8a8a;
-  --border: #232323;
-  --accent: #ff9900;
-  --accent-ink: #0a0a0a;
-}
+/* Dark mode is the html[data-theme="dark"] block above. The attribute is set
+   before first paint by the inline script in layout.tsx, from localStorage or
+   the OS preference, so both themes resolve from the one token block. */
 
 /* Expose the tokens to Tailwind so utilities resolve to them and never to a
    literal. bg-bg, text-muted, border-border, font-display, text-step-4. */
