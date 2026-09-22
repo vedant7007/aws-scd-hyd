@@ -10,7 +10,7 @@ import {
   verifyAction,
   type ActionState,
 } from '@/app/admin/(secure)/actions'
-import type { RegistrationState } from '@/lib/db/types'
+import type { RegistrationState, Tier } from '@/lib/db/types'
 import { REJECTION_REASONS, rejectionCodes } from '@/lib/registration/reasons'
 
 export type Row = {
@@ -18,10 +18,12 @@ export type Row = {
   name: string
   email: string
   college: string
+  tier: Tier
   tierName: string
   trackName: string
   state: RegistrationState
   amountLabel: string
+  earlyBird: boolean
   utr: string | null
   utrSubmittedAt: string | null
   screenshot: boolean
@@ -39,7 +41,32 @@ type View = 'queue' | 'unselected' | 'all'
 
 const STATES: RegistrationState[] = ['AWAITING_PAYMENT', 'PENDING_VERIFICATION', 'VERIFIED', 'SESSIONS_SELECTED', 'REJECTED', 'ABANDONED']
 
+/** How a state reads: the word is the signal, the colour only repeats it. */
+const STATE_LABEL: Record<RegistrationState, string> = {
+  AWAITING_PAYMENT: 'Awaiting payment',
+  PENDING_VERIFICATION: 'Pending verification',
+  VERIFIED: 'Verified',
+  SESSIONS_SELECTED: 'Sessions selected',
+  REJECTED: 'Rejected',
+  ABANDONED: 'Abandoned',
+}
+const STATE_PILL: Record<RegistrationState, string> = {
+  AWAITING_PAYMENT: 'pill pill-ghost',
+  PENDING_VERIFICATION: 'pill pill-warn',
+  VERIFIED: 'pill',
+  SESSIONS_SELECTED: 'pill',
+  REJECTED: 'pill pill-err',
+  ABANDONED: 'pill pill-ghost',
+}
+
 const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' }) : '')
+
+const Status = ({ state }: { state: ActionState }) =>
+  state ? (
+    <p role="status" className={state.ok ? 'copy' : 'err-text'}>
+      {state.message}
+    </p>
+  ) : null
 
 /**
  * Amendment 1 section 6. Default view is the verification queue, oldest
@@ -68,53 +95,72 @@ export function AdminConsole({ rows, slots, sessionsReleased }: { rows: Row[]; s
     return list
   }, [rows, view, query])
 
+  const viewLabel: Record<View, string> = {
+    queue: `Queue (${counts.PENDING_VERIFICATION})`,
+    unselected: `Verified, no sessions (${counts.VERIFIED})`,
+    all: `All (${rows.length})`,
+  }
+
   return (
-    <div className="flex flex-col gap-8">
-      <dl className="grid gap-4 sm:grid-cols-3 lg:grid-cols-6">
+    <div className="flex flex-col gap-4">
+      <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr))]">
         {STATES.map((s) => (
-          <div key={s} className="stat">
-            <dt className="text-step--1 text-muted">{s.replace('_', ' ').toLowerCase()}</dt>
-            <dd className="display text-step-2">{counts[s]}</dd>
+          <div key={s} className="stat-card">
+            <span className="lbl">{STATE_LABEL[s]}</span>
+            <span className="stat-val" data-tone={s === 'PENDING_VERIFICATION' && counts[s] ? 'warn' : s === 'REJECTED' && counts[s] ? 'err' : undefined}>
+              {counts[s]}
+            </span>
           </div>
         ))}
-      </dl>
+      </div>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex flex-wrap gap-2" role="group" aria-label="View">
-          {(['queue', 'unselected', 'all'] as View[]).map((v) => (
-            <button key={v} type="button" className={view === v && !query ? 'cta' : 'cta-quiet'} onClick={() => setView(v)} aria-pressed={view === v}>
-              {v === 'queue' ? `Verification queue (${counts.PENDING_VERIFICATION})` : v === 'unselected' ? `Verified, no sessions (${counts.VERIFIED})` : `All (${rows.length})`}
-            </button>
-          ))}
+      <div className="card flex flex-col">
+        <div className="card-head">
+          <span className="card-title">ATTENDEES</span>
+          <span className="lbl">
+            {shown.length} of {rows.length}
+          </span>
         </div>
-        <label className="flex items-center gap-2 text-step--1">
-          <span className="text-muted">Search</span>
-          <input className="field" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="pass ID, UTR or email" aria-label="Search by pass ID, UTR or email" />
-        </label>
-      </div>
+        <div className="flex flex-wrap gap-2.5 border-b border-line-soft p-4">
+          <input
+            className="inp min-w-0 flex-[1_1_220px]"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search pass ID, UTR or email"
+            aria-label="Search by pass ID, UTR or email"
+          />
+          <div className="flex flex-wrap gap-2" role="group" aria-label="View">
+            {(['queue', 'unselected', 'all'] as View[]).map((v) => (
+              <button key={v} type="button" className="tog tog-mono" onClick={() => setView(v)} aria-pressed={view === v && !query}>
+                {viewLabel[v]}
+              </button>
+            ))}
+          </div>
+        </div>
 
-      <div className="notice flex flex-wrap items-center gap-3">
-        <span className="font-semibold">Sessions {sessionsReleased ? 'are released' : 'not released yet'}.</span>
-        {sessionsReleased ? (
-          <form action={resend}>
-            <button type="submit" className="cta-quiet">Re-run email 3 for anyone missed</button>
-          </form>
-        ) : (
-          <form action={release}>
-            <button type="submit" className="cta">Release sessions and email every verified attendee</button>
-          </form>
-        )}
-        {(releaseState ?? resendState) ? <span className="text-step--1 text-muted">{(releaseState ?? resendState)!.message}</span> : null}
-      </div>
+        <div className="notice-mint m-4">
+          <span className="lbl text-mint-ink">Sessions {sessionsReleased ? 'are released' : 'not released yet'}</span>
+          {sessionsReleased ? (
+            <form action={resend}>
+              <button type="submit" className="btn btn-sm">
+                RE-RUN EMAIL 3 FOR ANYONE MISSED
+              </button>
+            </form>
+          ) : (
+            <form action={release}>
+              <button type="submit" className="btn btn-primary btn-sm">
+                RELEASE SESSIONS AND EMAIL EVERYONE VERIFIED
+              </button>
+            </form>
+          )}
+          <Status state={releaseState ?? resendState} />
+        </div>
 
-      {shown.length === 0 ? <p className="text-muted">Nothing here.</p> : null}
-      <ul className="flex flex-col gap-4">
+        {shown.length === 0 ? <p className="row-body">Nobody here.</p> : null}
         {shown.map((r) => (
-          <li key={r.passId} className="scan-card">
-            <RowCard row={r} slots={slots} />
-          </li>
+          <RowCard key={r.passId} row={r} slots={slots} />
         ))}
-      </ul>
+      </div>
     </div>
   )
 }
@@ -128,133 +174,134 @@ function RowCard({ row, slots }: { row: Row; slots: SlotOption[] }) {
   const busy = verifying || rejecting || reinstating || changing
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <div>
-          <p className="display text-step-1">{row.name}</p>
-          <p className="text-step--1 text-muted">
-            {row.email} · {row.college}
-          </p>
+    <article className="flex flex-col gap-3 border-t border-line-soft p-4" aria-label={`${row.name}, ${row.passId}`}>
+      <div className="flex flex-wrap items-start justify-between gap-2.5">
+        <div className="flex min-w-0 flex-col gap-1">
+          <span className="h3">{row.name}</span>
+          <span className="num text-[12px] text-muted">
+            {row.passId} · {row.email} · {row.college}
+          </span>
         </div>
-        <p className="mono text-step--1">
-          {row.passId} · <span className="badge">{row.state}</span>
-        </p>
+        <span className={STATE_PILL[row.state]}>{STATE_LABEL[row.state]}</span>
       </div>
-      <dl className="grid gap-x-6 gap-y-1 text-step--1 sm:grid-cols-3">
-        <div>
-          <dt className="text-muted">Tier · track</dt>
-          <dd>
+
+      <dl className="grid gap-x-4 gap-y-2 [grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr))]">
+        <div className="flex flex-col gap-0.5">
+          <dt className="lbl-sm">Tier · track</dt>
+          <dd className="copy text-ink">
             {row.tierName} · {row.trackName}
           </dd>
         </div>
-        <div>
-          <dt className="text-muted">Amount expected</dt>
-          <dd className="numeral">{row.amountLabel}</dd>
+        <div className="flex flex-col gap-0.5">
+          <dt className="lbl-sm">Amount expected</dt>
+          <dd className="num text-[15px] font-semibold text-ink">
+            {row.amountLabel}
+            {row.earlyBird ? <span className="lbl-sm"> early bird</span> : null}
+          </dd>
         </div>
-        <div>
-          <dt className="text-muted">UTR</dt>
-          <dd className="numeral">
-            {row.utr ?? '—'}
-            {row.utrSubmittedAt ? <span className="text-muted"> at {when(row.utrSubmittedAt)}</span> : null}
+        <div className="flex flex-col gap-0.5">
+          <dt className="lbl-sm">UTR</dt>
+          <dd className="num text-[15px] text-ink">
+            {row.utr ?? '-'}
+            {row.utrSubmittedAt ? <span className="hint block">at {when(row.utrSubmittedAt)}</span> : null}
           </dd>
         </div>
         {row.screenshot ? (
-          <div>
-            <dt className="text-muted">Screenshot</dt>
+          <div className="flex flex-col gap-0.5">
+            <dt className="lbl-sm">Screenshot</dt>
             <dd>
-              <a className="link" href={`/admin/screenshot/${row.passId}`} target="_blank" rel="noopener">
-                Open (60 second link)
+              <a className="btn btn-mono" href={`/admin/screenshot/${row.passId}`} target="_blank" rel="noopener">
+                Open, 60 second link
               </a>
             </dd>
           </div>
         ) : null}
         {row.rejectionReason ? (
-          <div className="sm:col-span-2">
-            <dt className="text-muted">Rejected because</dt>
-            <dd>{row.rejectionReason}</dd>
+          <div className="flex flex-col gap-0.5 sm:col-span-2">
+            <dt className="lbl-sm">Rejected because</dt>
+            <dd className="copy">{row.rejectionReason}</dd>
           </div>
         ) : null}
         {row.state === 'SESSIONS_SELECTED' ? (
-          <div className="sm:col-span-3">
-            <dt className="text-muted">Sessions</dt>
-            <dd className="mono">{slots.map((s) => row.held[s.slotId] ?? '?').join(' · ')}</dd>
+          <div className="flex flex-col gap-0.5 sm:col-span-3">
+            <dt className="lbl-sm">Sessions</dt>
+            <dd className="num text-[12px] text-ink">
+              {slots.map((s) => row.held[s.slotId] ?? '?').join(' · ')}
+              {row.checkedIn ? <span className="lbl-sm"> · checked in</span> : null}
+            </dd>
           </div>
         ) : null}
       </dl>
 
       {row.state === 'PENDING_VERIFICATION' ? (
-        <div className="flex flex-wrap items-end gap-3">
+        <div className="flex flex-col gap-3">
           <form action={verify}>
             <input type="hidden" name="passId" value={row.passId} />
-            <button type="submit" className="cta" disabled={busy}>
-              Verify
+            <button type="submit" className="btn btn-mint" disabled={busy}>
+              VERIFY
             </button>
           </form>
-          <form action={reject} className="flex flex-wrap items-end gap-2">
+          <form action={reject} className="card-dash flex flex-wrap items-end gap-3 p-3">
             <input type="hidden" name="passId" value={row.passId} />
-            <label className="flex flex-col text-step--1">
-              <span className="text-muted">Reason</span>
-              <select name="reasonCode" className="field" defaultValue="not-found">
+            <div className="fld min-w-0 flex-[1_1_220px]">
+              <label htmlFor={`reason-${row.passId}`}>Reason</label>
+              <select id={`reason-${row.passId}`} name="reasonCode" className="inp" defaultValue="not-found">
                 {rejectionCodes.map((c) => (
                   <option key={c} value={c}>
                     {REJECTION_REASONS[c]}
                   </option>
                 ))}
               </select>
-            </label>
-            <label className="flex flex-col text-step--1">
-              <span className="text-muted">Note (required for Other)</span>
-              <input name="reason" className="field" maxLength={300} />
-            </label>
-            <button type="submit" className="cta-quiet" disabled={busy}>
-              Reject
+            </div>
+            <div className="fld min-w-0 flex-[1_1_220px]">
+              <label htmlFor={`note-${row.passId}`}>Note, required for Other</label>
+              <input id={`note-${row.passId}`} name="reason" className="inp" maxLength={300} />
+            </div>
+            <button type="submit" className="btn btn-warn" disabled={busy}>
+              REJECT
             </button>
           </form>
         </div>
       ) : null}
 
       {row.state === 'ABANDONED' ? (
-        <form action={reinstate} className="flex flex-wrap items-end gap-2">
+        <form action={reinstate} className="card-dash flex flex-wrap items-end gap-3 p-3">
           <input type="hidden" name="passId" value={row.passId} />
-          <label className="flex flex-col text-step--1">
-            <span className="text-muted">UTR the student sent</span>
-            <input name="utr" className="field numeral" inputMode="numeric" pattern="\d{12}" maxLength={14} required />
-          </label>
-          <button type="submit" className="cta-quiet" disabled={busy}>
-            Reinstate into the queue
+          <div className="fld min-w-0 flex-[1_1_220px]">
+            <label htmlFor={`utr-${row.passId}`}>UTR the student sent</label>
+            <input id={`utr-${row.passId}`} name="utr" className="inp inp-num" inputMode="numeric" pattern="\d{12}" maxLength={14} required />
+          </div>
+          <button type="submit" className="btn" disabled={busy}>
+            REINSTATE INTO THE QUEUE
           </button>
         </form>
       ) : null}
 
       {row.state === 'SESSIONS_SELECTED' ? (
-        <details>
-          <summary className="cursor-pointer text-step--1">Change sessions</summary>
+        <details className="card-dash p-3">
+          <summary className="lbl cursor-pointer py-2">Change sessions</summary>
           <form action={change} className="mt-3 flex flex-wrap items-end gap-3">
             <input type="hidden" name="passId" value={row.passId} />
             {slots.map((s) => (
-              <label key={s.slotId} className="flex flex-col text-step--1">
-                <span className="text-muted">{s.label}</span>
-                <select name={`slot:${s.slotId}`} className="field" defaultValue={row.held[s.slotId] ?? ''}>
+              <div key={s.slotId} className="fld min-w-0 flex-[1_1_200px]">
+                <label htmlFor={`${row.passId}-${s.slotId}`}>{s.label}</label>
+                <select id={`${row.passId}-${s.slotId}`} name={`slot:${s.slotId}`} className="inp" defaultValue={row.held[s.slotId] ?? ''}>
                   {s.sessions.map((o) => (
                     <option key={o.sessionId} value={o.sessionId}>
                       {o.label}
                     </option>
                   ))}
                 </select>
-              </label>
+              </div>
             ))}
-            <button type="submit" className="cta-quiet" disabled={busy}>
-              Move, releasing and claiming in one transaction
+            <button type="submit" className="btn" disabled={busy}>
+              MOVE, IN ONE TRANSACTION
             </button>
           </form>
         </details>
       ) : null}
 
-      {result ? (
-        <p role="status" className={result.ok ? 'text-step--1' : 'reg-error'}>
-          {result.message}
-        </p>
-      ) : null}
-    </div>
+      <Status state={result} />
+    </article>
   )
 }

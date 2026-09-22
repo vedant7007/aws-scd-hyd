@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ScanResult } from '@/app/api/admin/scan/route'
 import { tierLabel } from '@/content/passes'
+import type { FoodPreference } from '@/lib/db/types'
 import {
   drainQueue,
   enqueue,
@@ -13,8 +14,10 @@ import {
   type RosterEntry,
 } from '@/lib/scan-queue'
 
+type Tone = 'ok' | 'repeat' | 'problem' | 'queued'
+
 type Feedback = {
-  tone: 'ok' | 'repeat' | 'problem' | 'queued'
+  tone: Tone
   passId: string
   name?: string
   tier?: string
@@ -23,6 +26,20 @@ type Feedback = {
 }
 
 const DRAIN_INTERVAL_MS = 8000
+
+/**
+ * What the banner says. The word and the glyph carry the verdict; the
+ * colour only repeats it, so a volunteer in sunlight, or one who cannot
+ * tell mint from amber, still reads it right.
+ */
+const BANNER: Record<Tone, { text: string; note: string; glyph: string; tone: 'ok' | 'warn' | 'err' | 'queued' }> = {
+  ok: { text: 'VALID PASS', note: 'let them in', glyph: '✓', tone: 'ok' },
+  repeat: { text: 'DUPLICATE', note: 'check with lead', glyph: '!', tone: 'warn' },
+  problem: { text: 'NOT ADMITTED', note: 'do not admit', glyph: '×', tone: 'err' },
+  queued: { text: 'SAVED OFFLINE', note: 'sends itself later', glyph: '…', tone: 'queued' },
+}
+
+const FOOD_LABEL: Record<string, string> = { veg: 'VEG', nonveg: 'NON-VEG' } satisfies Record<FoodPreference, string>
 
 async function post(passId: string, action: QueuedAction | 'lookup'): Promise<Response> {
   return fetch('/api/admin/scan', {
@@ -82,7 +99,7 @@ export function Scanner({ roster }: { roster: RosterEntry[] }) {
       const data = (await res.json()) as ScanResult
 
       if (res.status === 404) {
-        setFeedback({ tone: 'problem', passId: ref, message: 'No pass with that id.' })
+        setFeedback({ tone: 'problem', passId: ref, message: 'No pass with that id. Send them to the help desk. Do not let them in on a screenshot alone.' })
         return
       }
       setFeedback({
@@ -128,7 +145,7 @@ export function Scanner({ roster }: { roster: RosterEntry[] }) {
         name: cached?.name,
         tier: cached?.tier,
         food: cached?.foodPreference,
-        message: 'Offline. Saved on this device and will send itself when the network comes back.',
+        message: 'Offline. Saved on this phone and will send itself when the network comes back.',
       })
     }
   }, [])
@@ -166,84 +183,108 @@ export function Scanner({ roster }: { roster: RosterEntry[] }) {
     }
   }
 
-  const toneClass =
-    feedback?.tone === 'ok'
-      ? 'scan-ok'
-      : feedback?.tone === 'repeat'
-        ? 'scan-repeat'
-        : feedback?.tone === 'queued'
-          ? 'scan-queued'
-          : 'scan-problem'
+  const banner = feedback ? BANNER[feedback.tone] : null
+  const isFood = (f: string | undefined): f is FoodPreference => f === 'veg' || f === 'nonveg'
 
   return (
-    <div className="flex flex-col gap-8">
-      <div className="flex flex-wrap items-center gap-4">
-        {cameraState !== 'running' ? (
-          <button type="button" className="cta" onClick={startCamera} disabled={cameraState === 'unsupported'}>
-            {cameraState === 'unsupported' ? 'No camera on this device' : 'Start camera'}
-          </button>
-        ) : (
-          <p className="text-step--1 text-muted">Camera running. Point it at the pass.</p>
-        )}
-        <p role="status" className="text-step--1 text-muted">
+    <div className="flex flex-col gap-3.5">
+      <div className="flex flex-wrap items-center justify-between gap-2.5">
+        <span className={cameraState === 'running' ? 'pill pill-sm' : 'pill pill-ghost pill-sm'}>
+          {cameraState === 'running' ? 'Camera on' : cameraState === 'denied' ? 'Camera refused' : cameraState === 'unsupported' ? 'No camera' : 'Camera off'}
+        </span>
+        <span role="status" className={queued ? 'pill pill-warn pill-sm' : 'pill pill-ghost pill-sm'}>
           {queued === 0 ? 'Nothing waiting to send' : `${queued} waiting to send`}
-        </p>
+        </span>
       </div>
 
-      {cameraState === 'denied' ? (
-        <p role="alert" className="text-step--1 text-accent">
-          The camera was refused. Use the ticket box below instead.
-        </p>
-      ) : null}
+      <div className="cam">
+        <video ref={videoRef} muted playsInline aria-label="Camera preview" />
+        <span className="cam-vig" aria-hidden="true" />
+        <span className="cam-frame" aria-hidden="true" />
+        {cameraState === 'running' ? (
+          <span className="cam-sweep" aria-hidden="true">
+            <span />
+          </span>
+        ) : (
+          <span className="cam-msg">
+            {cameraState === 'denied'
+              ? 'Camera blocked. Allow it in settings, or type the code'
+              : cameraState === 'unsupported'
+                ? 'No camera on this device. Type the code'
+                : 'Tap start, then hold the pass inside the frame'}
+          </span>
+        )}
+      </div>
 
-      <video ref={videoRef} className="scan-video" muted playsInline aria-label="Camera preview" />
+      {cameraState !== 'running' ? (
+        <button type="button" className="btn btn-primary btn-xl" onClick={startCamera} disabled={cameraState === 'unsupported'}>
+          START CAMERA
+        </button>
+      ) : (
+        <p className="lbl text-center">Hold the pass inside the frame</p>
+      )}
 
       <form
-        className="flex flex-wrap items-end gap-4"
+        className="flex flex-col gap-2.5"
         onSubmit={(e) => {
           e.preventDefault()
           void handle(manual, 'lookup')
         }}
       >
-        <div className="flex flex-1 flex-col gap-2">
-          <label htmlFor="manual-ref" className="text-step--1 text-muted">
-            Or type the ticket reference
-          </label>
-          <input
-            id="manual-ref"
-            className="field mono"
-            value={manual}
-            onChange={(e) => setManual(e.target.value)}
-            autoComplete="off"
-          />
+        <div className="fld">
+          <label htmlFor="manual-ref">Or type the pass ID</label>
+          <input id="manual-ref" className="inp inp-num" value={manual} onChange={(e) => setManual(e.target.value)} autoComplete="off" autoCapitalize="characters" placeholder="SCD-" />
         </div>
-        <button type="submit" className="cta-quiet">
-          Look up
+        <button type="submit" className="btn btn-lg">
+          LOOK UP
         </button>
       </form>
 
-      {feedback ? (
-        <div className={`scan-card ${toneClass}`} role="status" aria-live="polite">
-          <p className="display text-step-4">{feedback.name ?? feedback.passId}</p>
-          {feedback.name ? (
-            <p className="display text-step-2">
-              {feedback.tier ? tierLabel(feedback.tier) : feedback.tier} , {feedback.food}
-            </p>
-          ) : null}
-          <p className="mono text-step--1">{feedback.passId}</p>
-          <p className="text-step-1">{feedback.message}</p>
-
-          <div className="mt-4 flex flex-wrap gap-4">
-            <button type="button" className="cta" onClick={() => void handle(feedback.passId, 'checkin')}>
-              Mark checked in
-            </button>
-            <button
-              type="button"
-              className="cta-quiet"
-              onClick={() => void handle(feedback.passId, 'swag')}
-            >
-              Mark swag issued
-            </button>
+      {feedback && banner ? (
+        <div className="card result-in flex flex-col" role="status" aria-live="polite">
+          <div className="banner" data-tone={banner.tone}>
+            <span className="banner-t">
+              <span aria-hidden="true">{banner.glyph} </span>
+              {banner.text}
+            </span>
+            <span className="banner-n">{banner.note}</span>
+          </div>
+          <div className="flex flex-col gap-3.5 p-4">
+            <div className="flex flex-col gap-1.5">
+              <span className="lbl-sm">Attendee</span>
+              <span className="big-name">{feedback.name ?? 'UNKNOWN PASS'}</span>
+              <span className="num text-[13px] text-muted">{feedback.passId}</span>
+            </div>
+            {feedback.name ? (
+              <div className="grid grid-cols-2 gap-2.5">
+                <div className="card flex flex-col gap-1 p-3.5">
+                  <span className="lbl-sm">Tier</span>
+                  <span className="big-word">{(feedback.tier ? tierLabel(feedback.tier) : '-').toUpperCase()}</span>
+                </div>
+                <div className="card flex flex-col gap-1 p-3.5">
+                  <span className="lbl-sm">Food</span>
+                  <span className="big-word" data-tone={feedback.food === 'nonveg' ? 'err' : 'ok'}>
+                    {isFood(feedback.food) ? FOOD_LABEL[feedback.food] : (feedback.food ?? '-')}
+                  </span>
+                </div>
+              </div>
+            ) : null}
+            <p className="copy">{feedback.message}</p>
+            <div className="flex flex-col gap-2.5">
+              {feedback.tone !== 'problem' ? (
+                <>
+                  <button type="button" className="btn btn-mint btn-xl" onClick={() => void handle(feedback.passId, 'checkin')}>
+                    CHECK IN
+                  </button>
+                  <button type="button" className="btn btn-lg" onClick={() => void handle(feedback.passId, 'swag')}>
+                    MARK SWAG GIVEN
+                  </button>
+                </>
+              ) : null}
+              <button type="button" className="btn" onClick={() => setFeedback(null)}>
+                NEXT PERSON
+              </button>
+            </div>
           </div>
         </div>
       ) : null}
