@@ -156,12 +156,15 @@ export function listSubscribers(): Promise<Subscriber[]> {
  * The admin table. A scan is deliberate here, see SPEC.md section 6.
  * Do not add a GSI to avoid it.
  */
-export function listAttendees(): Promise<Attendee[]> {
-  return scanAll<Attendee>({
+export async function listAttendees(): Promise<Attendee[]> {
+  const rows = await scanAll<Attendee>({
     TableName: tableName(),
     FilterExpression: 'SK = :sk AND begins_with(PK, :pk)',
     ExpressionAttributeValues: { ':sk': 'PROFILE', ':pk': 'ATT#' },
   })
+  // Records from before the six-state lifecycle carry neither a pass id nor
+  // a state. They are not attendees under this model and are left alone.
+  return rows.filter((a) => typeof a.passId === 'string' && typeof a.state === 'string')
 }
 
 /** Written by the scheduled run. Null until it has ever run. */
