@@ -5,16 +5,12 @@ import type { Tier } from '../db/types'
  * The one place an amount comes from. Route handlers call this and nothing
  * else; a number arriving in a request body is never an amount.
  *
- * TODO(vedant): PLACEHOLDER PRICING. REMOVE BEFORE LAUNCH.
- *
- * Every tier in content/passes.ts still has pricePaise: null, so every order
- * is created for RAZORPAY_TEST_AMOUNT_PAISE, default 100, which is one rupee.
- * That is deliberate so the whole flow can be exercised in test mode. It is
- * also exactly what must not survive to launch: with live keys and this
- * fallback still in place, every pass sells for one rupee.
- *
- * Setting pricePaise on every tier makes the fallback unreachable. Until then
- * the placeholder is shouted on every order and labelled on the form.
+ * A tier with pricePaise: null in content/passes.ts is offered at
+ * RAZORPAY_TEST_AMOUNT_PAISE, default 100, one rupee, so the flow can be
+ * exercised in test mode. Every tier is priced now, which makes that fallback
+ * unreachable. It stays because a tier added without a price must not sell
+ * for a guessed value, and the launch guard refuses to sell in production
+ * while the placeholder could apply.
  */
 const PLACEHOLDER_PAISE = Number(process.env.RAZORPAY_TEST_AMOUNT_PAISE ?? 100)
 

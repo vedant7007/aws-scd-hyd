@@ -38,8 +38,8 @@ export default async function RegisterPage({ searchParams }: PageProps<'/registe
   const { tier } = await searchParams
   const preselect = typeof tier === 'string' && tierIds.includes(tier as Tier) ? (tier as Tier) : undefined
 
-  // TODO(vedant): PLACEHOLDER PRICING, see lib/tickets/pricing.ts. A tier
-  // without a price is offered at the test amount and says so on the form.
+  // Prices come from content/passes.ts, the same place the checkout reads. A
+  // tier without a price is offered at the test amount and says so on the form.
   const tiers: TierOption[] = passes.map((p) => ({
     id: p.id,
     name: p.name,

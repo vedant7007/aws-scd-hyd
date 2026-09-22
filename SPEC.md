@@ -257,9 +257,9 @@ Stay pending. The same person can register again with the same email: the record
 
 Every entry point asks `registrationIsOpen()`, which is `registrationOpen` **and** no enforced blocker: the checkout route (503, and a loud `[checkout] REFUSED` log line naming each blocker), `/register`, the hero, the pass grid, the nav, the sitemap. The admin dashboard's first panel lists the blockers in plain words. Enforcement is keyed on `NODE_ENV === 'production'`, which the runtime sets and no env file can override; development is exempt so the flow can be exercised against test mode at all. Consequence: a live dry run with test keys is impossible by design. `npm run check:launch` proves each condition blocks on its own.
 
-### Pricing placeholder, REMOVE BEFORE LAUNCH
+### Pricing
 
-Every tier in `content/passes.ts` still has `pricePaise: null`. Until each one is set, `lib/tickets/pricing.ts` charges `RAZORPAY_TEST_AMOUNT_PAISE`, default 100, one rupee, warns on every order, and the form labels every tier "Test price, placeholder". With live keys and this still in force, passes sell for one rupee. Setting `pricePaise` on every tier makes the fallback unreachable.
+Every tier in `content/passes.ts` is priced (Rs 399, 799, 1,299, 1,699, confirmed 22 September 2026) and that file is the only source: the landing page and the checkout both format from it. A tier with `pricePaise: null` would be charged `RAZORPAY_TEST_AMOUNT_PAISE`, default 100, one rupee, with a warning on every order and a "Test price, placeholder" label on the form; the launch guard refuses to sell in production while that could apply, so the fallback stays as the safety net for a tier added without a price.
 
 ### Reconciliation, not optional
 
@@ -462,7 +462,7 @@ Kept current as work lands. Everything else in this file is the plan, this secti
 | Landing page | ported from the design handoff (Landing Bitmap). Its own header and footer, theme in localStorage under `scd-theme`, cloud page transition on every route. APPLY TO SPEAK and BECOME A SPONSOR point at `/speak` and `/sponsor` per the handoff route map and 404 until those screens are ported |
 | Schedule, speakers, sponsors, code of conduct, register, pass, admin | built on the pre-handoff layout, kept under `src/app/(site)/` with the old chrome until each is ported |
 | Pass page, QR, session picker, seat transaction | built, race test passes |
-| Payments | Razorpay, test keys. Our form at `/register`, order + pending record, webhook the only writer, reconcile hourly. Verified in test mode: capture, replay x3, tamper, wrong amount, failure, refund, lost webhook. Registration stays closed until `registrationOpen` flips, and the launch guard refuses to sell in production on a test key, an unpriced tier, or `RAZORPAY_TEST_AMOUNT_PAISE` being set, each verified to block alone. **Prices are a Rs 1 placeholder.** |
+| Payments | Razorpay, test keys. Our form at `/register`, order + pending record, webhook the only writer, reconcile hourly. Verified in test mode: capture, replay x3, tamper, wrong amount, failure, refund, lost webhook. Registration stays closed until `registrationOpen` flips, and the launch guard refuses to sell in production on a test key, an unpriced tier, or `RAZORPAY_TEST_AMOUNT_PAISE` being set, each verified to block alone. Prices are set in `content/passes.ts` and single sourced; `check:launch` no longer reports `unpriced-tier`. |
 | Organiser auth, dashboard, scanner | built, gated on ADMIN_EMAILS |
 | Reconcile | hourly, verified to report and repair a deleted record |
 | Email | built. Confirmation on create, reconcile retries what fails, bounces and complaints recorded and suppressed, counts on the dashboard |

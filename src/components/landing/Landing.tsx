@@ -3,6 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { useEffect, useRef, type CSSProperties } from 'react'
+import type { Tier } from '@/lib/db/types'
 import { toggleTheme } from '@/lib/theme'
 import { mountLanding } from './mount'
 
@@ -24,7 +25,13 @@ import { mountLanding } from './mount'
  * mono face because numbers never render in Pixelify, and the copy carries
  * no em dashes, per SPEC.md section 2 rule 2.
  */
-export function Landing({ registrationOpen }: { registrationOpen: boolean }) {
+type Props = {
+  registrationOpen: boolean
+  /** Formatted price per tier, null while a tier is unpriced. The page reads them from content/passes.ts. */
+  prices: Record<Tier, string | null>
+}
+
+export function Landing({ registrationOpen, prices }: Props) {
   const rootRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -323,7 +330,7 @@ export function Landing({ registrationOpen }: { registrationOpen: boolean }) {
                 <h3 style={{margin:'0',fontFamily:'var(--font-display)',fontSize:'28px'}} className="bm-gold">REGULAR</h3>
                 <span style={{display:'flex',gap:'3px'}} aria-hidden="true"><span style={{width:'9px',height:'9px',background:'#9FE3B6'}}></span><span style={{width:'9px',height:'9px',background:'var(--bar)'}}></span><span style={{width:'9px',height:'9px',background:'var(--bar)'}}></span><span style={{width:'9px',height:'9px',background:'var(--bar)'}}></span></span>
               </div>
-              <span style={{fontFamily:'var(--font-mono)',fontSize:'26px',color:'var(--bg)',background:'var(--ink-fill)',alignSelf:'flex-start',padding:'4px 10px'}}>₹399</span>
+              <span style={{fontFamily:'var(--font-mono)',fontSize:'26px',color:'var(--bg)',background:'var(--ink-fill)',alignSelf:'flex-start',padding:'4px 10px'}}>{prices.basic ?? 'Announced soon'}</span>
               <ul style={{margin:'0',padding:'0',listStyle:'none',display:'flex',flexDirection:'column',gap:'8px',fontSize:'14px',lineHeight:'1.5',color:'var(--body)'}}><li>+ Full-day event access</li><li>+ 1 technical track</li><li>+ Keynote and sessions</li><li>+ Workshop, selected track</li><li>+ Food and refreshments</li><li>+ Swag level tier 1</li></ul>
               <Link href="/register" style={{marginTop:'auto',display:'inline-flex',alignItems:'center',justifyContent:'center',minHeight:'50px',border:'3px solid #9FE3B6',color:'var(--ink)',fontFamily:'var(--font-display)',fontSize:'18px',cursor:'pointer',transition:'background .12s steps(2),color .12s steps(2)'}} className="lp-hv-mint-fill">REGISTER</Link>
             </article>
@@ -332,7 +339,7 @@ export function Landing({ registrationOpen }: { registrationOpen: boolean }) {
                 <h3 style={{margin:'0',fontFamily:'var(--font-display)',fontSize:'28px'}} className="bm-gold">PREMIUM</h3>
                 <span style={{display:'flex',gap:'3px'}} aria-hidden="true"><span style={{width:'9px',height:'9px',background:'#FF9900'}}></span><span style={{width:'9px',height:'9px',background:'#FF9900'}}></span><span style={{width:'9px',height:'9px',background:'#3A2E12'}}></span><span style={{width:'9px',height:'9px',background:'#3A2E12'}}></span></span>
               </div>
-              <span style={{fontFamily:'var(--font-mono)',fontSize:'26px',color:'var(--bg)',background:'var(--ink-fill)',alignSelf:'flex-start',padding:'4px 10px'}}>₹799</span>
+              <span style={{fontFamily:'var(--font-mono)',fontSize:'26px',color:'var(--bg)',background:'var(--ink-fill)',alignSelf:'flex-start',padding:'4px 10px'}}>{prices.premium ?? 'Announced soon'}</span>
               <ul style={{margin:'0',padding:'0',listStyle:'none',display:'flex',flexDirection:'column',gap:'8px',fontSize:'14px',lineHeight:'1.5',color:'var(--body)'}}><li>+ 2 technical tracks</li><li>+ 2 hands-on workshops</li><li>+ Priority check-in</li><li>+ Preferred seating</li><li>+ Priority workshop access</li><li>+ Swag level tier 2</li><li>+ Everything in Regular</li></ul>
               <Link href="/register" style={{marginTop:'auto',display:'inline-flex',alignItems:'center',justifyContent:'center',minHeight:'50px',border:'3px solid #9FE3B6',color:'var(--ink)',fontFamily:'var(--font-display)',fontSize:'18px',cursor:'pointer',transition:'background .12s steps(2),color .12s steps(2)'}} className="lp-hv-mint-fill">REGISTER</Link>
             </article>
@@ -341,7 +348,7 @@ export function Landing({ registrationOpen }: { registrationOpen: boolean }) {
                 <h3 style={{margin:'0',fontFamily:'var(--font-display)',fontSize:'28px'}} className="bm-gold">PLATINUM</h3>
                 <span style={{display:'flex',gap:'3px'}} aria-hidden="true"><span style={{width:'9px',height:'9px',background:'#F2A7C3'}}></span><span style={{width:'9px',height:'9px',background:'#F2A7C3'}}></span><span style={{width:'9px',height:'9px',background:'#F2A7C3'}}></span><span style={{width:'9px',height:'9px',background:'var(--bar)'}}></span></span>
               </div>
-              <span style={{fontFamily:'var(--font-mono)',fontSize:'26px',color:'var(--bg)',background:'var(--ink-fill)',alignSelf:'flex-start',padding:'4px 10px'}}>₹1,299</span>
+              <span style={{fontFamily:'var(--font-mono)',fontSize:'26px',color:'var(--bg)',background:'var(--ink-fill)',alignSelf:'flex-start',padding:'4px 10px'}}>{prices.ultra ?? 'Announced soon'}</span>
               <ul style={{margin:'0',padding:'0',listStyle:'none',display:'flex',flexDirection:'column',gap:'8px',fontSize:'14px',lineHeight:'1.5',color:'var(--body)'}}><li>+ All 3 technical tracks</li><li>+ All 3 workshops</li><li>+ Dedicated help desk</li><li>+ Swag level tier 3</li><li>+ Everything in Premium</li></ul>
               <Link href="/register" style={{marginTop:'auto',display:'inline-flex',alignItems:'center',justifyContent:'center',minHeight:'50px',border:'3px solid #F2A7C3',color:'var(--ink)',fontFamily:'var(--font-display)',fontSize:'18px',cursor:'pointer',transition:'background .12s steps(2),color .12s steps(2)'}} className="lp-hv-pink-fill">REGISTER</Link>
             </article>
@@ -361,7 +368,7 @@ export function Landing({ registrationOpen }: { registrationOpen: boolean }) {
                 <h3 style={{margin:'0',fontFamily:'var(--font-display)',fontSize:'30px'}} className="bm-gold">VIP</h3>
                 <span style={{display:'flex',gap:'3px'}} aria-hidden="true"><span style={{width:'9px',height:'9px',background:'#9FE3B6'}}></span><span style={{width:'9px',height:'9px',background:'#FF9900'}}></span><span style={{width:'9px',height:'9px',background:'#C4AEF2'}}></span><span style={{width:'9px',height:'9px',background:'var(--ink-fill)'}}></span></span>
               </div>
-              <span style={{fontFamily:'var(--font-mono)',fontSize:'27px',color:'var(--on-fill)',background:'var(--gold)',alignSelf:'flex-start',padding:'4px 10px'}}>₹1,699</span>
+              <span style={{fontFamily:'var(--font-mono)',fontSize:'27px',color:'var(--on-fill)',background:'var(--gold)',alignSelf:'flex-start',padding:'4px 10px'}}>{prices.vip ?? 'Announced soon'}</span>
               <ul style={{margin:'0',padding:'0',listStyle:'none',display:'flex',flexDirection:'column',gap:'8px',fontSize:'14px',lineHeight:'1.5',color:'var(--body-gold)'}}><li>+ Reserved front-row seating</li><li>+ Speaker meet and greet</li><li>+ Speaker group photograph</li><li>+ Dedicated VIP assistance</li><li>+ Swag level tier 4</li><li>+ Everything in Platinum</li></ul>
               <Link href="/register" style={{marginTop:'auto',display:'inline-flex',alignItems:'center',justifyContent:'center',minHeight:'50px',background:'var(--gold)',color:'var(--on-fill)',fontFamily:'var(--font-display)',fontSize:'19px',fontWeight:'700',boxShadow:'5px 5px 0 var(--line)',cursor:'pointer',transition:'transform .1s steps(2),box-shadow .1s steps(2),background .1s steps(2)'}} className="lp-hv-vip-btn lp-ac-press">REGISTER</Link>
             </article>

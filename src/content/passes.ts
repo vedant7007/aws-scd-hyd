@@ -4,9 +4,9 @@ export type Pass = {
   id: Tier
   name: string
   /**
-   * TODO(vedant): null until prices are set. Never guess a price.
    * In paise, the unit the gateway bills in, so the amount charged and the
-   * amount displayed can never disagree. 49900 is Rs 499.
+   * amount displayed can never disagree. 39900 is Rs 399. Null means not yet
+   * decided, and every reader renders that as pending. Never guess a price.
    */
   pricePaise: number | null
   /** Tier specific inclusions. Lunch is added to every tier, see ALWAYS_INCLUDED. */
@@ -29,15 +29,19 @@ export const ALWAYS_INCLUDED = ['Lunch on the day']
 export const earlyBirdEndsAt: string | null = null
 
 /**
- * TODO(vedant): tier names, prices, inclusions and swag levels are all
- * unconfirmed. These are structural placeholders so the section can be built and
- * laid out. Setting `passes` to [] renders the announced soon state.
+ * Prices are confirmed (22 September 2026) and this is their only home: the
+ * landing page and the checkout both read them from here.
+ *
+ * TODO(vedant): names, inclusions and swag levels are still unconfirmed here.
+ * The landing page carries the handoff's names (Regular, Platinum) and
+ * inclusion lists as static copy; bring these fields in line with it. Setting
+ * `passes` to [] renders the announced soon state.
  */
 export const passes: Pass[] = [
   {
     id: 'basic',
     name: 'Basic',
-    pricePaise: null,
+    pricePaise: 39900,
     includes: ['Entry to all three tracks'],
     swag: null,
     sessionsAllowed: null,
@@ -45,7 +49,7 @@ export const passes: Pass[] = [
   {
     id: 'premium',
     name: 'Premium',
-    pricePaise: null,
+    pricePaise: 79900,
     includes: ['Entry to all three tracks', 'Reserved seating'],
     swag: null,
     sessionsAllowed: null,
@@ -54,7 +58,7 @@ export const passes: Pass[] = [
   {
     id: 'ultra',
     name: 'Ultra',
-    pricePaise: null,
+    pricePaise: 129900,
     includes: ['Entry to all three tracks', 'Reserved seating', 'Workshop access'],
     swag: null,
     sessionsAllowed: null,
@@ -62,7 +66,7 @@ export const passes: Pass[] = [
   {
     id: 'vip',
     name: 'VIP',
-    pricePaise: null,
+    pricePaise: 169900,
     includes: ['Entry to all three tracks', 'Reserved seating', 'Workshop access', 'Speaker dinner'],
     swag: null,
     sessionsAllowed: null,
