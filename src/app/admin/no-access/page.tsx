@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
-import { signOutAction } from '@/app/(site)/admin/login/actions'
+import { signOutAction } from '@/app/admin/login/actions'
 import { Container } from '@/components/layout/Container'
 import { currentAdmin } from '@/lib/auth/admin'
 

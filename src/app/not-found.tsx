@@ -1,8 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { Container } from '@/components/layout/Container'
-import { Footer } from '@/components/layout/Footer'
-import { Header } from '@/components/layout/Header'
+import { SiteFooter, SiteHeader } from '@/components/layout/SiteChrome'
 
 export const metadata: Metadata = {
   title: 'Page not found',
@@ -10,38 +8,35 @@ export const metadata: Metadata = {
 }
 
 /**
- * Unmatched URLs render inside the root layout, outside the (site) group, so
- * this page brings the chrome itself.
+ * Unmatched URLs render inside the root layout, outside every route group,
+ * so this page brings the chrome itself.
  */
 export default function NotFound() {
   return (
     <>
-      <Header />
-      <main id="main" className="flex-1">
-        <Container className="measure flex flex-col gap-6 py-24">
-          <p className="mono text-step--1 text-muted">404</p>
-          <h1 className="display text-step-4">That page is not here</h1>
-          <p className="text-step-1 text-muted">
-            The link may be out of date, or the page may not exist yet. Plenty of this site is still being
-            built.
-          </p>
-          <nav aria-label="Useful links" className="flex flex-wrap gap-x-8 gap-y-2">
-            <Link className="link" href="/">
-              Home
+      <div className="page-bg" aria-hidden="true" />
+      <SiteHeader />
+      <main id="main" className="relative z-10 flex-1">
+        <div className="page rise">
+          <div className="flex flex-col gap-3">
+            <span className="lbl-sm">404</span>
+            <h1 className="h1">THAT PAGE IS NOT HERE</h1>
+            <p className="lede">The link may be out of date, or the page may not exist yet.</p>
+          </div>
+          <nav aria-label="Useful links" className="flex flex-wrap gap-2.5">
+            <Link href="/" className="btn btn-ink">
+              HOME
             </Link>
-            <Link className="link" href="/schedule">
-              Schedule
+            <Link href="/schedule" className="btn">
+              SCHEDULE
             </Link>
-            <Link className="link" href="/speakers">
-              Speakers
-            </Link>
-            <Link className="link" href="/sponsors">
-              Sponsors
+            <Link href="/pass" className="btn">
+              MY PASS
             </Link>
           </nav>
-        </Container>
+        </div>
       </main>
-      <Footer />
+      <SiteFooter />
     </>
   )
 }

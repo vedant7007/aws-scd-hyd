@@ -9,7 +9,7 @@ import {
   resendSessionsLiveAction,
   verifyAction,
   type ActionState,
-} from '@/app/(site)/admin/(secure)/actions'
+} from '@/app/admin/(secure)/actions'
 import type { RegistrationState } from '@/lib/db/types'
 
 export type Row = {

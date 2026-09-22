@@ -216,10 +216,15 @@ html[data-theme="dark"] [data-theme-label="dark"] { display:none; }
 }
 .wordmark { display:inline-flex; align-items:center; min-height:44px; font-family:var(--font-display); font-size:clamp(15px,4vw,19px); color:var(--ink); }
 .wordmark:hover { color:var(--ink); }
-.site-nav { display:flex; align-items:center; flex-wrap:wrap; justify-content:flex-end; gap:clamp(2px,1.5vw,12px); min-width:0; font-family:var(--font-display); font-size:clamp(13px,3.2vw,16px); }
-.site-nav a { display:inline-flex; align-items:center; min-height:44px; padding:0 7px; color:var(--ink); transition:color .12s steps(2); }
-.site-nav a:hover { color:var(--mint-ink); }
-.site-nav a[aria-current="page"] { color:var(--mint-ink); }
+/* Wordmark and controls on the first row; the section links take a row of
+   their own below 640px and sit between the two above it. DOM order stays
+   wordmark, links, controls for the keyboard. */
+.site-links { order:2; flex-basis:100%; display:flex; align-items:center; flex-wrap:wrap; gap:clamp(2px,1.5vw,12px); margin:0 -7px; min-width:0; font-family:var(--font-display); font-size:clamp(13px,3.2vw,16px); }
+.site-links a { display:inline-flex; align-items:center; min-height:44px; padding:0 7px; color:var(--ink); transition:color .12s steps(2); }
+.site-links a:hover { color:var(--mint-ink); }
+.site-links:empty { display:none; }
+.site-ctl { display:flex; align-items:center; gap:8px; margin-left:auto; }
+@media (min-width:640px) { .site-links { order:0; flex-basis:auto; margin-left:auto; } .site-ctl { margin-left:0; } }
 .theme-toggle {
   display:inline-flex; align-items:center; gap:7px; min-height:44px; padding:0 12px; background:transparent; border:3px solid var(--line);
   color:var(--ink); font-family:var(--font-display); font-size:14px; cursor:pointer; transition:transform .1s steps(2);
@@ -230,7 +235,7 @@ html[data-theme="dark"] [data-theme-label="dark"] { display:none; }
 .site-foot { position:relative; z-index:10; border-top:3px solid var(--line-soft); padding:16px clamp(16px,5vw,28px) 30px; }
 .site-foot-in { max-width:720px; margin:0 auto; display:flex; flex-direction:column; gap:2px; }
 .foot-links { display:flex; flex-wrap:wrap; gap:0 18px; }
-.foot-link { display:inline-flex; align-items:center; min-height:44px; font-family:var(--font-display); font-size:15px; color:var(--ink); }
+.foot-link { display:inline-flex; align-items:center; min-height:44px; min-width:44px; font-family:var(--font-display); font-size:15px; color:var(--ink); }
 .foot-link:hover { color:var(--amber-ink); }
 .foot-mail { display:inline-flex; align-items:center; min-height:44px; font-size:14px; }
 .legal { margin:0; font-size:12.5px; line-height:1.65; color:var(--muted); max-width:52ch; }
