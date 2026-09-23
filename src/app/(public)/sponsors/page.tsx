@@ -61,7 +61,10 @@ export default function SponsorsPage() {
         {['FOOD SPONSOR', 'SWAG SPONSOR'].map((slot) => (
           <div key={slot} className="card-dash flex flex-col gap-3 p-5">
             <span className="lbl">Slot open</span>
-            <span className="flex min-h-[200px] items-center justify-center border-2 border-line-soft bg-panel font-display text-[56px] text-slot2">?</span>
+            {/* Decorative placeholder mark. The slot's real label is below it, so this is hidden from assistive tech rather than recoloured away from the handoff. */}
+            <span aria-hidden="true" className="flex min-h-[200px] items-center justify-center border-2 border-line-soft bg-panel font-display text-[56px] text-slot2">
+              ?
+            </span>
             <span className="h3">{slot}</span>
             <span className="copy">
               {slot === 'FOOD SPONSOR' ? 'Feed every student in the building and get your name on every table.' : 'Your thing in every swag kit, tier 1 to tier 4.'}
