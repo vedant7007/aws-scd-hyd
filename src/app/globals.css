@@ -961,22 +961,31 @@ html[data-theme="dark"] .pass-foil[data-tier="vip"] { background-image:linear-gr
 }
 
 /* The padlock. Two boxes and an arc, drawn in borders: a shackle that never
-   lifts and a body that flinches when you poke it. */
+   lifts and a body that flinches when you poke it.
+
+   Drawn in --ink, not --line. This is the one illustration on the site that
+   sits straight on the page instead of on a --surface card, and in dark
+   --line is #2A3550, which against the page background leaves the shackle
+   all but invisible and the lock reading as a stray orange box. */
 .rg-lock {
   position:relative; display:block; width:96px; height:116px; margin-top:6px;
   background:none; border:0; padding:0; cursor:pointer;
 }
 .rg-shackle {
   position:absolute; top:0; left:50%; width:52px; height:52px; margin-left:-26px;
-  border:9px solid var(--line); border-bottom:0;
+  border:9px solid var(--ink); border-bottom:0; border-radius:26px 26px 0 0;
   transition:transform .14s steps(2);
 }
 .rg-body {
   position:absolute; bottom:0; left:0; width:96px; height:72px;
-  border:4px solid var(--line); background:var(--fmt-technical);
+  border:4px solid var(--ink); background:var(--fmt-technical);
   display:flex; align-items:center; justify-content:center;
 }
-.rg-keyhole { width:14px; height:26px; background:var(--line); clip-path:polygon(0 0,100% 0,100% 100%,64% 100%,64% 42%,36% 42%,36% 100%,0 100%); }
+/* Round top, straight stem. --on-fill is the ink for text on a filled block,
+   which is what the keyhole is: a hole punched in the orange body. */
+.rg-keyhole { position:relative; width:18px; height:30px; }
+.rg-keyhole::before { content:""; position:absolute; top:0; left:0; width:18px; height:18px; border-radius:50%; background:var(--on-fill); }
+.rg-keyhole::after { content:""; position:absolute; top:13px; left:5px; width:8px; height:17px; background:var(--on-fill); }
 .rg-lock:hover .rg-shackle { transform:translateY(-3px); }
 .rg-lock:active .rg-shackle { transform:translateY(2px); }
 .rg-shake { animation:rg-shake .38s steps(2); }
