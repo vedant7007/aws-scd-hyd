@@ -1,11 +1,12 @@
 import { event } from './event'
-import type { Track } from '../lib/db/types'
+import type { SessionFormat } from './formats'
 
 export type Speaker = {
   name: string
   role: string
   org: string
-  track?: Track
+  /** Which kind of session they are on. Absent until it is decided. */
+  format?: SessionFormat['id']
 }
 
 /**

@@ -1,98 +1,81 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { RegisterForm, type TierOption, type TrackOption } from '@/components/register/RegisterForm'
+import { LockedHero } from '@/components/register/LockedHero'
+import { NotifyForm, type PassChip } from '@/components/register/NotifyForm'
 import { event, venue } from '@/content/event'
-import { ALWAYS_INCLUDED, EARLY_BIRD_TOTAL, REFUND_POLICY, earlyBirdPrice, formatInr, passes, tierIds } from '@/content/passes'
-import { tracks } from '@/content/tracks'
-import type { Tier } from '@/lib/db/types'
-import { earlyBirdLeft } from '@/lib/registration/state'
-import { launchStatus } from '@/lib/tickets/launch'
-import { placeholderPaise } from '@/lib/tickets/pricing'
+import { formatCount } from '@/content/formats'
+import { formatInr, passes } from '@/content/passes'
 
 export const metadata: Metadata = {
-  title: `Register, ${event.shortName}`,
-  description: `Get your pass for ${event.name}, ${event.dateLabel}.`,
+  title: `Registrations open soon, ${event.shortName}`,
+  description: `Registrations for ${event.name} on ${event.dateLabel} have not opened yet. Leave your email and we will tell you the moment they do.`,
 }
 
-/** The switch and the early bird count are read from the table on every request. */
-export const dynamic = 'force-dynamic'
-
 /**
- * Our form, our rules. SPEC.md section 8, reshaped for a gateway: the site
- * owns registration, Razorpay only takes the money. Everything typed here is
- * validated again on the server and the amount is never sent from here.
+ * The closed registration screen. Registration is off at the source
+ * (REGISTRATION_OPEN in content/event.ts) and this is what the whole site's
+ * REGISTER and NOTIFY ME controls point at: a locked padlock, an email field
+ * and nothing to pay for. The flow that sells passes is parked, not deleted,
+ * under /register-legacy.
  */
-export default async function RegisterPage({ searchParams }: PageProps<'/register'>) {
-  const launch = await launchStatus()
-  if (!launch.open) {
-    // The switch is closed, or it is open and the launch guard is holding
-    // selling back (in production, while a blocker stands). Two different
-    // pages: one says closed, the other says not yet.
-    const closed = !launch.registrationOpen
-    return (
-      <div className="page rise">
-        <div className="flex flex-col gap-3">
-          <span className="eye">{'// REGISTER'}</span>
-          <h1 className="h1">{closed ? 'REGISTRATIONS ARE CLOSED' : 'OPENS SOON'}</h1>
-          <p className="lede">
-            {closed
-              ? `Registration for ${event.name} has closed. If you registered before it closed, your pay page still works until its time runs out, and every pass link keeps working.`
-              : 'Registration is not taking payments yet. This page will say so the moment it is.'}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2.5">
-          <Link href="/pass" className="btn btn-primary">
-            OPEN MY PASS
-          </Link>
-          <Link href="/" className="btn">
-            BACK HOME
-          </Link>
-        </div>
-      </div>
-    )
-  }
 
-  // The pool as it stands now. Null once empty, so the form draws nothing of it.
-  const left = await earlyBirdLeft()
-  const earlyBird = left > 0 ? { left, total: EARLY_BIRD_TOTAL } : null
+/** Chip colours are tokens, so the swatches follow the theme like everything else. */
+const SWATCH: Record<string, string> = {
+  basic: 'var(--fmt-keynote)',
+  premium: 'var(--fmt-technical)',
+  ultra: 'var(--fmt-panel)',
+  vip: 'var(--gold)',
+}
 
-  // ?tier= preselects, from the pass grid. Anything unknown is ignored.
-  const { tier } = await searchParams
-  const preselect = typeof tier === 'string' && tierIds.includes(tier as Tier) ? (tier as Tier) : undefined
+const NEXT = [
+  ['PICK A PASS', `Four passes, from ${formatInr(49900)}. Every one includes lunch and a swag kit.`, '/#passes', 'SEE THE PASSES'],
+  ['SEE THE DAY', `${formatCount} session formats, one Friday, ${venue.name}.`, '/schedule', 'SEE THE SCHEDULE'],
+  ['MEET THE SPEAKERS', 'Engineers and builders from the cloud and AI world.', '/speakers', 'SEE THE SPEAKERS'],
+] as const
 
-  // Prices come from content/passes.ts, the same place the checkout reads. A
-  // tier without a price is offered at the test amount and says so on the form.
-  const tiers: TierOption[] = passes.map((p) => ({
+export default function RegisterPage() {
+  const chips: PassChip[] = passes.map((p) => ({
     id: p.id,
     name: p.name,
-    priceLabel: formatInr(p.pricePaise ?? placeholderPaise()),
-    earlyPriceLabel: earlyBird && p.pricePaise !== null ? formatInr(earlyBirdPrice(p.pricePaise)) : null,
-    placeholder: p.pricePaise === null,
-    includes: [...p.includes, ...ALWAYS_INCLUDED],
-    recommended: Boolean(p.recommended),
-    tracksAllowed: p.tracksAllowed,
+    price: p.pricePaise === null ? 'TBA' : formatInr(p.pricePaise),
+    swatch: SWATCH[p.id] ?? 'var(--bar)',
   }))
-  const trackOptions: TrackOption[] = tracks.map((t) => ({ id: t.id, name: t.name, blurb: t.blurb }))
 
   return (
-    <div className="page page-bar rise">
-      <div className="flex flex-col gap-3">
-        <span className="eye">{'// REGISTER'}</span>
-        <h1 className="h1">GET YOUR PASS</h1>
-        <p className="lede">
-          {event.dateLabel}, {venue.name}. One pass, one seat per session, lunch included. You pay on the next screen and your
-          pass arrives by email.
-        </p>
-      </div>
-      <RegisterForm
-        tiers={tiers}
-        tracks={trackOptions}
-        preselect={preselect}
-        eventName={event.shortName}
-        contactEmail={event.contactEmail}
-        earlyBird={earlyBird}
-        refundPolicy={REFUND_POLICY}
-      />
+    <div className="page page-760 rise">
+      <LockedHero />
+
+      <p className="lede">
+        Registrations for {event.name} have not opened yet. When they do, passes go on sale here and the first fifty registrations get
+        fifty rupees off. Leave your email and you will hear before anyone else.
+      </p>
+
+      <NotifyForm chips={chips} />
+
+      <section className="flex flex-col gap-3.5" aria-labelledby="next-h">
+        <h2 id="next-h" className="h2">
+          WHILE YOU WAIT
+        </h2>
+        <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr))]">
+          {NEXT.map(([title, body, href, cta]) => (
+            <div key={title} className="card flex flex-col gap-2 p-4">
+              <span className="h3">{title}</span>
+              <p className="copy">{body}</p>
+              <Link href={href} className="btn btn-sm mt-auto self-start">
+                {cta}
+              </Link>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <p className="hint">
+        Questions before registrations open? Write to{' '}
+        <a href={`mailto:${event.contactEmail}`}>
+          {event.contactEmail}
+        </a>
+        .
+      </p>
     </div>
   )
 }

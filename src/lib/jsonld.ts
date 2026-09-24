@@ -17,7 +17,7 @@ export function eventJsonLd(): string {
     eventStatus: 'https://schema.org/EventScheduled',
     url: absolute('/'),
     image: [absolute('/opengraph-image')],
-    description: `A student run community conference in ${event.city}: AI and Agents, Cloud and Career.`,
+    description: `A student run community conference in ${event.city}: a keynote, technical sessions on Cloud Engineering and AI, hands-on workshops and a panel.`,
     organizer: {
       '@type': 'Organization',
       name: event.host,

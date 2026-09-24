@@ -80,9 +80,11 @@ export function mountLanding(el: HTMLElement): () => void {
         b.style.transform = 'scaleX(' + step(clamp(seg - i), 12).toFixed(3) + ')'
       })
       const idx = Math.min(cards.length - 1, Math.floor(t * (cards.length - 0.001)))
-      if (hcount) hcount.textContent = 'TRACK 0' + (idx + 1) + ' / 03'
+      if (hcount) hcount.textContent = 'SESSION 0' + (idx + 1) + ' / 0' + cards.length
       cards.forEach((c, i) => {
-        c.style.opacity = i === idx ? '1' : '.55'
+        const on = i === idx
+        c.style.opacity = on ? '1' : '.5'
+        c.style.transform = on ? 'scale(1)' : 'scale(.94)'
       })
     }
   }
@@ -401,7 +403,7 @@ export function mountLanding(el: HTMLElement): () => void {
   // ---- rotating tagline -------------------------------------------------------
   const rotw = q('[data-rotw]')
   if (rotw && !reduce) {
-    const lines = ['for the ones who build', 'three tracks, one Friday', 'any college in Hyderabad', '300 seats, then it shuts']
+    const lines = ['for the ones who build', 'keynote to panel, one Friday', 'any college in Hyderabad', 'cloud engineering + AI']
     // Clock-derived, and text + opacity are set in the SAME tick, so a
     // throttled tick can never leave the line transparent.
     const SLOT = 3000

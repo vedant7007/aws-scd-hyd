@@ -130,15 +130,22 @@ export const sessionDetails: Partial<Record<string, SessionDetail>> = {}
 export const sessionsReleased: boolean = false
 
 /**
- * Registration is open from the moment the site can take money, and closes
- * when an admin flips the switch on the settings page, not on a date. This
- * is only the default for a config item that has never been written; the
- * switch itself is the registrationOpen field of the config item.
+ * THE MASTER SWITCH. While this is false nothing sells, whatever the config
+ * item says and whatever an admin clicks: the public pages show the notify
+ * page instead of a form, and step one of the parked flow refuses. Flip it
+ * to true only when the new registration flow is decided and built.
+ */
+export const REGISTRATION_OPEN = false
+
+/**
+ * The admin switch on the settings page, stored on the config item. It can
+ * only ever close registration further, never past REGISTRATION_OPEN above.
+ * This is the default for a config item that has never been written.
  */
 export const registrationOpen: boolean = true
 
 export const about = [
   'A one day community conference put on by students, for students, in Hyderabad.',
-  'Three tracks run in parallel across the day: AI and Agents, Cloud, and Career. You pick one session per slot and keep your seat.',
+  'A keynote to open, technical sessions on Cloud Engineering and AI, hands-on workshops, a panel and an open Q and A. Your pass decides which of these you get.',
   'It is run by volunteers from the AWS Student Builders Group at VJIT, and it is not an AWS event.',
 ]

@@ -17,7 +17,9 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic'
 
 /**
- * Amendment 1 section 2. Where the form sends the student, and where they
+ * Amendment 1 section 2. PARKED with the rest of the payment flow while
+ * registration is closed: nothing public links here. Where the form sends
+ * the student, and where they
  * come back to after paying in their UPI app, or after a rejection. By pass
  * id alone: no email exists before the UTR is in, so the id shown on screen
  * is the only thing they can carry across the gap.
@@ -28,11 +30,11 @@ export const dynamic = 'force-dynamic'
  *   ABANDONED                    the hold lapsed; register again
  *   anything else                not found
  */
-export default async function PayPage({ params }: PageProps<'/register/pay/[passId]'>) {
+export default async function PayPage({ params }: PageProps<'/register-legacy/pay/[passId]'>) {
   const { passId: raw } = await params
   const passId = normalisePassId(raw)
   if (!passId) notFound()
-  if (passId !== raw) redirect(`/register/pay/${passId}`)
+  if (passId !== raw) redirect(`/register-legacy/pay/${passId}`)
 
   const attendee = await getAttendee(passId)
   if (!attendee) notFound()

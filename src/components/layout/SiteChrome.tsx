@@ -1,13 +1,13 @@
 import Link from 'next/link'
-import { event } from '@/content/event'
+import { event, REGISTRATION_OPEN } from '@/content/event'
 import { ThemeToggle } from './ThemeToggle'
 
 /**
  * The header and footer every screen after the landing shares, from the
  * handoff's sibling screens: a sticky bar with the wordmark and the toggle,
  * a compact footer with the legal line. The three section links the old
- * chrome carried stay, at a 44px tap height, with REGISTER as the one
- * filled control. Nothing here reads the table, so static pages stay static.
+ * chrome carried stay, at a 44px tap height, with one filled control:
+ * REGISTER while registrations are open, NOTIFY ME while they are not. Nothing here reads the table, so static pages stay static.
  */
 export function SiteHeader({ crew = false }: { crew?: boolean }) {
   return (
@@ -26,7 +26,7 @@ export function SiteHeader({ crew = false }: { crew?: boolean }) {
         <ThemeToggle />
         {crew ? null : (
           <Link href="/register" className="btn btn-primary btn-sm">
-            REGISTER
+            {REGISTRATION_OPEN ? 'REGISTER' : 'NOTIFY ME'}
           </Link>
         )}
       </div>
@@ -47,14 +47,11 @@ export function SiteFooter({ crew = false }: { crew?: boolean }) {
               CREW
             </Link>
           ) : (
-            <>
-              <Link href="/code-of-conduct" className="foot-link">
-                CODE OF CONDUCT
-              </Link>
-              <Link href="/pass" className="foot-link">
-                MY PASS
-              </Link>
-            </>
+            /* No pass lookup while registrations are closed: there are no
+               passes to look up, and the flow at /pass is parked. */
+            <Link href="/code-of-conduct" className="foot-link">
+              CODE OF CONDUCT
+            </Link>
           )}
           <a href={`mailto:${event.contactEmail}`} className="foot-mail">
             {event.contactEmail}

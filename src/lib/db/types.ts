@@ -238,6 +238,10 @@ export type VerificationLog = Keyed & {
 export type Subscriber = Keyed & {
   email: string
   createdAt: string
+  /** Which passes they said they were eyeing. Only the notify form sets it. */
+  interestedPasses?: string[]
+  /** 'register-closed' from the notify page, absent from the older form. */
+  source?: string
 }
 
 /** Projection of a Session sent to the browser so the picker can show live seats. */

@@ -281,6 +281,10 @@ The student then sees the college QR, the exact amount for their tier, their pas
 
 The admin dashboard's default view is the `PENDING_VERIFICATION` queue, oldest UTR first: name, email, tier, home track, amount expected, UTR, screenshot. Verify moves the record to `VERIFIED` and sends email 2; Reject moves it to `REJECTED` with a reason and sends the rejection email; both are conditional on the current state, so two admins acting at once produce one change and one email. A rejected student resubmits at the pay page and goes back into the queue with the same record.
 
+### The master switch
+
+Above the admin switch there is a constant, `REGISTRATION_OPEN` in `content/event.ts`, and it is **false**. While it is false nothing sells: `launchStatus()` ANDs it with the config switch, so step one refuses whatever the table says, every REGISTER control on the site reads NOTIFY ME, and `/register` is the notify page rather than the form. The whole selling flow is parked, not deleted: the form and the pay page live at `/register-legacy`, nothing public links to them, and flipping the constant back to true plus the admin switch brings them back. This is a code change on purpose. Opening the doors should be a deploy someone reviewed, not a click.
+
 ### The registration switch
 
 Registration is open from the moment the site can take money, and it closes when an admin flips the switch on `/admin/settings`, not on a date. The switch is the `registrationOpen` field of the config item, written with who flipped it and when; closing asks the admin to type CLOSE first, because closing by accident during a promotion push would be expensive. It is **enforced server side in the step one route**: a direct POST while closed is a 403 that creates nothing. Hiding the button is not the enforcement. When closed, `/register` shows a designed "Registrations are closed" page.
@@ -299,11 +303,11 @@ Every entry point asks `registrationIsOpen()`, which reads the switch from the t
 
 ### Pricing
 
-Every tier in `content/passes.ts` is priced (Rs 399, 799, 1,299, 1,699, confirmed 22 September 2026) and that file is the only source: the landing page, the pay page and the record all read from it. A tier with `pricePaise: null` would be offered at `RAZORPAY_TEST_AMOUNT_PAISE`, default 100, and the launch guard refuses to sell while that could apply.
+Every tier in `content/passes.ts` is priced (Rs 499, 799, 999, 1,299, confirmed 24 September 2026, replacing the 22 September set) and that file is the only source: the landing page, the notify page, the pay page and the record all read from it. Every tier lists its perks in full; no card says "everything in Regular". A tier with `pricePaise: null` would be offered at `RAZORPAY_TEST_AMOUNT_PAISE`, default 100, and the launch guard refuses to sell while that could apply.
 
 ### Early bird
 
-Fifty rupees off every tier for the first fifty registrations across all tiers combined (Regular 349, Premium 749, Platinum 1,249, VIP 1,649), live from the moment registration opens. `EARLY_BIRD_TOTAL` and `EARLY_BIRD_DISCOUNT_PAISE` live in `content/passes.ts`.
+Fifty rupees off every tier for the first fifty registrations across all tiers combined (Regular 449, Premium 749, Platinum 949, VIP 1,249), live from the moment registration opens. `EARLY_BIRD_TOTAL` and `EARLY_BIRD_DISCOUNT_PAISE` live in `content/passes.ts`.
 
 The pool is one counter item, `EARLYBIRD#COUNTER` `{ claimed, ceiling }`, the same pattern as a track counter. **The price is decided and locked into the record at step one, in the same transaction that increments the track counter**: the EARLYBIRD counter is incremented conditional on `claimed < ceiling`, and `amountPaise` is the discounted price only if that item succeeded, with the full price kept beside it as `listPricePaise`. The student pays exactly the number they were shown; the admin verifies against the stored number, never a recomputed one. Abandoning releases the place in the same transaction that releases the track place. Reinstating re-claims a place if one is free, otherwise reinstates at the stored full price and tells the admin. If the fiftieth place goes between the read and the write, the registration is retried once at full price, the record is marked `earlyBirdMissed`, and the pay page says early bird just ran out and the price is now the full one.
 
@@ -408,9 +412,9 @@ In order, each its own component file.
 1. **Hero.** Name, Hyderabad, date, venue, CTA to passes, countdown to `event.startsAt` (2026-10-30T09:30:00+05:30, doors confirmed 09:30), and a pointer-reactive canvas background that animates gently on its own on mobile. Keep the background in one swappable component, the visual is `TODO(vedant)`.
 2. **Ticker.** Marquee band in accent colour.
 3. **About.** Three or four sentences. Not a wall.
-4. **Tracks.** AI and Agents, Cloud, Career, the organiser's names verbatim. Large type, hairline separated, no cards.
+4. **Sessions.** The five session formats in `content/formats.ts`: keynote, technical sessions, hands-on workshops, panel discussion, Q and A. A pinned horizontal stage, one card each, five progress bars and a `SESSION 0N / 05` counter. This replaces the three-track band on every public surface; the track model survives only inside the parked registration flow.
 5. **Speakers.** Must render well with zero or one entry, with a real "announced soon" state. No placeholder silhouettes.
-6. **Passes.** Four tiers, each with price, an itemised inclusion list, and swag level. One marked recommended. Early bird expiry date shown, with a plain note that price rises after. Lunch is included on every tier and says so on every tier.
+6. **Passes.** Four tiers, each with price and its full perk list written out, and swag level. One marked recommended. Early bird expiry date shown, with a plain note that price rises after. Lunch is included on every tier and says so on every tier.
 7. **Sponsors.** Tiered logo wall with an empty state, plus a become-a-sponsor block with a fixed mail subject format.
 8. **Venue.** Address, map, metro, bus, cab, parking.
 9. **FAQ.** Accordion, keyboard operable.
@@ -421,7 +425,7 @@ In order, each its own component file.
 Times are not decided and must not appear on the public site. The only public time is doors at 09:30 on Friday 30 October 2026. The four slots exist structurally for the picker; each has `startsAt` and `endsAt` null until the organiser sets them, and `slotTime()` returns null for an unset or unparseable value, never an empty string, a dash or Invalid Date. A blank slot label falls back to "Slot 1" through "Slot 4" through `slotLabel()`.
 
 ### `/schedule`
-Time down, halls across. On mobile, a per-hall vertical list. Never a horizontally scrolling table.
+One card per session format, not a timetable: there is no track to pick and no hall to find on the public site. Static, no table read. No times beyond doors at 09:30, and the page says the running order goes up when it is fixed.
 
 ### `/pass` and `/pass/[passId]`
 
@@ -438,7 +442,11 @@ Time down, halls across. On mobile, a per-hall vertical list. Never a horizontal
 
 The QR appears only in the final state. The pass id is identical in every state; nothing is ever regenerated. Server component; invalid or unfinished renders never a stack trace and never a redirect to a login that does not exist. Must be legible on a phone in bright sunlight at a gate: high contrast, large QR.
 
-### `/register` and `/register/pay/[passId]`
+### `/register` (registrations closed)
+
+While `REGISTRATION_OPEN` is false, `/register` is the notify page: a padlock that never opens and counts how many times it was tried, a drifting grid, and one email field. `POST /api/notify` takes `{ email, interestedPasses, company }`, validates shape, lowercases and trims, writes a `SUB#<email>` item with `source: "register-closed"` and the passes they named, and answers 200 whether or not the address was already there, so it cannot be used to find out who has signed up. `company` is a honeypot: filled means a bot, which gets the same 200 and nothing stored. Ten sign ups per IP per hour, counted in the table like every other limit. The list exports as CSV from the dashboard, admin only.
+
+### `/register-legacy` and `/register-legacy/pay/[passId]` (parked)
 
 Step one is the form, section 8. Step two, at the pay page, is reachable by pass id alone and renders the QR, the amount and the UTR form for `AWAITING_PAYMENT` and `REJECTED`, "we have your UTR" for `PENDING_VERIFICATION`, redirects to the pass for `VERIFIED` and `SESSIONS_SELECTED`, and explains the lapse for `ABANDONED`.
 
@@ -539,7 +547,10 @@ Kept current as work lands. Everything else in this file is the plan, this secti
 | Sandbox backend | deployed: table, Cognito pool, reconcile Lambda, hourly schedule |
 | Amplify Hosting | building from `main`, live at https://awsscdhyd.in with a compute role and production env vars attached |
 | Landing page | ported from the design handoff (Landing Bitmap). Its own header and footer, theme in localStorage under `scd-theme`, cloud page transition on every route. APPLY TO SPEAK and BECOME A SPONSOR open a mail to awssbgvjit@gmail.com with a fixed subject until the `/speak` and `/sponsor` screens are ported |
-| Schedule, speakers, sponsors, code of conduct, register, pay, pass, pass entry, admin | built on the pre-handoff layout, kept under `src/app/(site)/` with the old chrome until each is ported |
+| Schedule, speakers, sponsors, code of conduct, register, pass, pass entry, admin | ported to the handoff design under `src/app/(public)/` and `src/app/admin/`, one shared header and footer, pre-handoff stylesheet dropped |
+| Sessions, not tracks | the public site is built on the five session formats in `content/formats.ts`. The three-track model, its rooms and its per-slot picker are untouched but reachable only through the parked flow |
+| Registrations | **closed in code.** `REGISTRATION_OPEN` is false, every CTA reads NOTIFY ME, `/register` is the notify page and `/api/notify` writes to the subscriber list with a honeypot, per-IP limit and an admin CSV export. The selling flow is parked at `/register-legacy`, unlinked and undeleted |
+| Prices | Rs 499 / 799 / 999 / 1,299, confirmed 24 September 2026, every perk written out on every card |
 | Pass page, QR, per-slot picker, seat transaction | rebuilt on the six-state lifecycle and the one pass id. Race test and the 25-check acceptance suite (`npm run test:lifecycle`) pass against the sandbox |
 | Payments | Manual UPI by default: two-step registration, per-track counter at step one, UTR and screenshot, admin verification queue, hourly sweep. Razorpay kept intact behind `PAYMENT_MODE`. Registration stays closed until `registrationOpen` flips; the launch guard lists per-mode blockers on the dashboard |
 | Organiser auth, dashboard, scanner | rebuilt: verification queue, six-state counts, reinstate, change sessions, session release, per-track counters; scanner admits only `SESSIONS_SELECTED` and names the verified-but-unselected case |

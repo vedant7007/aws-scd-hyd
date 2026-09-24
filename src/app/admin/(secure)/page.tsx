@@ -241,6 +241,21 @@ export default async function AdminDashboardPage() {
           ))}
           <p className="row-body">Counts verified attendees only, so rejections and abandoned registrations are not catered for. Send the final count the night before.</p>
         </section>
+
+        <section className="card flex flex-col" aria-labelledby="notify-h">
+          <div className="card-head">
+            <span id="notify-h" className="card-title">
+              NOTIFY LIST
+            </span>
+            {/* Everyone who asked to be told when registrations open. */}
+            <a className="btn btn-primary btn-sm" href="/api/admin/notify-csv" download>
+              EXPORT CSV
+            </a>
+          </div>
+          <p className="row-body">
+            Addresses left on the closed registration page, newest first, with the passes each person said they were eyeing. Write to this list the day registrations open.
+          </p>
+        </section>
       </div>
 
       <section className="card flex flex-col" aria-labelledby="seats-h">

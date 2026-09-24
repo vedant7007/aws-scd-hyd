@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
-import { registrationOpen as contentDefault } from '../../content/event'
+import { REGISTRATION_OPEN, registrationOpen as contentDefault } from '../../content/event'
 import { passes } from '../../content/passes'
 import { payment } from '../../content/payment'
 import { sessionSpecs } from '../../content/sessions'
@@ -140,7 +140,9 @@ export async function launchStatus(): Promise<LaunchStatus> {
   const enforced = process.env.NODE_ENV === 'production'
   // The switch is read from the table on every call, never cached: closing
   // registration has to take effect on the very next request.
-  const switched = config?.registrationOpen ?? contentDefault
+  // Two gates, and the code flag wins. An admin re-opening the settings
+  // switch cannot sell anything while REGISTRATION_OPEN is false.
+  const switched = REGISTRATION_OPEN && (config?.registrationOpen ?? contentDefault)
   // The acceptance suite needs step one open against the sandbox. Only ever
   // honoured outside production, where NODE_ENV is set by the runtime.
   const open = switched || (!enforced && process.env.SCD_DEV_REGISTRATION_OPEN === '1')

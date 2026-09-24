@@ -68,7 +68,7 @@ function link(path: string): string {
   return `${origin}${path}`
 }
 export const passLink = (passId: string) => link(`/pass/${passId}`)
-export const payLink = (passId: string) => link(`/register/pay/${passId}`)
+export const payLink = (passId: string) => link(`/register-legacy/pay/${passId}`)
 
 const footerText = `${event.host}\nReplies go to ${REPLY_TO}.\n${event.disclaimer}`
 const footerHtml = `<hr><p>${esc(event.host)}<br>Replies go to ${esc(REPLY_TO)}.<br>${esc(event.disclaimer)}</p>`

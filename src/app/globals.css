@@ -553,6 +553,16 @@ select.inp { background-image:linear-gradient(45deg,transparent 50%,var(--ink) 5
 
   /* AWS orange, a fill only. Text on it is --on-fill. */
   --orange: #FF9900;
+  /* The Q and A format's peach. Fixed in both themes: it is a fill carrying dark ink. */
+  --peach: #F6C899;
+
+  /* One accent per session format, carried by the card, its number, its
+     illustration panel and its progress bar. content/formats.ts names these. */
+  --fmt-keynote: var(--mint-fill);
+  --fmt-technical: var(--orange);
+  --fmt-workshop: var(--violet-fill);
+  --fmt-panel: var(--pink-fill);
+  --fmt-qa: var(--peach);
 
   /* The colour each tier and each track carries on the handoff's screens
      (tier pills, track dots, agenda headers). Same in both themes. */
@@ -623,6 +633,7 @@ select.inp { background-image:linear-gradient(45deg,transparent 50%,var(--ink) 5
   --color-err-ink: var(--err-ink);
   --color-gold: var(--gold);
   --color-orange: var(--orange);
+  --color-peach: var(--peach);
   --color-mint-fill: var(--mint-fill);
   --color-violet-fill: var(--violet-fill);
   --color-pink-fill: var(--pink-fill);
@@ -721,3 +732,290 @@ label:has(> .sr-only:focus-visible) > .tick { outline:3px solid var(--focus); ou
 .crew-nav a { display:inline-flex; align-items:center; min-height:44px; padding:0 7px; color:var(--ink); }
 .crew-nav a:hover { color:var(--mint-ink); }
 .lbl[data-tone="err"] { color:var(--err-ink); }
+
+/* ===========================================================================
+   SESSION FORMAT CARDS (landing). Five cards in the pinned stage, each with a
+   CSS-only illustration panel. --sf is the card accent, set inline.
+
+   Every loop below animates transform or opacity only, so a frozen animation
+   offsets or dims a block but never hides the panel; the page's
+   prefers-reduced-motion rule switches all of them off.
+   =========================================================================== */
+
+.sf-card { transition:transform .2s steps(3), opacity .2s steps(3); }
+.sf-art {
+  position:relative; overflow:hidden; background:var(--sf); min-height:180px;
+  /* Its own layer: these loops run for the whole scroll of the stage. */
+  will-change:transform;
+}
+@media (min-width:621px) { .sf-card { grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr); } }
+
+/* 18px pixel grid over the accent, drifting. */
+.sf-grid {
+  position:absolute; inset:-20px; pointer-events:none;
+  background-image:linear-gradient(rgba(20,22,28,.13) 1px,transparent 1px),linear-gradient(90deg,rgba(20,22,28,.13) 1px,transparent 1px);
+  background-size:18px 18px; animation:sf-drift 7s linear infinite;
+}
+@keyframes sf-drift { to { transform:translate3d(-18px,-18px,0); } }
+
+/* Light sweep across the panel. */
+.sf-sweep {
+  position:absolute; top:0; bottom:0; width:90px; pointer-events:none;
+  background:linear-gradient(100deg,transparent,rgba(255,255,255,.42),transparent);
+  animation:sf-sweep 5.5s linear infinite;
+}
+@keyframes sf-sweep { 0%{transform:translate3d(-140px,0,0)} 100%{transform:translate3d(calc(100% + 900px),0,0)} }
+
+.sf-scene { position:absolute; inset:0; display:block; }
+.sf-tag {
+  position:absolute; top:12px; left:12px; z-index:3; display:inline-flex; align-items:center; gap:6px;
+  background:#14161C; color:#F4F7FB; font-family:var(--font-mono); font-size:9px; letter-spacing:.18em; padding:5px 8px;
+}
+.sf-rec { width:7px; height:7px; background:#FF5A52; display:block; animation:sf-blink 1s steps(1) infinite; }
+@keyframes sf-blink { 0%,50%{opacity:1} 51%,100%{opacity:.15} }
+
+/* The big number glitches, and the kicker dot blinks. */
+[data-sf-no] { animation:sf-glitch 6s steps(1) 1.5s infinite; }
+@keyframes sf-glitch { 0%,93%,100%{transform:translate3d(0,0,0)} 94%{transform:translate3d(-2px,1px,0)} 96%{transform:translate3d(2px,-1px,0)} 98%{transform:translate3d(-1px,0,0)} }
+[data-sf-dot] { animation:sf-blink 1.6s steps(1) infinite; }
+
+/* --- 01 keynote ---------------------------------------------------------- */
+.sf-cone {
+  position:absolute; top:-6%; left:50%; width:54%; height:78%; z-index:1;
+  background:linear-gradient(rgba(255,255,255,.75),rgba(255,255,255,0));
+  clip-path:polygon(42% 0,58% 0,100% 100%,0 100%); transform-origin:50% 0;
+  animation:sf-swing 6s ease-in-out infinite alternate;
+}
+@keyframes sf-swing { from { transform:translate3d(-50%,0,0) rotate(-11deg); } to { transform:translate3d(-50%,0,0) rotate(11deg); } }
+.sf-flash { position:absolute; inset:0; z-index:2; background:rgba(255,255,255,.9); opacity:0; animation:sf-flash 4.3s steps(1) 1.2s infinite; }
+@keyframes sf-flash { 0%,96%,100%{opacity:0} 97%{opacity:.55} 98%{opacity:0} 99%{opacity:.35} }
+.sf-podium { position:absolute; bottom:18%; left:50%; width:74px; height:64px; margin-left:-37px; background:#14161C; z-index:2; }
+.sf-logo { position:absolute; top:14px; left:50%; width:26px; height:14px; margin-left:-13px; background:#FF9900; display:block; }
+.sf-mic { position:absolute; bottom:38%; left:calc(50% + 52px); width:3px; height:40px; background:#14161C; z-index:2; }
+.sf-mic-head { position:absolute; top:-9px; left:-5px; width:13px; height:13px; background:#14161C; display:block; }
+.sf-crowd { position:absolute; bottom:0; left:0; right:0; height:18%; display:flex; align-items:flex-end; justify-content:center; gap:5px; z-index:3; }
+.sf-head { width:14px; height:14px; background:#14161C; display:block; animation:sf-bobhead 2.4s ease-in-out infinite alternate; }
+@keyframes sf-bobhead { from { transform:translate3d(0,0,0); } to { transform:translate3d(0,-5px,0); } }
+
+/* --- 02 technical -------------------------------------------------------- */
+.sf-term {
+  position:absolute; inset:14% 9%; background:#0B0D12; border:3px solid #14161C; z-index:2;
+  display:flex; flex-direction:column; overflow:hidden;
+}
+.sf-bar { display:flex; align-items:center; gap:5px; padding:7px 9px; background:#161D2B; }
+.sf-dot { width:8px; height:8px; border-radius:50%; display:block; }
+.sf-d1 { background:#FF5A52; } .sf-d2 { background:#F6C899; } .sf-d3 { background:#9FE3B6; }
+.sf-tabs { margin-left:auto; display:flex; gap:5px; font-family:var(--font-mono); font-size:8px; letter-spacing:.1em; }
+.sf-tab { padding:3px 6px; color:#8FA0BA; border:1px solid #2A3550; }
+.sf-tab-a { animation:sf-tab-a 6s steps(1) infinite; }
+.sf-tab-b { animation:sf-tab-b 6s steps(1) infinite; }
+@keyframes sf-tab-a { 0%,49%{background:#FF9900;color:#14161C;border-color:#FF9900} 50%,100%{background:transparent;color:#8FA0BA;border-color:#2A3550} }
+@keyframes sf-tab-b { 0%,49%{background:transparent;color:#8FA0BA;border-color:#2A3550} 50%,100%{background:#FF9900;color:#14161C;border-color:#FF9900} }
+.sf-lines { position:relative; flex:1; padding:10px; display:flex; flex-direction:column; gap:6px; font-family:var(--font-mono); font-size:9.5px; line-height:1.3; }
+.sf-line { display:block; white-space:nowrap; overflow:hidden; color:#B8C4D6; opacity:0; animation:sf-type 8s steps(1) infinite; }
+.sf-l1 { animation-delay:0s; } .sf-l2 { animation-delay:1.4s; color:#9FE3B6; }
+.sf-l3 { animation-delay:2.8s; } .sf-l4 { animation-delay:4.2s; color:#C4AEF2; }
+@keyframes sf-type { 0%{opacity:0} 3%,72%{opacity:1} 76%,100%{opacity:0} }
+.sf-caret { width:7px; height:11px; background:#FF9900; display:block; animation:sf-blink 1s steps(1) infinite; }
+
+/* --- 03 workshops -------------------------------------------------------- */
+.sf-laptop { position:absolute; left:50%; top:50%; width:72%; max-width:230px; transform:translate3d(-50%,-50%,0); z-index:2; }
+.sf-screen { background:#0B0D12; border:3px solid #14161C; padding:11px; display:flex; flex-direction:column; gap:8px; }
+.sf-deploy { font-family:var(--font-mono); font-size:9px; letter-spacing:.16em; color:#C4AEF2; }
+.sf-prog { display:block; height:10px; background:#161D2B; overflow:hidden; }
+.sf-prog-fill { display:block; height:100%; width:100%; background:#C4AEF2; transform-origin:0 50%; animation:sf-fill 4.5s steps(6) infinite; }
+@keyframes sf-fill { 0%{transform:scaleX(0)} 85%,100%{transform:scaleX(1)} }
+.sf-steps { display:flex; flex-direction:column; gap:4px; font-family:var(--font-mono); font-size:8px; letter-spacing:.1em; color:#8FA0BA; }
+.sf-step-live { color:#C4AEF2; animation:sf-blink 1.1s steps(1) infinite; }
+.sf-base { display:block; height:9px; background:#14161C; margin:0 -14px; }
+.sf-float { position:absolute; z-index:3; font-family:var(--font-mono); font-size:11px; color:#14161C; opacity:0; animation:sf-rise 4.2s ease-out infinite; }
+.sf-f1 { left:16%; bottom:18%; animation-delay:0s; }
+.sf-f2 { right:18%; bottom:14%; animation-delay:1.4s; }
+.sf-f3 { left:52%; bottom:12%; animation-delay:2.8s; }
+@keyframes sf-rise { 0%{opacity:0;transform:translate3d(0,0,0)} 15%{opacity:1} 100%{opacity:0;transform:translate3d(0,-54px,0)} }
+
+/* --- 04 panel ------------------------------------------------------------ */
+.sf-speakers { position:absolute; left:0; right:0; bottom:34%; display:flex; align-items:flex-end; justify-content:center; gap:clamp(8px,3vw,20px); z-index:2; }
+.sf-sp { position:relative; display:flex; flex-direction:column; align-items:center; animation:sf-turn 6.4s steps(1) infinite; }
+@keyframes sf-turn { 0%,24%{transform:translate3d(0,-4px,0)} 25%,100%{transform:translate3d(0,0,0)} }
+.sf-sp-head { width:17px; height:17px; background:#14161C; display:block; }
+.sf-sp-body { width:27px; height:21px; background:#14161C; display:block; margin-top:3px; }
+.sf-eq { position:absolute; top:-13px; display:flex; gap:2px; align-items:flex-end; height:10px; }
+.sf-eq > span { width:3px; height:100%; background:#14161C; display:block; transform-origin:50% 100%; animation:sf-eq .6s ease-in-out infinite alternate; }
+@keyframes sf-eq { from { transform:scaleY(.25); } to { transform:scaleY(1); } }
+.sf-table { position:absolute; left:8%; right:8%; bottom:16%; height:17%; background:#14161C; display:flex; align-items:center; justify-content:center; gap:clamp(8px,3vw,20px); z-index:3; }
+.sf-plate { width:26px; height:8px; background:#F4F7FB; display:block; }
+
+/* --- 05 Q and A ---------------------------------------------------------- */
+.sf-bub {
+  position:absolute; z-index:2; background:#14161C; color:#F4F7FB; font-family:var(--font-mono); font-size:9px; letter-spacing:.1em;
+  padding:7px 10px; white-space:nowrap; opacity:0; animation:sf-pop 6s steps(1) infinite;
+}
+.sf-b1 { top:20%; left:8%; animation-delay:0s; }
+.sf-b2 { top:46%; right:9%; animation-delay:2s; }
+.sf-b3 { top:70%; left:13%; animation-delay:4s; }
+@keyframes sf-pop { 0%{opacity:0;transform:translate3d(0,8px,0)} 4%,30%{opacity:1;transform:translate3d(0,0,0)} 34%,100%{opacity:0;transform:translate3d(0,-8px,0)} }
+.sf-q { position:absolute; z-index:1; font-family:var(--font-display); font-size:30px; color:rgba(20,22,28,.28); opacity:0; animation:sf-rise 5s ease-out infinite; }
+.sf-q1 { left:72%; bottom:10%; animation-delay:.6s; }
+.sf-q2 { left:24%; bottom:8%; animation-delay:3s; }
+
+/* Compact enough that one card still fits a phone screen. */
+@media (max-width:620px) {
+  .sf-card { grid-template-rows:auto minmax(150px,1fr); min-height:clamp(300px,64vh,440px); }
+  .sf-art { min-height:150px; }
+  .sf-term { inset:10% 7%; }
+  .sf-bub { font-size:8px; padding:5px 7px; }
+}
+
+/* ===========================================================================
+   PASS CARDS (landing). Copper, gold, platinum and diamond, from the handoff.
+   =========================================================================== */
+
+.pass-card { overflow:hidden; }
+
+/* Metallic foil on the tier name. background-clip:text over a moving
+   gradient; the sheen is a filter drop-shadow, never a text-shadow, so it
+   does not smear the clipped fill. */
+.pass-foil {
+  background-size:300% 100%;
+  -webkit-background-clip:text; background-clip:text;
+  color:transparent; -webkit-text-fill-color:transparent;
+  animation:pass-foil 6.5s cubic-bezier(.45,0,.55,1) infinite;
+  filter:drop-shadow(1px 1px 0 var(--sh));
+}
+@keyframes pass-foil { 0%{background-position:0% 0} 50%{background-position:100% 0} 100%{background-position:0% 0} }
+.pass-foil[data-tier="basic"] { background-image:linear-gradient(100deg,#8A5A2B 0%,#8A5A2B 34%,#D98E5F 46%,#F0C8A8 52%,#8A5A2B 62%,#8A5A2B 100%); }
+.pass-foil[data-tier="premium"] { background-image:linear-gradient(100deg,var(--gold4) 0%,var(--gold4) 34%,var(--gold3) 46%,var(--gold2) 52%,var(--gold4) 62%,var(--gold4) 100%); }
+.pass-foil[data-tier="ultra"] { background-image:linear-gradient(100deg,#6E7686 0%,#6E7686 34%,#AAB4C4 46%,#E6ECF5 52%,#6E7686 62%,#6E7686 100%); }
+.pass-foil[data-tier="vip"] { background-image:linear-gradient(100deg,#6A4FA3 0%,#6A4FA3 30%,#A98BE8 44%,#EDE4FF 52%,#7B5EBA 64%,#6A4FA3 100%); }
+html[data-theme="dark"] .pass-foil[data-tier="basic"] { background-image:linear-gradient(100deg,#B4764A 0%,#B4764A 34%,#E4A877 46%,#FFE0C6 52%,#B4764A 62%,#B4764A 100%); }
+html[data-theme="dark"] .pass-foil[data-tier="ultra"] { background-image:linear-gradient(100deg,#93A0B4 0%,#93A0B4 34%,#CBD3DF 46%,#FFFFFF 52%,#93A0B4 62%,#93A0B4 100%); }
+html[data-theme="dark"] .pass-foil[data-tier="vip"] { background-image:linear-gradient(100deg,#B69BEE 0%,#B69BEE 30%,#D6C6FF 44%,#FFFFFF 52%,#C4AEF2 64%,#B69BEE 100%); }
+@media (prefers-reduced-motion: reduce) {
+  .pass-foil { animation:none; background-image:none !important; color:var(--ink); -webkit-text-fill-color:var(--ink); filter:none; }
+}
+
+/* A soft glow that follows the pointer. Pointer devices only: --px/--py are
+   only ever written by a pointermove handler, and default off screen. */
+.pass-glow {
+  position:absolute; inset:0; pointer-events:none; opacity:0;
+  background:radial-gradient(220px circle at var(--px,-999px) var(--py,-999px),rgba(255,255,255,.55),transparent 70%);
+  mix-blend-mode:soft-light; transition:opacity .2s ease;
+}
+@media (hover:hover) and (pointer:fine) { .pass-card:hover .pass-glow { opacity:1; } }
+
+/* The reveal must not wipe the card's own hover transition. */
+[data-rv].pass-card { transition:transform .2s steps(3), box-shadow .2s steps(3), border-color .14s steps(2); }
+
+/* The two hero buttons share one geometry, so they never disagree by a pixel. */
+.lp-hv-hero-btn:hover { transform:translate3d(-3px,-3px,0) !important; box-shadow:9px 9px 0 var(--line) !important; }
+.lp-hv-hero-btn:active { transform:translate3d(3px,3px,0) !important; box-shadow:3px 3px 0 var(--line) !important; }
+
+/* ===========================================================================
+   REGISTRATIONS CLOSED (/register). A padlock nobody can open, a drifting
+   grid behind it, and one email field. Nothing here sells anything.
+   =========================================================================== */
+
+.rg-hero { position:relative; display:flex; flex-direction:column; align-items:flex-start; gap:14px; }
+
+/* The grid. A clipped fixed layer with an oversized inner sheet: the sheet
+   drifts one cell diagonally and repeats, so the motion has no seam and
+   nothing sticks out past the viewport. Transform only, so scrolling never
+   repaints it. */
+.rg-grid { position:fixed; inset:0; z-index:-1; pointer-events:none; overflow:hidden; }
+.rg-grid::before {
+  content:""; position:absolute; inset:-28px;
+  background-image:
+    repeating-linear-gradient(to right, var(--grid) 0 1px, transparent 1px 28px),
+    repeating-linear-gradient(to bottom, var(--grid) 0 1px, transparent 1px 28px);
+  will-change:transform;
+  animation:rg-drift 6s linear infinite;
+}
+@keyframes rg-drift { to { transform:translate3d(28px,28px,0); } }
+
+/* The cell under the pointer. Off screen until a pointermove places it. */
+.rg-cell {
+  position:absolute; top:0; left:0; width:28px; height:28px;
+  transform:translate3d(var(--cx,-999px),var(--cy,-999px),0);
+  background:var(--fmt-keynote); opacity:.5;
+  animation:rg-cycle 4s steps(1) infinite;
+}
+@keyframes rg-cycle {
+  0% { background:var(--fmt-keynote); }
+  25% { background:var(--fmt-technical); }
+  50% { background:var(--fmt-workshop); }
+  75% { background:var(--fmt-panel); }
+}
+
+.rg-chip {
+  display:inline-flex; align-items:center; gap:8px;
+  font-family:var(--font-mono); font-size:11px; letter-spacing:.18em;
+  border:2px solid var(--line); background:var(--surface); color:var(--err-ink);
+  padding:6px 10px;
+}
+.rg-dot { width:8px; height:8px; background:var(--err); animation:bm-blink 1.4s steps(1) infinite; }
+
+.rg-h1 {
+  margin:0; font-family:var(--font-display); line-height:.95; color:var(--ink);
+  font-size:clamp(38px,10vw,72px); text-shadow:4px 4px 0 var(--h-sh1);
+}
+
+/* The padlock. Two boxes and an arc, drawn in borders: a shackle that never
+   lifts and a body that flinches when you poke it. */
+.rg-lock {
+  position:relative; display:block; width:96px; height:116px; margin-top:6px;
+  background:none; border:0; padding:0; cursor:pointer;
+}
+.rg-shackle {
+  position:absolute; top:0; left:50%; width:52px; height:52px; margin-left:-26px;
+  border:9px solid var(--line); border-bottom:0;
+  transition:transform .14s steps(2);
+}
+.rg-body {
+  position:absolute; bottom:0; left:0; width:96px; height:72px;
+  border:4px solid var(--line); background:var(--fmt-technical);
+  display:flex; align-items:center; justify-content:center;
+}
+.rg-keyhole { width:14px; height:26px; background:var(--line); clip-path:polygon(0 0,100% 0,100% 100%,64% 100%,64% 42%,36% 42%,36% 100%,0 100%); }
+.rg-lock:hover .rg-shackle { transform:translateY(-3px); }
+.rg-lock:active .rg-shackle { transform:translateY(2px); }
+.rg-shake { animation:rg-shake .38s steps(2); }
+@keyframes rg-shake {
+  0%,100% { transform:translate3d(0,0,0) rotate(0); }
+  20% { transform:translate3d(-6px,0,0) rotate(-3deg); }
+  45% { transform:translate3d(6px,0,0) rotate(3deg); }
+  70% { transform:translate3d(-3px,0,0) rotate(-1.5deg); }
+}
+
+.rg-cap { margin:0; font-size:15px; line-height:1.5; color:var(--body); min-height:1.5em; }
+.rg-pokes { margin:0; font-family:var(--font-mono); font-size:12px; letter-spacing:.16em; color:var(--muted); }
+
+/* --- the notify form ----------------------------------------------------- */
+
+.nt-card {
+  display:flex; flex-direction:column; gap:16px;
+  border:3px solid var(--line); background:var(--surface); padding:22px;
+  box-shadow:6px 6px 0 var(--line-soft);
+}
+.nt-h2 { margin:0; font-family:var(--font-display); font-size:clamp(24px,5vw,32px); color:var(--ink); }
+.nt-input { font-family:var(--font-mono); }
+/* The honeypot. Out of the layout, out of the tab order, never announced. */
+.nt-hp { position:absolute; left:-9999px; width:1px; height:1px; opacity:0; }
+
+.nt-chip {
+  display:inline-flex; align-items:center; gap:7px; min-height:40px;
+  font-family:var(--font-mono); font-size:12px; letter-spacing:.06em;
+  border:2px solid var(--line); background:var(--bg); color:var(--ink);
+  padding:0 11px; cursor:pointer;
+  transition:background .12s steps(2), color .12s steps(2), transform .1s steps(2);
+}
+.nt-chip:hover { transform:translate3d(-1px,-1px,0); }
+.nt-chip[aria-pressed="true"] { background:var(--ink-fill); color:var(--bg); }
+.nt-sw { width:11px; height:11px; border:1px solid var(--line); }
+.nt-done { border-color:var(--ok); }
+
+@media (prefers-reduced-motion: reduce) {
+  .rg-grid::before, .rg-cell, .rg-dot { animation:none; }
+  .rg-shake { animation:none; }
+  .rg-lock:hover .rg-shackle, .rg-lock:active .rg-shackle { transform:none; }
+}

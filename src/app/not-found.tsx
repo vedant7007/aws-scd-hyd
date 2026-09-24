@@ -30,8 +30,8 @@ export default function NotFound() {
             <Link href="/schedule" className="btn">
               SCHEDULE
             </Link>
-            <Link href="/pass" className="btn">
-              MY PASS
+            <Link href="/register" className="btn">
+              GET NOTIFIED
             </Link>
           </nav>
         </div>

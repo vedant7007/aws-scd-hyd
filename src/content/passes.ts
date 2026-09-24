@@ -11,8 +11,14 @@ export type Pass = {
    * decided, and every reader renders that as pending. Never guess a price.
    */
   pricePaise: number | null
-  /** Tier specific inclusions. Lunch is added to every tier, see ALWAYS_INCLUDED. */
+  /** Tier specific inclusions. Lunch is added to every tier, see ALWAYS_INCLUDED. Read by the parked registration flow only. */
   includes: string[]
+  /**
+   * What the pass card lists, in order, written out in full on every tier.
+   * Deliberately not "everything in Regular": a student comparing four cards
+   * should never have to hold another card in their head.
+   */
+  perks: string[]
   /** TODO(vedant): swag levels unconfirmed. */
   swag: string | null
   /**
@@ -52,8 +58,9 @@ export const REFUND_POLICY =
   'Refunds are available if you tell us at least two weeks before the event. Write to awssbgvjit@gmail.com with your pass ID.'
 
 /**
- * Prices are confirmed (22 September 2026) and this is their only home: the
- * landing page and the checkout both read them from here.
+ * Prices are confirmed (24 September 2026, replacing the 22 September set)
+ * and this is their only home: the landing page, the notify page and the
+ * parked checkout all read them from here. Rs 499 / 799 / 999 / 1,299.
  *
  * Names are confirmed: Regular, Premium, Platinum, VIP.
  *
@@ -68,11 +75,18 @@ export const REFUND_POLICY =
  * SBGVJIT, CAMPUS5) that must not come across. The only discount is the
  * early bird pool above.
  */
+const KEYNOTE = '1 keynote session'
+const TECHNICAL = '1 technical session, Cloud Engineering or AI'
+const QA = 'Q and A session'
+const WORKSHOP = 'Hands-on workshop'
+const PANEL = 'Panel discussion'
+
 export const passes: Pass[] = [
   {
     id: 'basic',
     name: 'Regular',
-    pricePaise: 39900,
+    pricePaise: 49900,
+    perks: ['Swag kit, tier 1', 'Lunch', KEYNOTE, TECHNICAL],
     includes: [],
     swag: null,
     tracksAllowed: 1,
@@ -82,6 +96,7 @@ export const passes: Pass[] = [
     id: 'premium',
     name: 'Premium',
     pricePaise: 79900,
+    perks: ['Swag kit, tier 2', 'Lunch', KEYNOTE, TECHNICAL, QA, WORKSHOP],
     includes: ['Reserved seating'],
     swag: null,
     tracksAllowed: 2,
@@ -91,7 +106,8 @@ export const passes: Pass[] = [
   {
     id: 'ultra',
     name: 'Platinum',
-    pricePaise: 129900,
+    pricePaise: 99900,
+    perks: ['Swag kit, tier 3', 'Lunch', KEYNOTE, TECHNICAL, QA, WORKSHOP, PANEL],
     includes: ['Reserved seating'],
     swag: null,
     tracksAllowed: 3,
@@ -100,7 +116,20 @@ export const passes: Pass[] = [
   {
     id: 'vip',
     name: 'VIP',
-    pricePaise: 169900,
+    pricePaise: 129900,
+    perks: [
+      'Swag kit, tier 4',
+      'Lunch',
+      KEYNOTE,
+      TECHNICAL,
+      QA,
+      WORKSHOP,
+      PANEL,
+      'Reserved front-row seating',
+      'Speaker group photo',
+      'Special networking with speakers',
+      'Dedicated VIP assistance',
+    ],
     includes: ['Reserved seating', 'Speaker dinner'],
     swag: null,
     tracksAllowed: 3,

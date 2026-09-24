@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { event } from '@/content/event'
+import { formats } from '@/content/formats'
 import { SPEAKER_SUBJECT, speakerMailto } from '@/content/speakers'
-import { tracks } from '@/content/tracks'
 
 export const metadata: Metadata = {
   title: `Apply to speak, ${event.shortName}`,
@@ -33,15 +33,15 @@ export default function SpeakPage() {
 
       <div className="card flex flex-col gap-5 p-5">
         <div className="flex flex-col gap-2">
-          <span className="lbl">Which track?</span>
+          <span className="lbl">Which kind of session?</span>
           <div className="flex flex-col gap-2.5">
-            {tracks.map((t) => (
-              <div key={t.id} className="card-soft flex flex-col gap-1.5 p-3.5">
+            {formats.map((f) => (
+              <div key={f.id} className="card-soft flex flex-col gap-1.5 p-3.5">
                 <span className="flex items-center gap-2.5">
-                  <span className="dot dot-round" data-track={t.id} aria-hidden="true" />
-                  <span className="opt-title">{t.name.toUpperCase()}</span>
+                  <span className="dot dot-round" style={{ background: f.accent }} aria-hidden="true" />
+                  <span className="opt-title">{f.name}</span>
                 </span>
-                <span className="opt-note">{t.blurb}</span>
+                <span className="opt-note">{f.blurb}</span>
               </div>
             ))}
           </div>
@@ -52,7 +52,7 @@ export default function SpeakPage() {
           <ul className="checklist">
             <li>Your name, and your role and company or college</li>
             <li>A phone number we can reach you on</li>
-            <li>Which track, and a title for the talk</li>
+            <li>Which kind of session, and a title for the talk</li>
             <li>Three or four lines on what you will cover, who it is for, and what they walk away able to do</li>
           </ul>
         </div>

@@ -164,7 +164,7 @@ export async function POST(req: Request): Promise<Response> {
     earlyBird: a.earlyBird === true,
     earlyBirdMissed: out.earlyBirdMissed,
     holdUntil: a.holdUntil,
-    payUrl: `/register/pay/${a.passId}`,
+    payUrl: `/register-legacy/pay/${a.passId}`,
     upi: { qr: payment.qrAssetPath, upiId: payment.upiId, payee: payment.payeeName, note: a.passId },
     ...(out.order ? { order: out.order, prefill: { name: a.name, email: a.email, contact: a.phone } } : {}),
   })
