@@ -912,92 +912,97 @@ html[data-theme="dark"] .pass-foil[data-tier="vip"] { background-image:linear-gr
 .lp-hv-hero-btn:active { transform:translate3d(3px,3px,0) !important; box-shadow:3px 3px 0 var(--line) !important; }
 
 /* ===========================================================================
-   REGISTRATIONS CLOSED (/register). A padlock nobody can open, a drifting
-   grid behind it, and one email field. Nothing here sells anything.
+   REGISTRATIONS CLOSED (/register). A ticker, a padlock nobody can open and
+   one email field. Nothing here sells anything.
+
+   The page draws no background of its own: .page-bg already lays the grid
+   under every public screen, and a second fixed layer here only risked
+   widening the document.
    =========================================================================== */
 
-.rg-hero { position:relative; display:flex; flex-direction:column; align-items:flex-start; gap:14px; }
+/* The ticker under the header. Full bleed, so it lives outside .page. */
+.rg-marq { position:relative; z-index:10; overflow:hidden; background:var(--panel); border-top:3px solid var(--line); border-bottom:3px solid var(--line); }
+.rg-marq-in { display:flex; width:max-content; padding:9px 0; animation:bm-march 26s linear infinite; }
+.rg-marq-run { display:flex; gap:26px; padding-right:26px; font-family:var(--font-mono); font-size:12px; letter-spacing:.2em; color:var(--amber-ink); white-space:nowrap; }
+.rg-marq-d { color:var(--mint-ink); }
 
-/* The grid. A clipped fixed layer with an oversized inner sheet: the sheet
-   drifts one cell diagonally and repeats, so the motion has no seam and
-   nothing sticks out past the viewport. Transform only, so scrolling never
-   repaints it. */
-.rg-grid { position:fixed; inset:0; z-index:-1; pointer-events:none; overflow:hidden; }
-.rg-grid::before {
-  content:""; position:absolute; inset:-28px;
-  background-image:
-    repeating-linear-gradient(to right, var(--grid) 0 1px, transparent 1px 28px),
-    repeating-linear-gradient(to bottom, var(--grid) 0 1px, transparent 1px 28px);
-  will-change:transform;
-  animation:rg-drift 6s linear infinite;
-}
-@keyframes rg-drift { to { transform:translate3d(28px,28px,0); } }
+/* Lock on one side, the words on the other. One column below 900px, and the
+   lock leads there too: it is the thing that says "closed" at a glance. */
+.rg-split { display:grid; gap:clamp(26px,5vw,56px); align-items:center; grid-template-columns:minmax(0,.85fr) minmax(0,1fr); }
+@media (max-width:900px) { .rg-split { grid-template-columns:minmax(0,1fr); } }
 
-/* The cell under the pointer. Off screen until a pointermove places it. */
-.rg-cell {
-  position:absolute; top:0; left:0; width:28px; height:28px;
-  transform:translate3d(var(--cx,-999px),var(--cy,-999px),0);
-  background:var(--fmt-keynote); opacity:.5;
-  animation:rg-cycle 4s steps(1) infinite;
-}
-@keyframes rg-cycle {
-  0% { background:var(--fmt-keynote); }
-  25% { background:var(--fmt-technical); }
-  50% { background:var(--fmt-workshop); }
-  75% { background:var(--fmt-panel); }
-}
+.rg-side { display:flex; flex-direction:column; align-items:center; gap:14px; }
+.rg-main { display:flex; flex-direction:column; align-items:flex-start; gap:18px; }
 
+.rg-status { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
 .rg-chip {
   display:inline-flex; align-items:center; gap:8px;
   font-family:var(--font-mono); font-size:11px; letter-spacing:.18em;
-  border:2px solid var(--line); background:var(--surface); color:var(--err-ink);
-  padding:6px 10px;
+  background:var(--orange); color:var(--on-fill); padding:7px 11px;
 }
-.rg-dot { width:8px; height:8px; background:var(--err); animation:bm-blink 1.4s steps(1) infinite; }
+.rg-dot { width:8px; height:8px; background:var(--on-fill); animation:bm-blink 1.4s steps(1) infinite; }
+.rg-soon { font-family:var(--font-mono); font-size:11px; letter-spacing:.18em; color:var(--muted); }
 
+/* Two tones. The second line is --amber-ink, not --orange: orange is a fill
+   token and as text on the light ground it lands at 2.1:1. */
 .rg-h1 {
   margin:0; font-family:var(--font-display); line-height:.95; color:var(--ink);
-  font-size:clamp(38px,10vw,72px); text-shadow:4px 4px 0 var(--h-sh1);
+  font-size:clamp(38px,7.4vw,76px); text-shadow:4px 4px 0 var(--h-sh1);
 }
+.rg-h1 > span { color:var(--amber-ink); }
 
-/* The padlock. Two boxes and an arc, drawn in borders: a shackle that never
-   lifts and a body that flinches when you poke it.
+/* --- the padlock --------------------------------------------------------- */
 
-   Drawn in --ink, not --line. This is the one illustration on the site that
-   sits straight on the page instead of on a --surface card, and in dark
-   --line is #2A3550, which against the page background leaves the shackle
-   all but invisible and the lock reading as a stray orange box. */
+/* Sized off one custom property so the parts cannot drift apart. --lk is the
+   body's width; everything else is a fraction of it. */
 .rg-lock {
-  position:relative; display:block; width:96px; height:116px; margin-top:6px;
+  --lk:clamp(170px,23vw,300px);
+  position:relative; display:block; width:var(--lk); height:calc(var(--lk) * 1.42);
   background:none; border:0; padding:0; cursor:pointer;
 }
+/* Square corners, not rounded: the whole site is drawn on a pixel grid and a
+   radius here reads as a different illustration set. */
 .rg-shackle {
-  position:absolute; top:0; left:50%; width:52px; height:52px; margin-left:-26px;
-  border:9px solid var(--ink); border-bottom:0; border-radius:26px 26px 0 0;
+  position:absolute; top:0; left:50%; width:58%; height:56%;
+  transform:translate3d(-50%,0,0);
+  border:calc(var(--lk) * .085) solid var(--ink); border-bottom:0;
   transition:transform .14s steps(2);
 }
 .rg-body {
-  position:absolute; bottom:0; left:0; width:96px; height:72px;
-  border:4px solid var(--ink); background:var(--fmt-technical);
+  position:absolute; bottom:0; left:0; width:100%; height:62%;
+  border:4px solid var(--line); box-shadow:calc(var(--lk) * .05) calc(var(--lk) * .05) 0 var(--line);
   display:flex; align-items:center; justify-content:center;
+  background:
+    linear-gradient(118deg, rgba(255,255,255,.3) 0 20%, transparent 56%),
+    repeating-linear-gradient(to right, rgba(20,22,28,.13) 0 1px, transparent 1px 15px),
+    repeating-linear-gradient(to bottom, rgba(20,22,28,.13) 0 1px, transparent 1px 15px),
+    var(--orange);
 }
-/* Round top, straight stem. --on-fill is the ink for text on a filled block,
-   which is what the keyhole is: a hole punched in the orange body. */
-.rg-keyhole { position:relative; width:18px; height:30px; }
-.rg-keyhole::before { content:""; position:absolute; top:0; left:0; width:18px; height:18px; border-radius:50%; background:var(--on-fill); }
-.rg-keyhole::after { content:""; position:absolute; top:13px; left:5px; width:8px; height:17px; background:var(--on-fill); }
-.rg-lock:hover .rg-shackle { transform:translateY(-3px); }
-.rg-lock:active .rg-shackle { transform:translateY(2px); }
+/* A square head over a narrower stem. --on-fill is the ink for a filled
+   block, which is what this is: a hole punched in the orange. */
+.rg-keyhole { position:relative; width:18%; height:40%; }
+.rg-keyhole::before { content:""; position:absolute; top:0; left:0; right:0; height:45%; background:var(--on-fill); }
+.rg-keyhole::after { content:""; position:absolute; top:40%; left:30%; width:40%; bottom:0; background:var(--on-fill); }
+
+/* Loose pixels, the handoff's confetti. Decorative, so aria-hidden upstream. */
+.rg-pix { position:absolute; top:2%; left:82%; display:grid; grid-template-columns:repeat(2,1fr); gap:calc(var(--lk) * .02); }
+.rg-pix > i { display:block; width:calc(var(--lk) * .1); height:calc(var(--lk) * .1); }
+.rg-pix > i:nth-child(1) { background:var(--focus); }
+.rg-pix > i:nth-child(2) { background:var(--gold-fill); }
+.rg-pix > i:nth-child(3) { grid-column:2; background:var(--mint-fill); }
+
+.rg-lock:hover .rg-shackle { transform:translate3d(-50%,-4px,0); }
+.rg-lock:active .rg-shackle { transform:translate3d(-50%,3px,0); }
 .rg-shake { animation:rg-shake .38s steps(2); }
 @keyframes rg-shake {
   0%,100% { transform:translate3d(0,0,0) rotate(0); }
-  20% { transform:translate3d(-6px,0,0) rotate(-3deg); }
-  45% { transform:translate3d(6px,0,0) rotate(3deg); }
-  70% { transform:translate3d(-3px,0,0) rotate(-1.5deg); }
+  20% { transform:translate3d(-7px,0,0) rotate(-3deg); }
+  45% { transform:translate3d(7px,0,0) rotate(3deg); }
+  70% { transform:translate3d(-4px,0,0) rotate(-1.5deg); }
 }
 
-.rg-cap { margin:0; font-size:15px; line-height:1.5; color:var(--body); min-height:1.5em; }
-.rg-pokes { margin:0; font-family:var(--font-mono); font-size:12px; letter-spacing:.16em; color:var(--muted); }
+.rg-cap { margin:0; font-family:var(--font-display); font-size:clamp(19px,2.6vw,28px); line-height:1.1; text-align:center; color:var(--ink); min-height:1.1em; }
+.rg-pokes { margin:0; font-family:var(--font-mono); font-size:11.5px; letter-spacing:.2em; color:var(--muted); }
 
 /* --- the notify form ----------------------------------------------------- */
 
@@ -1023,8 +1028,14 @@ html[data-theme="dark"] .pass-foil[data-tier="vip"] { background-image:linear-gr
 .nt-sw { width:11px; height:11px; border:1px solid var(--line); }
 .nt-done { border-color:var(--ok); }
 
+/* Field and button on one line, as the handoff draws it. They stack under
+   440px, where a 150px button would squeeze the input to nothing. */
+.nt-row { display:flex; gap:12px; align-items:stretch; }
+.nt-row > .inp { flex:1 1 200px; min-width:0; }
+.nt-row > .btn { flex:none; }
+@media (max-width:440px) { .nt-row { flex-wrap:wrap; } .nt-row > .btn { width:100%; } }
+
 @media (prefers-reduced-motion: reduce) {
-  .rg-grid::before, .rg-cell, .rg-dot { animation:none; }
-  .rg-shake { animation:none; }
-  .rg-lock:hover .rg-shackle, .rg-lock:active .rg-shackle { transform:none; }
+  .rg-marq-in, .rg-dot, .rg-shake { animation:none; }
+  .rg-lock:hover .rg-shackle, .rg-lock:active .rg-shackle { transform:translate3d(-50%,0,0); }
 }

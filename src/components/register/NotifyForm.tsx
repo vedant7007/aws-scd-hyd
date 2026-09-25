@@ -139,22 +139,27 @@ export function NotifyForm({ chips }: { chips: PassChip[] }) {
     <form onSubmit={onSubmit} className="nt-card" noValidate>
       <div className="fld">
         <label htmlFor={`${ids}-email`}>Your email</label>
-        <input
-          id={`${ids}-email`}
-          name="email"
-          type="email"
-          inputMode="email"
-          autoComplete="email"
-          className="inp nt-input"
-          value={email}
-          onChange={(e) => {
-            setEmail(e.target.value)
-            if (error) setError(null)
-          }}
-          aria-invalid={error ? true : undefined}
-          aria-describedby={error ? `${ids}-err` : undefined}
-          placeholder="you@college.edu"
-        />
+        <div className="nt-row">
+          <input
+            id={`${ids}-email`}
+            name="email"
+            type="email"
+            inputMode="email"
+            autoComplete="email"
+            className="inp nt-input"
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value)
+              if (error) setError(null)
+            }}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? `${ids}-err` : undefined}
+            placeholder="you@college.edu"
+          />
+          <button type="submit" className="btn btn-primary" disabled={sending}>
+            {sending ? 'ADDING YOU' : 'NOTIFY ME'}
+          </button>
+        </div>
         {error ? (
           <p id={`${ids}-err`} role="alert" className="err-text">
             {error}
@@ -166,7 +171,7 @@ export function NotifyForm({ chips }: { chips: PassChip[] }) {
       <input ref={honeypot} type="text" name="company" tabIndex={-1} autoComplete="off" aria-hidden="true" className="nt-hp" />
 
       <div className="flex flex-col gap-2.5">
-        <span className="lbl">Eyeing a pass?</span>
+        <span className="lbl">Eyeing a pass? (optional)</span>
         <div className="flex flex-wrap gap-2">
           {chips.map((c) => (
             <button key={c.id} type="button" className="nt-chip" aria-pressed={picked.includes(c.id)} onClick={() => toggle(c.id)}>
@@ -177,9 +182,6 @@ export function NotifyForm({ chips }: { chips: PassChip[] }) {
         </div>
       </div>
 
-      <button type="submit" className="btn btn-primary btn-lg" disabled={sending}>
-        {sending ? 'ADDING YOU' : 'NOTIFY ME'}
-      </button>
       <p className="hint">One email when registrations open. No spam, no sharing.</p>
     </form>
   )
