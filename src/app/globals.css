@@ -907,6 +907,33 @@ html[data-theme="dark"] .pass-foil[data-tier="vip"] { background-image:linear-gr
 /* The reveal must not wipe the card's own hover transition. */
 [data-rv].pass-card { transition:transform .2s steps(3), box-shadow .2s steps(3), border-color .14s steps(2); }
 
+/* --- the metal passes ---------------------------------------------------- */
+
+/* The metals are opaque fills, so the card must not sit on --surface and must
+   clip its own sheen. The radius is dropped in the component: these are cut
+   sheets of metal, not rounded plastic. */
+.pass-metal { overflow:hidden; }
+.lp-hv-foil:hover { transform:translate3d(-4px,-4px,0) !important; box-shadow:12px 12px 0 rgba(5,7,12,.55) !important; }
+
+/* The sheen. One band crossing the face, then a long wait, so four cards side
+   by side catch the light rather than strobe together. Each tier is offset by
+   its position so they do not flash in unison. */
+.pass-shine {
+  position:absolute; top:0; left:0; width:55%; height:100%; z-index:0; pointer-events:none;
+  background:linear-gradient(104deg, transparent 0 20%, rgba(255,255,255,.55) 50%, transparent 80% 100%);
+  animation:pass-shine 5.4s ease-in-out infinite;
+}
+[data-pass="premium"] .pass-shine { animation-delay:.5s; }
+[data-pass="ultra"] .pass-shine { animation-delay:1s; }
+[data-pass="vip"] .pass-shine { animation-delay:1.5s; }
+@keyframes pass-shine {
+  0%, 64% { transform:translate3d(-110%,0,0); }
+  100% { transform:translate3d(300%,0,0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pass-shine { animation:none; transform:translate3d(-110%,0,0); }
+}
+
 /* The two hero buttons share one geometry, so they never disagree by a pixel. */
 .lp-hv-hero-btn:hover { transform:translate3d(-3px,-3px,0) !important; box-shadow:9px 9px 0 var(--line) !important; }
 .lp-hv-hero-btn:active { transform:translate3d(3px,3px,0) !important; box-shadow:3px 3px 0 var(--line) !important; }

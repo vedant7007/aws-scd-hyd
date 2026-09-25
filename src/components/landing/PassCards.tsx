@@ -6,75 +6,84 @@ import { passes } from '@/content/passes'
 import type { Tier } from '@/lib/db/types'
 
 /**
- * The four passes. Copper, gold, platinum and diamond, as the handoff draws
- * them; the perk lists come from content/passes.ts so the cards, the notify
- * page and the parked checkout can never disagree about what a pass is.
+ * The four passes, drawn as the metal each one is named after: copper, gold,
+ * platinum and diamond. The perk lists come from content/passes.ts so the
+ * cards, the notify page and the parked checkout can never disagree about
+ * what a pass is.
  *
  * Every perk is written out in full on every card. Deliberately not
  * "everything in Regular": someone comparing four cards should not have to
  * hold another card in their head.
+ *
+ * The metals are the same in both themes. They are fills carrying dark ink,
+ * like --peach and --gold-fill, so a card reads the same on the light ground
+ * and the dark one and the ink never has to be re-checked per theme.
  */
 
 type Look = {
-  border: string
-  dots: [string, string, string, string]
-  priceBg: string
-  priceInk: string
-  body: string
-  btn: 'mint' | 'pink' | 'gold'
-  card?: CSSProperties
+  /** The metal's own name, printed above the tier name. */
+  metal: string
+  fill: string
+  edge: string
+  /** Ink for the name, the perks and the lit squares. A dark tint of the metal. */
+  ink: string
+  /** How many of the four squares are lit. */
+  filled: number
+  spark: string
 }
 
 const LOOK: Record<Tier, Look> = {
   basic: {
-    border: '3px solid var(--line)',
-    dots: ['#9FE3B6', 'var(--bar)', 'var(--bar)', 'var(--bar)'],
-    priceBg: 'var(--ink-fill)',
-    priceInk: 'var(--bg)',
-    body: 'var(--body)',
-    btn: 'mint',
+    metal: 'COPPER',
+    fill: 'linear-gradient(145deg,#E9A97E 0%,#F7DDC9 17%,#DD9363 41%,#FBEADC 60%,#E5A276 81%,#D2864F 100%)',
+    edge: '#A7643A',
+    ink: '#3B1F0B',
+    filled: 1,
+    spark: '#F7DDC9',
   },
   premium: {
-    border: '3px solid var(--line)',
-    dots: ['#FF9900', '#FF9900', 'var(--bar)', 'var(--bar)'],
-    priceBg: 'var(--ink-fill)',
-    priceInk: 'var(--bg)',
-    body: 'var(--body)',
-    btn: 'mint',
+    metal: 'GOLD',
+    fill: 'linear-gradient(145deg,#E7B443 0%,#FCEB9B 17%,#D79F20 41%,#FFF7C9 60%,#E3B337 81%,#C39012 100%)',
+    edge: '#A8801A',
+    ink: '#3A2A05',
+    filled: 2,
+    spark: '#FFF7C9',
   },
   ultra: {
-    border: '3px solid var(--line)',
-    dots: ['#F2A7C3', '#F2A7C3', '#F2A7C3', 'var(--bar)'],
-    priceBg: 'var(--ink-fill)',
-    priceInk: 'var(--bg)',
-    body: 'var(--body)',
-    btn: 'pink',
+    metal: 'PLATINUM',
+    fill: 'linear-gradient(145deg,#C6CBD4 0%,#F4F6F9 17%,#A9B1BC 41%,#FCFDFE 60%,#C2C8D1 81%,#959DAA 100%)',
+    edge: '#7E8794',
+    ink: '#171B22',
+    filled: 3,
+    spark: '#FCFDFE',
   },
   vip: {
-    border: '4px solid var(--gold)',
-    dots: ['#9FE3B6', '#FF9900', '#C4AEF2', 'var(--ink-fill)'],
-    priceBg: 'var(--gold)',
-    priceInk: 'var(--on-fill)',
-    body: 'var(--body-gold)',
-    btn: 'gold',
-    card: { background: 'var(--panel-gold)', boxShadow: '8px 8px 0 var(--line-soft)' },
+    metal: 'DIAMOND',
+    // A ray burst off the top right corner over the iridescence, which is what
+    // makes this one read as a gem rather than a fourth sheet of metal.
+    fill:
+      'repeating-conic-gradient(from 200deg at 86% 6%, rgba(255,255,255,.5) 0deg 2.4deg, transparent 2.4deg 8deg),' +
+      'linear-gradient(145deg,#BFE9CC 0%,#F3F2CA 24%,#C3E2F4 48%,#EACBE9 73%,#C9EBD8 100%)',
+    edge: '#7FB9A6',
+    ink: '#10231C',
+    filled: 4,
+    spark: '#FFFFFF',
   },
 }
 
-const BTN: Record<Look['btn'], { style: CSSProperties; className: string }> = {
-  mint: {
-    style: { border: '3px solid #9FE3B6', color: 'var(--ink)', fontSize: '18px' },
-    className: 'lp-hv-mint-fill',
-  },
-  pink: {
-    style: { border: '3px solid #F2A7C3', color: 'var(--ink)', fontSize: '18px' },
-    className: 'lp-hv-pink-fill',
-  },
-  gold: {
-    style: { background: 'var(--gold)', color: 'var(--on-fill)', fontSize: '19px', fontWeight: '700', boxShadow: '5px 5px 0 var(--line)' },
-    className: 'lp-hv-vip-btn lp-ac-press',
-  },
-}
+/** Ink for anything sitting on the dark blocks: the price, the button, the badge. */
+const HARD = '#14161C'
+const ON_HARD = '#F4F7FB'
+
+/** Fixed positions, so the twinkle never lands on the price or the button. */
+const SPARKS = [
+  { top: '12%', left: '8%', s: '10px', d: '3.2s', y: '0s' },
+  { top: '30%', left: '84%', s: '8px', d: '4.1s', y: '.7s' },
+  { top: '58%', left: '6%', s: '9px', d: '3.6s', y: '1.5s' },
+  { top: '70%', left: '90%', s: '11px', d: '4.6s', y: '2.2s' },
+  { top: '44%', left: '93%', s: '7px', d: '5.2s', y: '1.1s' },
+  { top: '86%', left: '14%', s: '8px', d: '3.9s', y: '3s' },
+]
 
 export function PassCards({ prices, cta }: { prices: Record<Tier, { list: string | null; early: string | null }>; cta: string }) {
   const root = useRef<HTMLDivElement>(null)
@@ -146,97 +155,109 @@ export function PassCards({ prices, cta }: { prices: Record<Tier, { list: string
 
   return (
     <div ref={root} data-grid4="1" style={{ display: 'grid', gap: 'clamp(16px,2.2vw,24px)', alignItems: 'stretch' }}>
-      {passes.map((p, i) => {
+      {passes.map((p) => {
         const look = LOOK[p.id]
         const price = prices[p.id]
-        const btn = BTN[look.btn]
         return (
           <article
             key={p.id}
             data-rv="1"
             data-pass={p.id}
-            className={`pass-card${p.id === 'vip' ? ' lp-hv-vip-card' : ' lp-hv-card'}`}
+            className="pass-card pass-metal lp-hv-foil"
             style={
               {
-                '--spark': look.dots[0],
-                border: look.border,
-                background: 'var(--surface)',
-                padding: '26px 24px',
+                '--spark': look.spark,
+                background: look.fill,
+                border: `3px solid ${look.edge}`,
+                borderRadius: '0',
+                boxShadow: '8px 8px 0 rgba(5,7,12,.5)',
+                padding: '22px 20px',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '14px',
                 minHeight: '360px',
                 position: 'relative',
-                transition: 'transform .14s steps(3),border-color .14s steps(2),box-shadow .14s steps(3)',
-                ...look.card,
               } as CSSProperties
             }
           >
+            {/* The sheen that crosses the face every few seconds. */}
+            <span className="pass-shine" aria-hidden="true" />
             <span className="pass-glow" aria-hidden="true" />
-            {p.id === 'vip' ? (
-              <>
-                <span style={{ position: 'absolute', inset: '0', overflow: 'hidden', pointerEvents: 'none' }} aria-hidden="true">
-                  {[
-                    { top: '14%', left: '12%', c: 'var(--gold2)', s: '11px', d: '3.2s', y: '0s' },
-                    { top: '32%', left: '78%', c: 'var(--gold3)', s: '8px', d: '4.1s', y: '.7s' },
-                    { top: '52%', left: '24%', c: 'var(--gold)', s: '9px', d: '3.6s', y: '1.5s' },
-                    { top: '68%', left: '66%', c: 'var(--gold2)', s: '12px', d: '4.6s', y: '2.2s' },
-                    { top: '84%', left: '40%', c: 'var(--gold3)', s: '8px', d: '3.9s', y: '3s' },
-                    { top: '44%', left: '52%', c: 'var(--gold)', s: '7px', d: '5.2s', y: '1.1s' },
-                    { top: '22%', left: '44%', c: 'var(--gold2)', s: '9px', d: '4.4s', y: '2.7s' },
-                    { top: '76%', left: '88%', c: 'var(--gold3)', s: '10px', d: '3.4s', y: '3.8s' },
-                  ].map((k, n) => (
-                    <span
-                      key={n}
-                      style={{ position: 'absolute', top: k.top, left: k.left, color: k.c, fontSize: k.s, lineHeight: '1', animation: `bm-spark ${k.d} steps(4) ${k.y} infinite` }}
-                    >
-                      ✦
-                    </span>
-                  ))}
-                </span>
+
+            <span style={{ position: 'absolute', inset: '0', overflow: 'hidden', pointerEvents: 'none' }} aria-hidden="true">
+              {SPARKS.map((k, n) => (
                 <span
-                  style={{
-                    position: 'absolute',
-                    top: '-4px',
-                    right: '-4px',
-                    // The pale gold, not the deep one: dark ink on --gold is
-                    // 4.34:1 at this size, which is under AA for small text.
-                    background: 'var(--gold-fill)',
-                    color: 'var(--on-fill)',
-                    fontFamily: 'var(--font-display)',
-                    fontSize: '14px',
-                    padding: '5px 9px',
-                    zIndex: '1',
-                  }}
+                  key={n}
+                  style={{ position: 'absolute', top: k.top, left: k.left, color: look.spark, fontSize: k.s, lineHeight: '1', animation: `bm-spark ${k.d} steps(4) ${k.y} infinite` }}
                 >
-                  ◆ TOP TIER
+                  ✦
                 </span>
-              </>
+              ))}
+            </span>
+
+            {p.id === 'vip' ? (
+              <span
+                style={{
+                  position: 'absolute',
+                  top: '0',
+                  right: '0',
+                  background: HARD,
+                  color: ON_HARD,
+                  fontFamily: 'var(--font-display)',
+                  fontSize: '14px',
+                  padding: '6px 10px',
+                  zIndex: '2',
+                }}
+              >
+                <span style={{ color: 'var(--gold-fill)' }}>◆</span> TOP TIER
+              </span>
             ) : null}
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: p.id === 'vip' ? '16px' : '0' }}>
-              <h3
-                className="pass-foil"
-                data-tier={p.id}
-                style={{ margin: '0', fontFamily: 'var(--font-display)', fontSize: p.id === 'vip' ? '30px' : '28px', animationDelay: `${i * 0.5}s` }}
-              >
-                {p.name.toUpperCase()}
-              </h3>
-              <span style={{ display: 'flex', gap: '3px' }} aria-hidden="true">
-                {look.dots.map((d, n) => (
-                  <span key={n} style={{ width: '9px', height: '9px', background: d }} />
+            <div style={{ position: 'relative', zIndex: '1', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px', paddingTop: p.id === 'vip' ? '18px' : '0' }}>
+              <span style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10.5px', letterSpacing: '.22em', color: look.ink, opacity: '.72' }}>{look.metal}</span>
+                {/* Engraved, not foil-filled: a gradient clipped to text washes
+                    out on a light metal, and this has to hold AA on all four. */}
+                <h3
+                  style={{
+                    margin: '0',
+                    fontFamily: 'var(--font-display)',
+                    fontSize: '30px',
+                    lineHeight: '1',
+                    color: look.ink,
+                    textShadow: '0 1px 0 rgba(255,255,255,.55)',
+                  }}
+                >
+                  {p.name.toUpperCase()}
+                </h3>
+              </span>
+              {/* The tier meter: lit squares out of four. */}
+              <span style={{ display: 'flex', gap: '4px', flex: 'none', marginTop: '14px' }} aria-hidden="true">
+                {[0, 1, 2, 3].map((n) => (
+                  <span
+                    key={n}
+                    style={{
+                      width: '11px',
+                      height: '11px',
+                      boxSizing: 'border-box',
+                      background: n < look.filled ? look.ink : 'transparent',
+                      border: `2px solid ${look.ink}`,
+                    }}
+                  />
                 ))}
               </span>
             </div>
 
             <span
               style={{
+                position: 'relative',
+                zIndex: '1',
                 fontFamily: 'var(--font-mono)',
-                fontSize: p.id === 'vip' ? '27px' : '26px',
-                color: look.priceInk,
-                background: look.priceBg,
+                fontSize: '26px',
+                color: ON_HARD,
+                background: HARD,
                 alignSelf: 'flex-start',
-                padding: '4px 10px',
+                padding: '5px 12px',
               }}
             >
               {price.early && price.list ? (
@@ -249,7 +270,21 @@ export function PassCards({ prices, cta }: { prices: Record<Tier, { list: string
               )}
             </span>
 
-            <ul style={{ margin: '0', padding: '0', listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '14px', lineHeight: '1.5', color: look.body }}>
+            <ul
+              style={{
+                position: 'relative',
+                zIndex: '1',
+                margin: '0',
+                padding: '0',
+                listStyle: 'none',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '9px',
+                fontSize: '14px',
+                lineHeight: '1.45',
+                color: look.ink,
+              }}
+            >
               {p.perks.map((perk) => (
                 <li key={perk}>+ {perk}</li>
               ))}
@@ -257,18 +292,22 @@ export function PassCards({ prices, cta }: { prices: Record<Tier, { list: string
 
             <Link
               href="/register"
+              className="lp-ac-press"
               style={{
+                position: 'relative',
+                zIndex: '1',
                 marginTop: 'auto',
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                minHeight: '50px',
+                minHeight: '52px',
                 fontFamily: 'var(--font-display)',
+                fontSize: '19px',
+                background: HARD,
+                color: ON_HARD,
+                borderBottom: `4px solid ${look.edge}`,
                 cursor: 'pointer',
-                transition: 'background .12s steps(2),color .12s steps(2),transform .1s steps(2),box-shadow .1s steps(2)',
-                ...btn.style,
               }}
-              className={btn.className}
             >
               {cta}
             </Link>
