@@ -914,11 +914,39 @@ html[data-theme="dark"] .pass-foil[data-tier="vip"] { background-image:linear-gr
 /* ===========================================================================
    REGISTRATIONS CLOSED (/register). A ticker, a padlock nobody can open and
    one email field. Nothing here sells anything.
-
-   The page draws no background of its own: .page-bg already lays the grid
-   under every public screen, and a second fixed layer here only risked
-   widening the document.
    =========================================================================== */
+
+/* The drifting grid. A clipped fixed layer with an oversized inner sheet: the
+   sheet drifts one cell into the corner and repeats, so the motion has no
+   seam. The clip matters, an oversized fixed box extends document
+   scrollWidth and the page picks up a horizontal scrollbar. Transform only,
+   so scrolling never repaints it. */
+.rg-grid { position:fixed; inset:0; z-index:-1; pointer-events:none; overflow:hidden; }
+.rg-grid::before {
+  content:""; position:absolute; inset:-28px;
+  background-image:
+    repeating-linear-gradient(to right, var(--grid) 0 1px, transparent 1px 28px),
+    repeating-linear-gradient(to bottom, var(--grid) 0 1px, transparent 1px 28px);
+  will-change:transform;
+  animation:rg-drift 6s linear infinite;
+}
+@keyframes rg-drift { to { transform:translate3d(28px,28px,0); } }
+
+/* The cell under the pointer, snapped to the grid, cycling the five session
+   accents. Off screen until a pointermove places it. */
+.rg-cell {
+  position:absolute; top:0; left:0; width:28px; height:28px;
+  transform:translate3d(var(--cx,-999px),var(--cy,-999px),0);
+  background:var(--fmt-keynote); opacity:.5;
+  animation:rg-cycle 4s steps(1) infinite;
+}
+@keyframes rg-cycle {
+  0% { background:var(--fmt-keynote); }
+  20% { background:var(--fmt-technical); }
+  40% { background:var(--fmt-workshop); }
+  60% { background:var(--fmt-panel); }
+  80% { background:var(--fmt-qa); }
+}
 
 /* The ticker under the header. Full bleed, so it lives outside .page. */
 .rg-marq { position:relative; z-index:10; overflow:hidden; background:var(--panel); border-top:3px solid var(--line); border-bottom:3px solid var(--line); }
@@ -969,7 +997,7 @@ html[data-theme="dark"] .pass-foil[data-tier="vip"] { background-image:linear-gr
   transition:transform .14s steps(2);
 }
 .rg-body {
-  position:absolute; bottom:0; left:0; width:100%; height:62%;
+  position:absolute; bottom:0; left:0; width:100%; height:62%; overflow:hidden;
   border:4px solid var(--line); box-shadow:calc(var(--lk) * .05) calc(var(--lk) * .05) 0 var(--line);
   display:flex; align-items:center; justify-content:center;
   background:
@@ -977,6 +1005,17 @@ html[data-theme="dark"] .pass-foil[data-tier="vip"] { background-image:linear-gr
     repeating-linear-gradient(to right, rgba(20,22,28,.13) 0 1px, transparent 1px 15px),
     repeating-linear-gradient(to bottom, rgba(20,22,28,.13) 0 1px, transparent 1px 15px),
     var(--orange);
+}
+/* The glare. A band that sweeps the face and then waits, so the lock catches
+   the light every few seconds rather than strobing. */
+.rg-body::after {
+  content:""; position:absolute; top:0; left:0; width:60%; height:100%;
+  background:linear-gradient(104deg, transparent 0 18%, rgba(255,255,255,.5) 50%, transparent 82% 100%);
+  animation:rg-glare 4.2s ease-in-out infinite;
+}
+@keyframes rg-glare {
+  0%, 58% { transform:translate3d(-110%,0,0); }
+  100% { transform:translate3d(280%,0,0); }
 }
 /* A square head over a narrower stem. --on-fill is the ink for a filled
    block, which is what this is: a hole punched in the orange. */
@@ -1036,6 +1075,8 @@ html[data-theme="dark"] .pass-foil[data-tier="vip"] { background-image:linear-gr
 @media (max-width:440px) { .nt-row { flex-wrap:wrap; } .nt-row > .btn { width:100%; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .rg-marq-in, .rg-dot, .rg-shake { animation:none; }
+  .rg-marq-in, .rg-dot, .rg-shake, .rg-grid::before, .rg-cell { animation:none; }
+  /* The glare parks off the face rather than freezing mid sweep across it. */
+  .rg-body::after { animation:none; transform:translate3d(-110%,0,0); }
   .rg-lock:hover .rg-shackle, .rg-lock:active .rg-shackle { transform:translate3d(-50%,0,0); }
 }

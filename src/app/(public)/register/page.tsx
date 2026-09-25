@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { DriftGrid } from '@/components/register/DriftGrid'
 import { LockedHero } from '@/components/register/LockedHero'
 import { NotifyForm, type PassChip } from '@/components/register/NotifyForm'
 import { event, venue } from '@/content/event'
@@ -69,6 +70,8 @@ export default function RegisterPage() {
 
   return (
     <>
+      <DriftGrid />
+
       <div className="rg-marq" aria-hidden="true">
         <div className="rg-marq-in">
           <TickerRun />

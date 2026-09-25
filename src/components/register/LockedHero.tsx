@@ -4,10 +4,8 @@ import { useState } from 'react'
 
 /**
  * The closed sign: a padlock nobody can open, and a caption that keeps score
- * of how many times someone tried anyway.
- *
- * Only the lock is a client component. The status row, the heading and the
- * copy beside it are static, so they stay on the server where they belong.
+ * of how many times someone tried anyway. The grid behind it is DriftGrid,
+ * which has to sit outside .page.rise to anchor to the viewport.
  */
 
 /** Said in order, then the last one holds. */
