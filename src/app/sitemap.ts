@@ -9,7 +9,7 @@ import { absolute } from '@/lib/site'
  * /register is always listed: while registrations are closed it is the notify
  * page, which is exactly the page someone searching for tickets should land on.
  */
-const PUBLIC_ROUTES = ['/', '/schedule', '/speakers', '/sponsors', '/code-of-conduct', '/register'] as const
+const PUBLIC_ROUTES = ['/', '/register', '/speak', '/sponsor', '/code-of-conduct'] as const
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const lastModified = new Date()

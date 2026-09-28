@@ -17,11 +17,8 @@ const WINDOW = 14
 const PAGE_NAME: Record<string, string> = {
   '/': 'Home',
   '/register': 'Register (notify me)',
-  '/schedule': 'Schedule',
-  '/speakers': 'Speakers',
   '/speak': 'Speak at SCD',
   '/sponsor': 'Sponsor us',
-  '/sponsors': 'Sponsors',
   '/code-of-conduct': 'Code of conduct',
   [OTHER]: 'Anything else, and 404s',
 }

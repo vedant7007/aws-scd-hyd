@@ -49,6 +49,9 @@ const normalise = (file) => relative('.', file).replace(/\\/g, '/')
 const HANDOFF_FILES = [
   ...globSync('src/components/landing/**/*.{ts,tsx}').map(normalise),
   'src/lib/clouds.ts',
+  // The v3 register screen, ported the same way as the landing.
+  ...globSync('src/components/register/**/*.{ts,tsx}').map(normalise),
+  'src/app/(register)/register/page.tsx',
 ]
 
 /** '*' exempts the file entirely, otherwise only the named rules are skipped. */

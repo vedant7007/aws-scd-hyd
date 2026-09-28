@@ -252,6 +252,77 @@ export function mountLanding(el: HTMLElement): () => void {
     })
   })
 
+  // ---- pass cards: cursor glow and a burst of sparks round the edge -------
+  // Armed only once a card's reveal has finished (data-tilt-ready), so the
+  // reveal and the hover never fight over the same transform. Pointer devices
+  // only, never under reduced motion. The sparks are fixed position nodes
+  // animated with WAAPI: never in layout, removed when their animation ends.
+  if (!reduce && window.matchMedia('(hover: hover)').matches) {
+    qa('[data-pass]').forEach((p) => {
+      on(p, 'pointermove', (ev) => {
+        if (!p.dataset.tiltReady) return
+        const e = ev as PointerEvent
+        const r = p.getBoundingClientRect()
+        p.style.setProperty('--px', (((e.clientX - r.left) / r.width) * 100).toFixed(1) + '%')
+        p.style.setProperty('--py', (((e.clientY - r.top) / r.height) * 100).toFixed(1) + '%')
+        p.style.setProperty('--glow', '1')
+      })
+      on(p, 'pointerleave', () => {
+        if (p.dataset.tiltReady) p.style.setProperty('--glow', '0')
+      })
+      on(p, 'pointerenter', () => {
+        if (!p.dataset.tiltReady || !p.animate) return
+        const cols = (p.dataset.spark || '#FFFFFF').split('|')
+        const r = p.getBoundingClientRect()
+        const per = 2 * (r.width + r.height)
+        const N = 30
+        for (let i = 0; i < N; i++) {
+          let t = ((i + Math.random() * 0.6) / N) * per
+          let x: number, y: number, nx: number, ny: number
+          if (t < r.width) {
+            x = r.left + t; y = r.top; nx = 0; ny = -1
+          } else if ((t -= r.width) < r.height) {
+            x = r.right; y = r.top + t; nx = 1; ny = 0
+          } else if ((t -= r.height) < r.width) {
+            x = r.right - t; y = r.bottom; nx = 0; ny = 1
+          } else {
+            t -= r.width; x = r.left; y = r.bottom - t; nx = -1; ny = 0
+          }
+          const d = document.createElement('span')
+          const star = i % 5 === 0
+          const sz = star ? 11 + Math.random() * 6 : 3 + Math.round(Math.random() * 4)
+          const c = cols[i % cols.length]
+          d.setAttribute('aria-hidden', 'true')
+          d.textContent = star ? '✦' : ''
+          d.style.cssText =
+            'position:fixed;left:' + (x - sz / 2).toFixed(1) + 'px;top:' + (y - sz / 2).toFixed(1) + 'px;z-index:60;pointer-events:none;line-height:1;' +
+            (star ? 'font-size:' + sz + 'px;color:' + c + ';text-shadow:0 0 8px ' + c : 'width:' + sz + 'px;height:' + sz + 'px;background:' + c + ';box-shadow:0 0 6px ' + c)
+          document.body.appendChild(d)
+          const dist = 16 + Math.random() * 30
+          const drift = (Math.random() - 0.5) * 24
+          const dx = nx * dist + (ny !== 0 ? drift : 0)
+          const dy = ny * dist + (nx !== 0 ? drift : 0)
+          const a = d.animate(
+            [
+              { transform: 'translate3d(0,0,0) scale(.3) rotate(0deg)', opacity: 0 },
+              { transform: 'translate3d(' + (dx * 0.4).toFixed(1) + 'px,' + (dy * 0.4).toFixed(1) + 'px,0) scale(1.1) rotate(45deg)', opacity: 1, offset: 0.3 },
+              { transform: 'translate3d(' + dx.toFixed(1) + 'px,' + dy.toFixed(1) + 'px,0) scale(0) rotate(150deg)', opacity: 0 },
+            ],
+            { duration: 650 + Math.random() * 450, delay: Math.random() * 160, easing: 'cubic-bezier(.2,.8,.3,1)', fill: 'both' },
+          )
+          a.onfinish = () => d.remove()
+          a.oncancel = () => d.remove()
+        }
+      })
+      cleanups.push(() => {
+        delete p.dataset.tiltReady
+        p.style.removeProperty('--px')
+        p.style.removeProperty('--py')
+        p.style.removeProperty('--glow')
+      })
+    })
+  }
+
   // ---- pause offscreen animation, fail OPEN ---------------------------------
   if (!reduce) {
     // Hosts start running, and the in-view test is computed in the reliable
@@ -494,9 +565,12 @@ export function mountLanding(el: HTMLElement): () => void {
       // context, so drop the transition shortly after and let the resting
       // CSS value apply. Keeps the animation, can't strand content.
       later(() => {
-        n.style.transition = 'none'
+        // A pass card keeps a transition and no inline transform, so its
+        // own hover lift can apply; then its glow and sparks arm.
+        n.style.transition = n.dataset.pass ? 'transform .2s cubic-bezier(.2,.9,.3,1.2),box-shadow .2s ease' : 'none'
         n.style.transitionDelay = '0ms'
-        n.style.transform = 'none'
+        n.style.transform = n.dataset.pass ? '' : 'none'
+        if (n.dataset.pass) n.dataset.tiltReady = '1'
       }, 460 + delay)
     }
     items.forEach((n) => {

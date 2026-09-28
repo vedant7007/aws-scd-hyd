@@ -17,11 +17,8 @@
 export const TRACKED_PATHS = [
   '/',
   '/register',
-  '/schedule',
-  '/speakers',
   '/speak',
   '/sponsor',
-  '/sponsors',
   '/code-of-conduct',
 ] as const
 

@@ -146,6 +146,6 @@ export const registrationOpen: boolean = true
 
 export const about = [
   'A one day community conference put on by students, for students, in Hyderabad.',
-  'A keynote to open, technical sessions on Cloud Engineering and AI, hands-on workshops, a panel and an open Q and A. Your pass decides which of these you get.',
+  'A keynote to open, technical sessions on Cloud Engineering and AI, hands-on workshops, a panel and an open Q&A. Your pass decides which of these you get.',
   'It is run by volunteers from the AWS Student Builders Group at VJIT, and it is not an AWS event.',
 ]

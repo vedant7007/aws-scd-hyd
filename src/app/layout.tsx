@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { IBM_Plex_Mono, Pixelify_Sans, Roboto } from 'next/font/google'
+import { IBM_Plex_Mono, Jersey_10, Roboto } from 'next/font/google'
 import './globals.css'
 import { Beacon } from '@/components/layout/Beacon'
 import { CloudTransition } from '@/components/layout/CloudTransition'
@@ -13,11 +13,13 @@ import { THEME_BOOT } from '@/lib/theme'
  * is self hosted by next/font and handed to globals.css as a CSS variable, so
  * the stack and every fallback are still composed in the one themeable file.
  *
- * Pixelify Sans is display only. Roboto is body. IBM Plex Mono is every
- * number, label and code: Pixelify's digits are ambiguous, so numbers never
- * render in it. The weights are the ones the handoff loaded.
+ * Jersey 10 is display only, and it has a single weight: never set it bold,
+ * or the browser fakes one. It replaced Pixelify Sans in the v3 handoff,
+ * whose C read as an O. Roboto is body. IBM Plex Mono is labels and code.
+ * The weights are the ones the handoff loaded.
  */
-const display = Pixelify_Sans({
+const display = Jersey_10({
+  weight: '400',
   subsets: ['latin'],
   display: 'swap',
   variable: '--font-display-face',

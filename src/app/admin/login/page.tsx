@@ -20,7 +20,7 @@ export default async function AdminLoginPage() {
       <div className="flex flex-col gap-2.5">
         <span className="eye eye-violet">{'// ORGANISERS ONLY'}</span>
         <h1 className="h1">CREW SIGN IN</h1>
-        <p className="lede">Attendees never see this page. Sign in with the account you were given. It is a Cognito login, not your college email.</p>
+        <p className="lede">Attendees never see this page. Sign in with the account you were given. It is an AWS Cognito login, not your college email.</p>
       </div>
 
       {session.status === 'refused' ? (

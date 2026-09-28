@@ -60,10 +60,10 @@ function parseStore(raw: string | null): Saved | null {
 }
 
 /**
- * The notify form. Registrations are closed, so the only thing the site asks
- * for is an address to write to when they open: one field, an optional set of
- * pass chips, and nothing else. The POST goes to /api/notify, which answers
- * 200 whether or not the address was already on the list.
+ * The notify form, in the v3 handoff's markup: one field and its button on a
+ * line, optional pass chips, and a mint card once the address is on the list.
+ * The handoff only saved to localStorage; this posts to /api/notify, which
+ * answers 200 whether or not the address was already there.
  */
 export function NotifyForm({ chips }: { chips: PassChip[] }) {
   const saved = parseStore(useSyncExternalStore(subscribe, readStore, () => null))
@@ -108,25 +108,28 @@ export function NotifyForm({ chips }: { chips: PassChip[] }) {
   if (saved) {
     const names = chips.filter((c) => saved.passes.includes(c.id)).map((c) => c.name.toUpperCase())
     return (
-      <div className="nt-card nt-done" role="status">
-        <span className="eye">&gt; added to the list</span>
-        <h2 className="nt-h2">YOU ARE ON THE LIST</h2>
-        <p className="copy">
-          We will email <strong className="text-ink">{saved.email}</strong> as soon as registrations open.
-        </p>
-        {names.length ? <p className="lbl">Interested in: {names.join(' · ')}</p> : null}
-        <div className="flex flex-wrap gap-2.5">
-          <Link href="/" className="btn btn-primary">
+      <div
+        role="status"
+        style={{ display: 'flex', flexDirection: 'column', gap: '12px', border: '3px solid var(--line)', background: '#9FE3B6', color: '#14161C', padding: 'clamp(18px,3vw,26px)', boxShadow: '8px 8px 0 var(--line)', animation: 'rg-pop .45s cubic-bezier(.2,.9,.3,1.25) both' }}
+      >
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10.5px', letterSpacing: '.2em', textTransform: 'uppercase', fontWeight: '600' }}>{'> added to the list'}</span>
+        <span style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(34px,7vw,48px)', lineHeight: '.95' }}>{"YOU'RE ON THE LIST"}</span>
+        <span style={{ fontSize: '15px', lineHeight: '1.55' }}>
+          We will email <strong style={{ wordBreak: 'break-all' }}>{saved.email}</strong> as soon as registrations open.
+        </span>
+        {names.length ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', letterSpacing: '.06em' }}>Interested in: {names.join(' · ')}</span> : null}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', paddingTop: '4px' }}>
+          <Link href="/" style={{ display: 'inline-flex', alignItems: 'center', minHeight: '46px', padding: '0 18px', background: '#14161C', color: '#FFFFFF', fontFamily: 'var(--font-display)', fontSize: '21px' }}>
             BACK TO THE EVENT
           </Link>
           <button
             type="button"
-            className="btn"
             onClick={() => {
               setEmail(saved.email)
               setPicked(saved.passes)
               writeStore(null)
             }}
+            style={{ minHeight: '46px', padding: '0 16px', background: 'transparent', border: '3px solid #14161C', color: '#14161C', fontFamily: 'var(--font-display)', fontSize: '20px', cursor: 'pointer' }}
           >
             CHANGE EMAIL
           </button>
@@ -136,53 +139,72 @@ export function NotifyForm({ chips }: { chips: PassChip[] }) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="nt-card" noValidate>
-      <div className="fld">
-        <label htmlFor={`${ids}-email`}>Your email</label>
-        <div className="nt-row">
-          <input
-            id={`${ids}-email`}
-            name="email"
-            type="email"
-            inputMode="email"
-            autoComplete="email"
-            className="inp nt-input"
-            value={email}
-            onChange={(e) => {
-              setEmail(e.target.value)
-              if (error) setError(null)
-            }}
-            aria-invalid={error ? true : undefined}
-            aria-describedby={error ? `${ids}-err` : undefined}
-            placeholder="you@college.edu"
-          />
-          <button type="submit" className="btn btn-primary" disabled={sending}>
-            {sending ? 'ADDING YOU' : 'NOTIFY ME'}
-          </button>
-        </div>
-        {error ? (
-          <p id={`${ids}-err`} role="alert" className="err-text">
-            {error}
-          </p>
-        ) : null}
+    <form
+      onSubmit={onSubmit}
+      noValidate
+      style={{ display: 'flex', flexDirection: 'column', gap: '14px', border: '3px solid var(--line)', background: 'var(--surface)', padding: 'clamp(18px,3vw,26px)', boxShadow: '8px 8px 0 var(--sh)' }}
+    >
+      <label htmlFor={`${ids}-email`} style={{ fontFamily: 'var(--font-mono)', fontSize: '10.5px', letterSpacing: '.2em', textTransform: 'uppercase', color: 'var(--muted)' }}>
+        Your email
+      </label>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+        <input
+          id={`${ids}-email`}
+          name="email"
+          type="email"
+          inputMode="email"
+          autoComplete="email"
+          placeholder="you@college.edu"
+          value={email}
+          onChange={(e) => {
+            setEmail(e.target.value)
+            if (error) setError(null)
+          }}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? `${ids}-err` : undefined}
+          style={{ flex: '1 1 220px', minWidth: '0', minHeight: '54px', padding: '0 16px', border: '3px solid var(--line)', background: 'var(--bg)', color: 'var(--ink)', fontFamily: 'var(--font-mono)', fontSize: '16px', boxSizing: 'border-box' }}
+        />
+        <button
+          type="submit"
+          disabled={sending}
+          className="rg-cta"
+          style={{ flex: '0 0 auto', minHeight: '54px', padding: '0 22px', background: '#FF9900', color: '#14161C', border: '3px solid var(--line)', fontFamily: 'var(--font-display)', fontSize: '24px', boxShadow: '5px 5px 0 var(--line)', cursor: 'pointer', transition: 'transform .1s steps(2),box-shadow .1s steps(2)' }}
+        >
+          {sending ? 'ADDING YOU' : 'NOTIFY ME'}
+        </button>
       </div>
+      {error ? (
+        <span id={`${ids}-err`} role="alert" style={{ fontFamily: 'var(--font-mono)', fontSize: '12.5px', color: 'var(--err-ink)' }}>
+          {error}
+        </span>
+      ) : null}
 
       {/* Not shown, not tabbable, not announced. A bot fills it, a person cannot. */}
       <input ref={honeypot} type="text" name="company" tabIndex={-1} autoComplete="off" aria-hidden="true" className="nt-hp" />
 
-      <div className="flex flex-col gap-2.5">
-        <span className="lbl">Eyeing a pass? (optional)</span>
-        <div className="flex flex-wrap gap-2">
-          {chips.map((c) => (
-            <button key={c.id} type="button" className="nt-chip" aria-pressed={picked.includes(c.id)} onClick={() => toggle(c.id)}>
-              <span className="nt-sw" style={{ background: c.swatch }} aria-hidden="true" />
-              {c.name.toUpperCase()} {c.price}
-            </button>
-          ))}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10.5px', letterSpacing: '.2em', textTransform: 'uppercase', color: 'var(--muted)' }}>Eyeing a pass? (optional)</span>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+          {chips.map((c) => {
+            const on = picked.includes(c.id)
+            return (
+              <button
+                key={c.id}
+                type="button"
+                className="rg-chip"
+                aria-pressed={on}
+                onClick={() => toggle(c.id)}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', minHeight: '44px', padding: '0 13px', border: '3px solid var(--line)', background: on ? 'var(--ink-fill)' : 'transparent', color: on ? 'var(--bg)' : 'var(--ink)', fontFamily: 'var(--font-display)', fontSize: '19px', cursor: 'pointer', transition: 'transform .1s steps(2)' }}
+              >
+                <span aria-hidden="true" style={{ width: '10px', height: '10px', background: c.swatch, border: '2px solid var(--line)' }}></span>
+                {c.name.toUpperCase()}
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px' }}>{c.price}</span>
+              </button>
+            )
+          })}
         </div>
       </div>
-
-      <p className="hint">One email when registrations open. No spam, no sharing.</p>
+      <span style={{ fontSize: '12.5px', lineHeight: '1.55', color: 'var(--muted)' }}>One email when registrations open. No spam, no sharing.</span>
     </form>
   )
 }

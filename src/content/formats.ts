@@ -61,7 +61,7 @@ export const formats: SessionFormat[] = [
     no: '04',
     name: 'PANEL DISCUSSION',
     blurb: 'Engineers and builders on one stage answering student questions.',
-    tags: ['Platinum and above', 'Open Q and A'],
+    tags: ['Platinum and above', 'Open Q&A'],
     live: 'LIVE PANEL',
     minTier: 'ultra',
     accent: 'var(--fmt-panel)',
@@ -69,11 +69,12 @@ export const formats: SessionFormat[] = [
   {
     id: 'qa',
     no: '05',
-    name: 'Q AND A SESSION',
+    name: 'Q&A SESSION',
     blurb: 'Open mic with the speakers: careers, code, cloud, AI.',
-    tags: ['Premium and above', 'Open mic'],
+    // On every pass since the v3 handoff (it was Premium and above).
+    tags: ['Every pass', 'Open mic'],
     live: 'MIC OPEN',
-    minTier: 'premium',
+    minTier: 'basic',
     accent: 'var(--fmt-qa)',
   },
 ]

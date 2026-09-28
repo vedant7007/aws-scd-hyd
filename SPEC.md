@@ -307,6 +307,8 @@ Every tier in `content/passes.ts` is priced (Rs 499, 799, 999, 1,299, confirmed 
 
 ### Early bird
 
+**Not shown since the v3 handoff (28 September 2026).** The v3 design has no early bird anywhere: the landing prints plain prices and the new registration flow drops it. What follows describes the mechanism the parked `/register-legacy` flow still carries until that flow is replaced.
+
 Fifty rupees off every tier for the first fifty registrations across all tiers combined (Regular 449, Premium 749, Platinum 949, VIP 1,249), live from the moment registration opens. `EARLY_BIRD_TOTAL` and `EARLY_BIRD_DISCOUNT_PAISE` live in `content/passes.ts`.
 
 The pool is one counter item, `EARLYBIRD#COUNTER` `{ claimed, ceiling }`, the same pattern as a track counter. **The price is decided and locked into the record at step one, in the same transaction that increments the track counter**: the EARLYBIRD counter is incremented conditional on `claimed < ceiling`, and `amountPaise` is the discounted price only if that item succeeded, with the full price kept beside it as `listPricePaise`. The student pays exactly the number they were shown; the admin verifies against the stored number, never a recomputed one. Abandoning releases the place in the same transaction that releases the track place. Reinstating re-claims a place if one is free, otherwise reinstates at the stored full price and tells the admin. If the fiftieth place goes between the read and the write, the registration is retried once at full price, the record is marked `earlyBirdMissed`, and the pay page says early bird just ran out and the price is now the full one.
@@ -407,15 +409,15 @@ Layout is minimal. Whitespace and type size carry the hierarchy. No card grids, 
 
 ### `/` landing
 
-In order, each its own component file.
+The v3 handoff's `Landing Bitmap.dc.html`, converted to JSX from its own markup rather than restyled by hand, so every inline value is the design's; behaviour is `mount.ts`, a port of the design's script. Departures are listed at the top of `Landing.tsx`. Typing `admin` anywhere outside a text field opens crew sign-in and typing `register` opens `/register`, as the design's `cloud-transition.js` does. In order:
 
 1. **Hero.** Name, Hyderabad, date, venue, CTA to passes, countdown to `event.startsAt` (2026-10-30T09:30:00+05:30, doors confirmed 09:30), and a pointer-reactive canvas background that animates gently on its own on mobile. Keep the background in one swappable component, the visual is `TODO(vedant)`.
 2. **Ticker.** Marquee band in accent colour.
 3. **About.** Three or four sentences. Not a wall.
-4. **Sessions.** The five session formats in `content/formats.ts`: keynote, technical sessions, hands-on workshops, panel discussion, Q and A. A pinned horizontal stage, one card each, five progress bars and a `SESSION 0N / 05` counter. This replaces the three-track band on every public surface; the track model survives only inside the parked registration flow.
+4. **Sessions.** The five session formats: keynote, technical sessions, hands-on workshops, panel discussion, Q&A. A pinned horizontal stage, one card each, five progress bars and a `SESSION 0N / 05` counter. This replaces the three-track band on every public surface; the track model survives only inside the parked registration flow.
 5. **Speakers.** Must render well with zero or one entry, with a real "announced soon" state. No placeholder silhouettes.
-6. **Passes.** Four tiers, each with price and its full perk list written out, and swag level. One marked recommended. Early bird expiry date shown, with a plain note that price rises after. Lunch is included on every tier and says so on every tier.
-7. **Sponsors.** Tiered logo wall with an empty state, plus a become-a-sponsor block with a fixed mail subject format.
+6. **Passes.** Four tiers, copper, gold, platinum and diamond, each with price and its full perk list written out (from `content/passes.ts`), and swag level. VIP is marked top tier. Q&A is on every pass. No early bird. Lunch is included on every tier and says so on every tier.
+7. **Sponsors.** Title sponsor, then an "Organised by AWS SBG VJIT, by students, for students" block, then the community sponsor wall with open slots.
 8. **Venue.** Address, map, metro, bus, cab, parking.
 9. **FAQ.** Accordion, keyboard operable.
 10. **Footer.** Contact, socials, code of conduct link, and this exact line: *AWS User Groups are run by independent volunteers and are not organized by AWS.*
@@ -424,8 +426,8 @@ In order, each its own component file.
 
 Times are not decided and must not appear on the public site. The only public time is doors at 09:30 on Friday 30 October 2026. The four slots exist structurally for the picker; each has `startsAt` and `endsAt` null until the organiser sets them, and `slotTime()` returns null for an unset or unparseable value, never an empty string, a dash or Invalid Date. A blank slot label falls back to "Slot 1" through "Slot 4" through `slotLabel()`.
 
-### `/schedule`
-One card per session format, not a timetable: there is no track to pick and no hall to find on the public site. Static, no table read. No times beyond doors at 09:30, and the page says the running order goes up when it is fixed.
+### `/schedule`, `/speakers`, `/sponsors` (removed)
+The v3 handoff folds all three into the home page. Each is a permanent redirect (308, `next.config.ts`) to its home section: `/#prog`, `/#speakers`, `/#sponsors`.
 
 ### `/pass` and `/pass/[passId]`
 
@@ -444,7 +446,7 @@ The QR appears only in the final state. The pass id is identical in every state;
 
 ### `/register` (registrations closed)
 
-While `REGISTRATION_OPEN` is false, `/register` is the notify page: a padlock that never opens and counts how many times it was tried, a drifting grid, and one email field. `POST /api/notify` takes `{ email, interestedPasses, company }`, validates shape, lowercases and trims, writes a `SUB#<email>` item with `source: "register-closed"` and the passes they named, and answers 200 whether or not the address was already there, so it cannot be used to find out who has signed up. `company` is a honeypot: filled means a bot, which gets the same 200 and nothing stored. Ten sign ups per IP per hour, counted in the table like every other limit. The list exports as CSV from the dashboard, admin only.
+While `REGISTRATION_OPEN` is false, `/register` is the notify page, ported from the v3 handoff's `Register.dc.html` in its own route group with its own chrome (wordmark, theme, home, passes; no site footer): a padlock that bobs, shakes when poked and never opens, a drifting grid (the handoff's pointer-lit cells were removed at the organiser's request), and one email field with optional pass chips. `POST /api/notify` takes `{ email, interestedPasses, company }`, validates shape, lowercases and trims, writes a `SUB#<email>` item with `source: "register-closed"` and the passes they named, and answers 200 whether or not the address was already there, so it cannot be used to find out who has signed up. `company` is a honeypot: filled means a bot, which gets the same 200 and nothing stored. Ten sign ups per IP per hour, counted in the table like every other limit. The list exports as CSV from the dashboard, admin only.
 
 ### `/register-legacy` and `/register-legacy/pay/[passId]` (parked)
 
@@ -550,6 +552,7 @@ Kept current as work lands. Everything else in this file is the plan, this secti
 | Schedule, speakers, sponsors, code of conduct, register, pass, pass entry, admin | ported to the handoff design under `src/app/(public)/` and `src/app/admin/`, one shared header and footer, pre-handoff stylesheet dropped |
 | Sessions, not tracks | the public site is built on the five session formats in `content/formats.ts`. The three-track model, its rooms and its per-slot picker are untouched but reachable only through the parked flow |
 | Registrations | **closed in code.** `REGISTRATION_OPEN` is false, every CTA reads NOTIFY ME, `/register` is the notify page and `/api/notify` writes to the subscriber list with a honeypot, per-IP limit and an admin CSV export. The selling flow is parked at `/register-legacy`, unlinked and undeleted |
+| Design v3 | **Phase 1 live.** The landing and `/register` are regenerated from the v3 handoff markup (`C:/CODING/awsscdhyd_design`, bundle `(1)`). Display face is **Jersey 10** (it replaced Pixelify Sans, whose C read as an O); it has one weight and is never set bold. Shared display sizes in `globals.css` were scaled by 1.25, the ratio the handoff itself applied. Inner pages use the handoff's chrome: a `< SCD.HYD 26` back link and the theme toggle, footer with the site name and the legal line. Ported screens keep the handoff's content-box model under `[data-landing]` / `[data-dc]`. Still to port: Speak, Sponsor and Code of Conduct forms (phase 2) and the new registration flow (phase 3). |
 | Traffic | **live.** A beacon in the root layout posts one page view per route change to `/api/hit`, which adds to `HITS#<IST day>` rows keyed `TOTAL`, `PATH#<route>` and `REF#<host>`. No cookie, IP address, user agent or visitor id is stored; a visit is the first view in a browser tab, counted by the browser. Paths outside an allowlist fold into `(other)`, so a caller can inflate a counter but never create keys. Crew pages, crawlers and Do Not Track / GPC browsers are not counted. `/admin/traffic`, admin only, shows 14 days, top pages, sources and how many `/register` visits left an address |
 | Prices | Rs 499 / 799 / 999 / 1,299, confirmed 24 September 2026, every perk written out on every card |
 | Pass page, QR, per-slot picker, seat transaction | rebuilt on the six-state lifecycle and the one pass id. Race test and the 25-check acceptance suite (`npm run test:lifecycle`) pass against the sandbox |

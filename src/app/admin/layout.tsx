@@ -14,7 +14,7 @@ export default function AdminLayout({ children }: LayoutProps<'/admin'>) {
   return (
     <>
       <div className="page-bg" aria-hidden="true" />
-      <SiteHeader crew />
+      <SiteHeader />
       <main id="main" className="relative z-10 flex-1">
         {children}
       </main>

@@ -9,7 +9,7 @@ export function LoginForm() {
   return (
     <form action={action} className="flex flex-col gap-4">
       <div className="fld">
-        <label htmlFor="email">Crew email</label>
+        <label htmlFor="email">Organiser email</label>
         <input id="email" name="email" type="email" autoComplete="username" required className="inp" />
       </div>
       <div className="fld">
@@ -45,7 +45,7 @@ export function ResetForm() {
       <form action={request} className="flex flex-col gap-4">
         <span className="eye">STEP 01 OF 02</span>
         <div className="fld">
-          <label htmlFor="reset-email">Crew email</label>
+          <label htmlFor="reset-email">Organiser email</label>
           <input id="reset-email" name="email" type="email" autoComplete="username" required className="inp" />
         </div>
         {requested ? (
@@ -60,7 +60,7 @@ export function ResetForm() {
       <form action={confirm} className="flex flex-col gap-4 border-t border-line-soft pt-6">
         <span className="eye">STEP 02 OF 02</span>
         <div className="fld">
-          <label htmlFor="confirm-email">Crew email</label>
+          <label htmlFor="confirm-email">Organiser email</label>
           <input id="confirm-email" name="email" type="email" autoComplete="username" required className="inp" />
         </div>
         <div className="fld">

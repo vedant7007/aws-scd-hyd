@@ -77,7 +77,7 @@ export const REFUND_POLICY =
  */
 const KEYNOTE = '1 keynote session'
 const TECHNICAL = '1 technical session, Cloud Engineering or AI'
-const QA = 'Q and A session'
+const QA = 'Q&A session'
 const WORKSHOP = 'Hands-on workshop'
 const PANEL = 'Panel discussion'
 
@@ -86,7 +86,8 @@ export const passes: Pass[] = [
     id: 'basic',
     name: 'Regular',
     pricePaise: 49900,
-    perks: ['Swag kit, tier 1', 'Lunch', KEYNOTE, TECHNICAL],
+    // Q&A is on every pass, per the v3 handoff (it was Premium and above).
+    perks: ['Swag kit · tier 1', 'Lunch', KEYNOTE, TECHNICAL, QA],
     includes: [],
     swag: null,
     tracksAllowed: 1,
@@ -96,7 +97,7 @@ export const passes: Pass[] = [
     id: 'premium',
     name: 'Premium',
     pricePaise: 79900,
-    perks: ['Swag kit, tier 2', 'Lunch', KEYNOTE, TECHNICAL, QA, WORKSHOP],
+    perks: ['Swag kit · tier 2', 'Lunch', KEYNOTE, TECHNICAL, QA, WORKSHOP],
     includes: ['Reserved seating'],
     swag: null,
     tracksAllowed: 2,
@@ -107,7 +108,7 @@ export const passes: Pass[] = [
     id: 'ultra',
     name: 'Platinum',
     pricePaise: 99900,
-    perks: ['Swag kit, tier 3', 'Lunch', KEYNOTE, TECHNICAL, QA, WORKSHOP, PANEL],
+    perks: ['Swag kit · tier 3', 'Lunch', KEYNOTE, TECHNICAL, QA, WORKSHOP, PANEL],
     includes: ['Reserved seating'],
     swag: null,
     tracksAllowed: 3,
@@ -118,7 +119,7 @@ export const passes: Pass[] = [
     name: 'VIP',
     pricePaise: 129900,
     perks: [
-      'Swag kit, tier 4',
+      'Swag kit · tier 4',
       'Lunch',
       KEYNOTE,
       TECHNICAL,

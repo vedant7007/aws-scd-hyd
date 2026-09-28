@@ -27,8 +27,8 @@ export default function NotFound() {
             <Link href="/" className="btn btn-ink">
               HOME
             </Link>
-            <Link href="/schedule" className="btn">
-              SCHEDULE
+            <Link href="/#prog" className="btn">
+              SESSIONS
             </Link>
             <Link href="/register" className="btn">
               GET NOTIFIED

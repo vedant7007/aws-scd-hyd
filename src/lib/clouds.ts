@@ -164,4 +164,23 @@ export const CLOUDS_BOOT = `(function () {
   document.addEventListener('visibilitychange', function () { if (!document.hidden && wrap) clear(); });
 
   window.__scdClouds = { cover: cover, clear: clear, ready: function () { return ready; } };
+})();
+
+/* Typed shortcuts, from the handoff's cloud-transition.js. Typing "admin"
+   anywhere outside a text field opens crew sign-in; typing "register" opens
+   registration. The handoff's "launch" and "laaunch" are left out: that page
+   was removed. Keys with a modifier, and keys typed into a field, never count. */
+(function () {
+  if (window.__scdKeys) return;
+  window.__scdKeys = true;
+  var buf = '';
+  document.addEventListener('keydown', function (e) {
+    var t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+    if (e.metaKey || e.ctrlKey || e.altKey || !e.key || e.key.length !== 1) return;
+    buf = (buf + e.key.toLowerCase()).slice(-8);
+    var here = location.pathname;
+    if (/register$/.test(buf) && here !== '/register') { buf = ''; location.href = '/register'; }
+    else if (/admin$/.test(buf) && here.indexOf('/admin') !== 0) { buf = ''; location.href = '/admin/login'; }
+  });
 })();`
