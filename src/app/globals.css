@@ -971,34 +971,33 @@ body:has(.rg-grid) .page-bg {
 }
 @keyframes rg-drift { to { transform:translate3d(28px,28px,0); } }
 
-/* The light that follows the cursor.
-   It used to be a 28px cell snapped to the grid, stepping between the five
-   accents. Both of those were wrong: a hard square parked over the artwork
-   reads as a stray block rather than an effect, and steps() meant the colour
-   jumped instead of turning. It is a soft disc now, it follows the pointer
-   unsnapped, and the colour is interpolated.
+/* The crosshair that tracks the pointer.
+   Two hairlines across the grid, the way a terminal or a drawing program
+   marks where the cursor is. Everything on this site is drawn in hard pixels,
+   so the ruling reads as part of the grid rather than something laid over it.
 
-   Registering the custom property is what buys the interpolation: an
+   Registering the custom property is what buys the smooth colour: an
    unregistered one has no type, so a browser can only step between its
-   values. Where @property is unsupported the colour steps, which is the old
-   behaviour and no worse. */
-@property --rg-gc { syntax:'<color>'; inherits:false; initial-value:#9FE3B6; }
+   values. inherits:true so the two lines pick the colour up from the parent
+   and one animation drives both. Where @property is unsupported the colour
+   steps, which is no worse than before. */
+@property --rg-gc { syntax:'<color>'; inherits:true; initial-value:#9FE3B6; }
 
-.rg-glow {
-  --rg-size:440px;
+.rg-cross {
+  position:absolute; inset:0; pointer-events:none;
   --rg-gc:var(--fmt-keynote);
-  position:absolute; top:0; left:0;
-  width:var(--rg-size); height:var(--rg-size);
-  margin:calc(var(--rg-size) / -2) 0 0 calc(var(--rg-size) / -2);
-  background:radial-gradient(circle closest-side, var(--rg-gc), transparent);
-  opacity:.34;
-  /* Parked well off screen until a pointermove places it. */
-  transform:translate3d(var(--cx,-9999px),var(--cy,-9999px),0);
-  /* The lag is the point: the light trails the cursor instead of snapping to it. */
-  transition:transform .38s cubic-bezier(.22,.61,.36,1);
-  will-change:transform;
   animation:rg-hue 18s linear infinite;
 }
+.rg-cross > i {
+  position:absolute; display:block; background:var(--rg-gc); opacity:.42;
+  will-change:transform;
+  /* Short and linear: long enough to glide, not so long that it lags behind. */
+  transition:transform .14s linear;
+}
+/* Parked well off screen until a pointermove places them. */
+.rg-cross > i:nth-child(1) { top:0; bottom:0; left:0; width:2px; transform:translate3d(var(--cx,-9999px),0,0); }
+.rg-cross > i:nth-child(2) { left:0; right:0; top:0; height:2px; transform:translate3d(0,var(--cy,-9999px),0); }
+
 @keyframes rg-hue {
   0%,100% { --rg-gc:var(--fmt-keynote); }
   20% { --rg-gc:var(--fmt-technical); }
@@ -1134,8 +1133,8 @@ body:has(.rg-grid) .page-bg {
 @media (max-width:440px) { .nt-row { flex-wrap:wrap; } .nt-row > .btn { width:100%; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .rg-marq-in, .rg-dot, .rg-shake, .rg-grid::before, .rg-glow { animation:none; }
-  .rg-glow { transition:none; }
+  .rg-marq-in, .rg-dot, .rg-shake, .rg-grid::before, .rg-cross { animation:none; }
+  .rg-cross > i { transition:none; }
   /* The glare parks off the face rather than freezing mid sweep across it. */
   .rg-body::after { animation:none; transform:translate3d(-110%,0,0); }
   .rg-lock:hover .rg-shackle, .rg-lock:active .rg-shackle { transform:translate3d(-50%,0,0); }
