@@ -1,4 +1,3 @@
-import { event } from './event'
 import type { SessionFormat } from './formats'
 
 export type Speaker = {
@@ -16,7 +15,3 @@ export type Speaker = {
  */
 export const speakers: Speaker[] = []
 
-/** Fixed subject so applications are filterable in the inbox. The landing page carries the same string. */
-export const SPEAKER_SUBJECT = 'Speaker - AWS SCD Hyderabad'
-
-export const speakerMailto = `mailto:${event.contactEmail}?subject=${encodeURIComponent(SPEAKER_SUBJECT)}`

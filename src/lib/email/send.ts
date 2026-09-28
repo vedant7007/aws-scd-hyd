@@ -16,6 +16,8 @@ export type Mail = {
   subject: string
   text: string
   html: string
+  /** Defaults to SES_REPLY_TO. Organiser notifications set it to the sender so a reply reaches them. */
+  replyTo?: string
 }
 
 export type SendResult = {
@@ -76,7 +78,7 @@ export async function sendEmail(mail: Mail): Promise<SendResult> {
   const res = await ses().send(
     new SendEmailCommand({
       FromEmailAddress: required('SES_FROM'),
-      ReplyToAddresses: [required('SES_REPLY_TO')],
+      ReplyToAddresses: [mail.replyTo ?? required('SES_REPLY_TO')],
       Destination: { ToAddresses: [to] },
       ConfigurationSetName: configurationSet(),
       Content: {

@@ -37,6 +37,7 @@ export default async function SecureAdminLayout({ children }: { children: ReactN
           <nav aria-label="Crew" className="crew-nav">
             {admin ? <Link href="/admin">DASHBOARD</Link> : null}
             <Link href="/admin/scan">SCAN</Link>
+            {admin ? <Link href="/admin/inbox">INBOX</Link> : null}
             {admin ? <Link href="/admin/notify">NOTIFY LIST</Link> : null}
             {admin ? <Link href="/admin/traffic">TRAFFIC</Link> : null}
             {admin ? <Link href="/admin/users">CREW</Link> : null}

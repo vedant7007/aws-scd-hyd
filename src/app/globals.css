@@ -844,3 +844,13 @@ body:has(.rg-grid) .page-bg {
 .rf-h1:hover{transform:translate3d(-4px,-4px,0) !important}
 .rf-h2:hover{transform:translate3d(-2px,-2px,0) !important}
 .rf-h3:hover{border-color:#FF9900 !important}
+
+/* ===========================================================================
+   SPEAK, SPONSOR AND REPORT FORMS, handoff v3 (components/forms/). The
+   submit button's hover and press, and the handoff's two entrance keyframes
+   for the received screens.
+   =========================================================================== */
+@keyframes ap-in { from { opacity:0; transform:translate3d(0,12px,0); } to { opacity:1; transform:translate3d(0,0,0); } }
+@keyframes coc-pop { from { opacity:0; transform:translate3d(0,10px,0); } to { opacity:1; transform:translate3d(0,0,0); } }
+.ap-cta:hover:not([disabled]) { transform:translate3d(-2px,-2px,0) !important; box-shadow:8px 8px 0 var(--line) !important; }
+.ap-cta:active:not([disabled]) { transform:translate3d(2px,2px,0) !important; box-shadow:1px 1px 0 var(--line) !important; }

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { ReportForm } from '@/components/forms/ReportForm'
 import { event, venue } from '@/content/event'
 
 export const metadata: Metadata = {
@@ -26,9 +27,9 @@ const NOT_OK = [
 ]
 
 /**
- * The handoff's Code of Conduct screen. Its issue form generated tickets in
- * the browser with no backend behind them, so the #report section here is
- * a mail instead: same anchor, same place, and a report reaches a person.
+ * The handoff's Code of Conduct screen. Its #report form is real: the
+ * report is stored, mailed to the organisers, and the ticket number shown is
+ * the stored one (components/forms/ReportForm.tsx, lib/forms.ts).
  *
  * TODO(vedant): this copy is the design handoff's draft and is still on the
  * blocked list in SPEC.md section 15 for sign-off, the named contact
@@ -114,29 +115,10 @@ export default function CodeOfConductPage() {
           </a>
           <span className="num text-[11px] text-muted">{event.contactEmail}</span>
         </div>
-        <p className="hint">We will not tell the other person who reported them unless you say we can. If you would rather not speak to anyone, write instead.</p>
+        <p className="hint">We will not tell the other person who reported them unless you say we can. If you would rather not speak to anyone, use the form below and we will reply by email.</p>
       </section>
 
-      <section id="report" className="panel scroll-mt flex flex-col gap-4 p-5" aria-labelledby="report-h">
-        <div className="flex flex-col gap-2">
-          <span className="eye eye-violet">{'// REPORT AN ISSUE'}</span>
-          <h2 id="report-h" className="h2">
-            TELL US IN WRITING
-          </h2>
-          <p className="copy">Use this for conduct reports, registration problems, payment issues or anything else. Only the organising team reads it.</p>
-        </div>
-        <ul className="checklist">
-          <li>What it is about: conduct, registration, payment, or something else</li>
-          <li>Your pass ID, if you have one</li>
-          <li>Where, when, who was involved, and what you want us to do about it</li>
-          <li>Leave your name out if you would rather we did not know it</li>
-        </ul>
-        <p className="copy text-err-ink">If you are in danger right now, do not wait for email. Find any volunteer, or call campus security.</p>
-        <a href={REPORT_MAILTO} className="btn btn-primary btn-lg self-start">
-          SEND A REPORT &gt;
-        </a>
-        <p className="hint">We reply from {event.contactEmail}, usually within two days, faster for anything about payments or the event day itself.</p>
-      </section>
+      <ReportForm contact={event.contactEmail} />
 
       <p className="legal border-t-[3px] border-line-soft pt-5">
         Adapted for {event.name}, hosted by the AWS Student Builders Group at {venue.name}. {event.disclaimer}

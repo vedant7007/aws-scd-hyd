@@ -148,6 +148,7 @@ One DynamoDB table. `PK` and `SK` as strings, one global secondary index `GSI1` 
 | Session counter | `SESSION#<sessionId>` | `META` | | |
 | UTR claim | `UTR#<utr>` | `CLAIM` | | |
 | Config | `CONFIG` | `EVENT` | | |
+| Form submission | `FORM#<speak\|sponsor\|report>` | `<ISO>#<ref>` | | |
 | Subscriber | `SUB#<email>` | `PROFILE` | `SUBS` | `<createdAt ISO>` |
 
 ### The pass id, the one identifier
@@ -369,6 +370,10 @@ The real flow for a signed-in admin while registration is closed to the public, 
 
 The payment step on its own, for the rejection email's link and for anyone who lost the tab. Renders for `REJECTED` (with the reason, no clock, seats still held) and for a live `AWAITING_PAYMENT` hold; everything else is the same 404. It has no way back to the earlier steps, which belong to the browser that made the hold.
 
+### `/speak`, `/sponsor` and the `/code-of-conduct` report
+
+The handoff's Speak and Sponsor screens (one component, `components/forms/ApplyForm.tsx`) and the code of conduct page's #report block (`ReportForm.tsx`) are real forms. `POST /api/forms` with `form: speak | sponsor | report` checks every field again on the server (`lib/forms.ts`, the handoff's rules and messages), stores one `FORM#` item with a reference (`SCD-SPK-`, `SCD-SPN-`, `SCD-RPT-`, or `SCD-URG-` for a report marked as happening right now, then five characters from the pass id alphabet), and mails the organisers' inbox with Reply-To set to the sender. Nothing is ever mailed to the sender, so the form cannot be used to send mail to an address someone typed. A failed organiser mail never loses a submission. `company` is a honeypot; twenty submissions per IP per hour. Departure: the speaker form's "Which track?" question is gone, since there are no tracks. `/admin/inbox`, admin only, lists all three newest first with urgent reports marked.
+
 ### `/admin`, `/admin/scan`, `/admin/users`, `/admin/settings`
 Cognito sign-in, then a role from the table (section 7). `/admin/scan` is the one screen a volunteer gets; everything else is admin only. `/admin/users` manages the crew; `/admin/settings` holds the registration switch and the seat count of each of the seven sessions.
 
@@ -431,7 +436,7 @@ Phases 0 to 3 of the original plan are done. The v3 handoff (28 September 2026) 
 
 **v3 phase 3.** The registration flow, the preview, the pay page, UPI only, seats per session. Built before phase 2 because the organiser asked to see it.
 
-**v3 phase 2.** Real forms for Speak, Sponsor and Code of Conduct reports: stored, listed in admin, emailed to the organisers.
+**v3 phase 2, done.** Real forms for Speak, Sponsor and Code of Conduct reports: stored, listed on `/admin/inbox`, emailed to the organisers.
 
 **Week of 21 October.** Content freeze. Rehearse check-in with 50 fake passes on real campus wifi. Take a manual DynamoDB backup the night before.
 
@@ -461,11 +466,11 @@ Kept current as work lands. Everything else in this file is the plan, this secti
 |---|---|
 | Sandbox backend | deployed: table, Cognito pool, reconcile Lambda, hourly schedule |
 | Amplify Hosting | building from `main`, live at https://awsscdhyd.in with a compute role and production env vars attached |
-| Landing page | ported from the design handoff (Landing Bitmap). Its own header and footer, theme in localStorage under `scd-theme`, cloud page transition on every route. APPLY TO SPEAK and BECOME A SPONSOR open a mail to awssbgvjit@gmail.com with a fixed subject until the `/speak` and `/sponsor` screens are ported |
+| Landing page | ported from the design handoff (Landing Bitmap). Its own header and footer, theme in localStorage under `scd-theme`, cloud page transition on every route. APPLY TO SPEAK and BECOME A SPONSOR open the `/speak` and `/sponsor` forms |
 | Schedule, speakers, sponsors, code of conduct, register, pass, pass entry, admin | ported to the handoff design under `src/app/(public)/` and `src/app/admin/`, one shared header and footer, pre-handoff stylesheet dropped |
 | Sessions, not tracks | the public site is built on the five session formats in `content/formats.ts`; registration picks from `content/program.ts`. Tracks, rooms per track, slots and the per-slot picker are deleted |
 | Registrations | **closed in code.** `REGISTRATION_OPEN` is false, every CTA reads NOTIFY ME, `/register` is the notify page. The v3 flow is built and walkable by admins at `/register/preview` |
-| Design v3 | **Phase 1 live.** The landing and `/register` are regenerated from the v3 handoff markup (`C:/CODING/awsscdhyd_design`, bundle `(1)`). Display face is **Jersey 10** (it replaced Pixelify Sans, whose C read as an O); it has one weight and is never set bold. Shared display sizes in `globals.css` were scaled by 1.25, the ratio the handoff itself applied. Inner pages use the handoff's chrome: a `< SCD.HYD 26` back link and the theme toggle, footer with the site name and the legal line. Ported screens keep the handoff's content-box model under `[data-landing]` / `[data-dc]`. Phase 3, the registration flow, is built. Still to port: Speak, Sponsor and Code of Conduct forms (phase 2). |
+| Design v3 | **Phase 1 live.** The landing and `/register` are regenerated from the v3 handoff markup (`C:/CODING/awsscdhyd_design`, bundle `(1)`). Display face is **Jersey 10** (it replaced Pixelify Sans, whose C read as an O); it has one weight and is never set bold. Shared display sizes in `globals.css` were scaled by 1.25, the ratio the handoff itself applied. Inner pages use the handoff's chrome: a `< SCD.HYD 26` back link and the theme toggle, footer with the site name and the legal line. Ported screens keep the handoff's content-box model under `[data-landing]` / `[data-dc]`. Phases 2 and 3 are built: the registration flow, and real Speak, Sponsor and report forms. |
 | Traffic | **live.** A beacon in the root layout posts one page view per route change to `/api/hit`, which adds to `HITS#<IST day>` rows keyed `TOTAL`, `PATH#<route>` and `REF#<host>`. No cookie, IP address, user agent or visitor id is stored; a visit is the first view in a browser tab, counted by the browser. Paths outside an allowlist fold into `(other)`, so a caller can inflate a counter but never create keys. Crew pages, crawlers and Do Not Track / GPC browsers are not counted. `/admin/traffic`, admin only, shows 14 days, top pages, sources and how many `/register` visits left an address |
 | Prices | Rs 499 / 799 / 999 / 1,299, confirmed 24 September 2026, every perk written out on every card |
 | Registration flow, v3 | five steps and the received and expired screens, ported from the handoff. Seats per session claimed at the payment step, moved on edit, released by the sweep. Race test and the 26-check acceptance suite (`npm run test:lifecycle`, with `TEST_BASE_URL` for the HTTP checks) pass against the sandbox; a browser walkthrough from pass to received, including a real screenshot upload, passes on desktop and at 390px |

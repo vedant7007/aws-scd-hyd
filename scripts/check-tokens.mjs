@@ -51,6 +51,8 @@ const HANDOFF_FILES = [
   'src/lib/clouds.ts',
   // The v3 register screen, ported the same way as the landing.
   ...globSync('src/components/register/**/*.{ts,tsx}').map(normalise),
+  // The v3 Speak, Sponsor and report forms, ported the same way.
+  ...globSync('src/components/forms/**/*.{ts,tsx}').map(normalise),
   'src/app/(register)/register/page.tsx',
 ]
 
