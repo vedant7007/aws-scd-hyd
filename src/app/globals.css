@@ -971,20 +971,40 @@ body:has(.rg-grid) .page-bg {
 }
 @keyframes rg-drift { to { transform:translate3d(28px,28px,0); } }
 
-/* The cell under the pointer, snapped to the grid, cycling the five session
-   accents. Off screen until a pointermove places it. */
-.rg-cell {
-  position:absolute; top:0; left:0; width:28px; height:28px;
-  transform:translate3d(var(--cx,-999px),var(--cy,-999px),0);
-  background:var(--fmt-keynote); opacity:.5;
-  animation:rg-cycle 4s steps(1) infinite;
+/* The light that follows the cursor.
+   It used to be a 28px cell snapped to the grid, stepping between the five
+   accents. Both of those were wrong: a hard square parked over the artwork
+   reads as a stray block rather than an effect, and steps() meant the colour
+   jumped instead of turning. It is a soft disc now, it follows the pointer
+   unsnapped, and the colour is interpolated.
+
+   Registering the custom property is what buys the interpolation: an
+   unregistered one has no type, so a browser can only step between its
+   values. Where @property is unsupported the colour steps, which is the old
+   behaviour and no worse. */
+@property --rg-gc { syntax:'<color>'; inherits:false; initial-value:#9FE3B6; }
+
+.rg-glow {
+  --rg-size:440px;
+  --rg-gc:var(--fmt-keynote);
+  position:absolute; top:0; left:0;
+  width:var(--rg-size); height:var(--rg-size);
+  margin:calc(var(--rg-size) / -2) 0 0 calc(var(--rg-size) / -2);
+  background:radial-gradient(circle closest-side, var(--rg-gc), transparent);
+  opacity:.34;
+  /* Parked well off screen until a pointermove places it. */
+  transform:translate3d(var(--cx,-9999px),var(--cy,-9999px),0);
+  /* The lag is the point: the light trails the cursor instead of snapping to it. */
+  transition:transform .38s cubic-bezier(.22,.61,.36,1);
+  will-change:transform;
+  animation:rg-hue 18s linear infinite;
 }
-@keyframes rg-cycle {
-  0% { background:var(--fmt-keynote); }
-  20% { background:var(--fmt-technical); }
-  40% { background:var(--fmt-workshop); }
-  60% { background:var(--fmt-panel); }
-  80% { background:var(--fmt-qa); }
+@keyframes rg-hue {
+  0%,100% { --rg-gc:var(--fmt-keynote); }
+  20% { --rg-gc:var(--fmt-technical); }
+  40% { --rg-gc:var(--fmt-workshop); }
+  60% { --rg-gc:var(--fmt-panel); }
+  80% { --rg-gc:var(--fmt-qa); }
 }
 
 /* The ticker under the header. Full bleed, so it lives outside .page. */
@@ -1063,7 +1083,7 @@ body:has(.rg-grid) .page-bg {
 .rg-keyhole::after { content:""; position:absolute; top:40%; left:30%; width:40%; bottom:0; background:var(--on-fill); }
 
 /* Loose pixels, the handoff's confetti. Decorative, so aria-hidden upstream. */
-.rg-pix { position:absolute; top:2%; left:82%; display:grid; grid-template-columns:repeat(2,1fr); gap:calc(var(--lk) * .02); }
+.rg-pix { position:absolute; top:-1%; left:74%; display:grid; grid-template-columns:repeat(2,1fr); gap:calc(var(--lk) * .02); }
 .rg-pix > i { display:block; width:calc(var(--lk) * .1); height:calc(var(--lk) * .1); }
 .rg-pix > i:nth-child(1) { background:var(--focus); }
 .rg-pix > i:nth-child(2) { background:var(--gold-fill); }
@@ -1114,69 +1134,9 @@ body:has(.rg-grid) .page-bg {
 @media (max-width:440px) { .nt-row { flex-wrap:wrap; } .nt-row > .btn { width:100%; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .rg-marq-in, .rg-dot, .rg-shake, .rg-grid::before, .rg-cell { animation:none; }
+  .rg-marq-in, .rg-dot, .rg-shake, .rg-grid::before, .rg-glow { animation:none; }
+  .rg-glow { transition:none; }
   /* The glare parks off the face rather than freezing mid sweep across it. */
   .rg-body::after { animation:none; transform:translate3d(-110%,0,0); }
   .rg-lock:hover .rg-shackle, .rg-lock:active .rg-shackle { transform:translate3d(-50%,0,0); }
-}
-
-/* ===========================================================================
-   LAUNCH CONTROL (/launch). Secret, unlinked, and the only full bleed screen
-   on the site: the canvas is the page and the words sit on top of it.
-   =========================================================================== */
-
-.lx-wrap { position:fixed; inset:0; z-index:40; overflow:hidden; background:var(--hard); }
-.lx-canvas { position:absolute; inset:0; width:100%; height:100%; display:block; image-rendering:pixelated; }
-.lx-burst { position:absolute; inset:0; pointer-events:none; overflow:hidden; }
-
-/* Bottom weighted, so the skyline and the sunrise own the frame and the words
-   sit under them rather than across the Charminar. */
-.lx-ui {
-  position:absolute; inset:0; display:flex; flex-direction:column;
-  align-items:center; justify-content:flex-end; gap:16px;
-  padding:24px 24px clamp(30px,7vh,84px); text-align:center;
-}
-.lx-eye { font-family:var(--font-mono); font-size:11px; letter-spacing:.24em; text-transform:uppercase; color:#9FE3B6; }
-.lx-h1 {
-  margin:0; font-family:var(--font-display); line-height:.95; color:#F4F7FB;
-  font-size:clamp(38px,9vw,88px); text-shadow:5px 5px 0 rgba(5,7,12,.55);
-}
-.lx-h1 > span { color:#FFB84D; }
-.lx-copy { margin:0; max-width:40ch; font-size:15px; line-height:1.6; color:#D8E2F0; text-shadow:0 2px 6px rgba(5,7,12,.8); }
-/* The reveal lands on a full morning sky, so the light text it inherits needs
-   a plate under it. Fixed rather than theme aware: the sky behind is painted
-   by the canvas and owes nothing to --bg. */
-.lx-done {
-  display:flex; flex-direction:column; align-items:center; gap:16px;
-  padding:26px clamp(22px,5vw,46px);
-  background:rgba(5,7,12,.74); border:3px solid rgba(244,247,251,.2);
-  animation:lx-in .7s cubic-bezier(.19,1,.22,1) both;
-}
-@keyframes lx-in { from { opacity:0; transform:translate3d(0,18px,0); } to { opacity:1; transform:none; } }
-
-.lx-btn {
-  display:inline-flex; align-items:center; justify-content:center;
-  min-height:56px; padding:0 30px; cursor:pointer;
-  font-family:var(--font-display); font-size:21px;
-  background:#FF9900; color:#14161C; border:4px solid #14161C;
-  box-shadow:6px 6px 0 rgba(5,7,12,.6);
-  transition:transform .1s steps(2), box-shadow .1s steps(2);
-}
-.lx-btn:hover { transform:translate3d(-3px,-3px,0); box-shadow:9px 9px 0 rgba(5,7,12,.6); }
-.lx-btn:active { transform:translate3d(3px,3px,0); box-shadow:3px 3px 0 rgba(5,7,12,.6); }
-
-/* The countdown. Mono, because Pixelify's digits are ambiguous and this is
-   nothing but digits. */
-.lx-count {
-  position:absolute; inset:0; display:grid; place-items:center;
-  font-family:var(--font-mono); font-weight:600;
-  font-size:clamp(90px,26vw,240px); line-height:1; color:#F4F7FB;
-  text-shadow:0 0 40px rgba(255,153,0,.55);
-  animation:lx-tick 1s steps(1) infinite;
-}
-@keyframes lx-tick { 0% { transform:scale(1.14); opacity:1; } 30%,100% { transform:scale(1); opacity:.92; } }
-
-@media (prefers-reduced-motion: reduce) {
-  .lx-count, .lx-done { animation:none; }
-  .lx-btn:hover, .lx-btn:active { transform:none; }
 }
