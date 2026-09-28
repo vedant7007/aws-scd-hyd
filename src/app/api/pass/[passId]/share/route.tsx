@@ -28,7 +28,7 @@ export async function GET(req: Request, ctx: RouteContext<'/api/pass/[passId]/sh
   const size = SIZES[format]
 
   const attendee = await getAttendee(normalisePassId(passId) ?? '')
-  if (!attendee || (attendee.state !== 'VERIFIED' && attendee.state !== 'SESSIONS_SELECTED')) {
+  if (!attendee || attendee.state !== 'VERIFIED') {
     return new Response('This pass link is not valid.', {
       status: 404,
       headers: { 'cache-control': 'no-store' },

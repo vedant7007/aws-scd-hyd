@@ -1,18 +1,15 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { slots as fallbackSlots } from '@/content/event'
-import { formatInr } from '@/content/passes'
-import { trackName } from '@/content/sessions'
-import { tracks } from '@/content/tracks'
+import { programSession } from '@/content/program'
 import { createCrewAccount, deleteCrewAccount, forgetSessions, requireAdmin } from '@/lib/auth/admin'
 import { addUser, removeUser, setRole } from '@/lib/auth/crew'
 import { normalisePassId } from '@/lib/db/keys'
-import { getConfig } from '@/lib/db/queries'
-import type { CrewRole, Track } from '@/lib/db/types'
-import { adminReinstate, adminReject, adminVerify, changeSelection, releaseSessions, sendSessionsLive } from '@/lib/registration/flow'
+import type { CrewRole } from '@/lib/db/types'
+import { adminReinstate, adminReject, adminVerify } from '@/lib/registration/flow'
 import { CONFIRM_CLOSE, rejectionText } from '@/lib/registration/reasons'
-import { ensureEarlyBirdCounter, setRegistrationOpen, setTrackRoom } from '@/lib/registration/state'
+import { setRegistrationOpen, setSessionCapacity } from '@/lib/registration/state'
+import { normaliseUtr } from '@/lib/registration/validate'
 
 /**
  * Amendment 1 section 6. Every action resolves the admin first, so the
@@ -50,50 +47,18 @@ export async function rejectAction(_prev: ActionState, formData: FormData): Prom
 export async function reinstateAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const { email } = await requireAdmin()
   const passId = id(formData)
-  const utr = String(formData.get('utr') ?? '')
+  const utr = normaliseUtr(String(formData.get('utr') ?? ''))
+  if (!utr) return { ok: false, message: 'A UTR is letters and numbers, 12 to 40 characters. Nothing changed.' }
   const out = await adminReinstate(passId, email, utr)
   revalidatePath('/admin')
   if (!out.ok) {
-    if (out.reason === 'track-full') return { ok: false, message: `${passId} NOT reinstated: the ${trackName(out.track)} track is now full. Offer a refund or a different track.` }
-    if (out.reason === 'utr-used') return { ok: false, message: `That UTR is already used by another registration, or is not 12 digits. Nothing changed.` }
+    if (out.reason === 'full') {
+      return { ok: false, message: `${passId} NOT reinstated: ${programSession(out.sessionId)?.title ?? out.sessionId} is now full. Offer a refund, or raise its seat count in settings.` }
+    }
+    if (out.reason === 'utr-used') return { ok: false, message: 'That UTR is already used by another registration. Nothing changed.' }
     return { ok: false, message: `${passId} is not abandoned. Nothing changed.` }
   }
-  const priced =
-    out.priced === 'early'
-      ? ` Early bird place re-claimed, so it stays at ${formatInr(out.attendee.amountPaise)}.`
-      : out.priced === 'full'
-        ? ` The early bird pool is empty now, so it is back at the full price, ${formatInr(out.attendee.amountPaise)}. Tell the student if they paid less.`
-        : ''
-  return { ok: true, message: `${passId} reinstated and back in the queue.${priced} Receipt ${out.emailed ? 'sent' : 'not sent'}.` }
-}
-
-export async function releaseSessionsAction(): Promise<ActionState> {
-  const { email } = await requireAdmin()
-  const out = await releaseSessions(email)
-  revalidatePath('/admin')
-  return { ok: true, message: `Sessions released. Email 3: ${out.sent} sent, ${out.skipped} already had it or are reserved, ${out.failed} failed (run again to retry).` }
-}
-
-export async function resendSessionsLiveAction(): Promise<ActionState> {
-  await requireAdmin()
-  const out = await sendSessionsLive()
-  revalidatePath('/admin')
-  return { ok: true, message: `Email 3 run: ${out.sent} sent, ${out.skipped} skipped, ${out.failed} failed.` }
-}
-
-export async function changeSelectionAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const { email } = await requireAdmin()
-  const passId = id(formData)
-  const picks: Record<string, string> = {}
-  for (const [k, v] of formData.entries()) if (k.startsWith('slot:') && typeof v === 'string' && v) picks[k.slice(5)] = v
-  const out = await changeSelection(passId, email, picks)
-  revalidatePath('/admin')
-  if (!out.ok) {
-    if (out.reason === 'invalid') return { ok: false, message: out.message }
-    if (out.reason === 'filled') return { ok: false, message: `${out.sessionId} is full. Nothing changed.` }
-    return { ok: false, message: `${passId} is not in SESSIONS_SELECTED, or changed underneath you. Nothing changed.` }
-  }
-  return { ok: true, message: `${passId} moved: ${out.released} seat(s) released, ${out.claimed} claimed, in one transaction.` }
+  return { ok: true, message: `${passId} reinstated, its seats claimed again, and back in the queue. Receipt ${out.emailed ? 'sent' : 'not sent'}.` }
 }
 
 /* ---- settings ------------------------------------------------------------- */
@@ -104,7 +69,6 @@ export async function registrationSwitchAction(_prev: ActionState, formData: For
   if (!open && String(formData.get('confirm') ?? '').trim().toUpperCase() !== CONFIRM_CLOSE) {
     return { ok: false, message: `Type ${CONFIRM_CLOSE} to confirm. Registration is still open.` }
   }
-  if (open) await ensureEarlyBirdCounter()
   await setRegistrationOpen(open, email)
   revalidatePath('/admin')
   revalidatePath('/admin/settings')
@@ -112,27 +76,24 @@ export async function registrationSwitchAction(_prev: ActionState, formData: For
     ok: true,
     message: open
       ? 'Registration is open. New registrations are accepted from this moment.'
-      : 'Registration is closed. Nobody new can start; anyone already paying can still submit a UTR until their hold lapses, and verification, session release and selection keep working.',
+      : 'Registration is closed. Nobody new can start; anyone already paying can still submit a UTR until their hold lapses, and verification keeps working.',
   }
 }
 
-export async function trackRoomAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+export async function sessionCapacityAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const { email } = await requireAdmin()
-  const track = String(formData.get('track') ?? '') as Track
-  const roomId = String(formData.get('roomId') ?? '')
-  if (!tracks.some((t) => t.id === track)) return { ok: false, message: 'Pick a track.' }
-  const slotIds = ((await getConfig())?.slots ?? fallbackSlots).map((s) => s.id)
-  const out = await setTrackRoom(track, roomId, email, slotIds)
+  const sessionId = String(formData.get('sessionId') ?? '')
+  const s = programSession(sessionId)
+  if (!s) return { ok: false, message: 'Pick a session.' }
+  const capacity = Number(String(formData.get('capacity') ?? '').trim())
+  if (!Number.isInteger(capacity) || capacity < 0 || capacity > 2000) return { ok: false, message: 'A seat count is a whole number from 0 to 2000.' }
+  const out = await setSessionCapacity(sessionId, capacity, email)
   revalidatePath('/admin')
   revalidatePath('/admin/settings')
   if (!out.ok) {
-    if (out.reason === 'no-such-room') return { ok: false, message: 'That is not a track room.' }
-    return {
-      ok: false,
-      message: `REFUSED: ${trackName(track)} already has ${out.registered} registered, and that room sells ${out.ceiling}. A ceiling below the registered count would oversell the room. Nothing changed.`,
-    }
+    return { ok: false, message: `REFUSED: ${out.taken} seats in ${s.title} are already held, and ${capacity} would put them over the limit. Nothing changed.` }
   }
-  return { ok: true, message: `${trackName(track)} now runs in ${roomId}: ceiling ${out.ceiling}, and its four sessions carry the room and capacities.` }
+  return { ok: true, message: `${s.code} now sells ${capacity} seats.` }
 }
 
 /* ---- crew --------------------------------------------------------------- */

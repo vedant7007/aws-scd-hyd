@@ -7,8 +7,7 @@ import { MAX_SCREENSHOT_BYTES, presignUpload } from '@/lib/registration/screensh
  * for a payment. The browser PUTs the file straight to the private bucket;
  * the server never sees the bytes and nothing but an admin ever reads them.
  */
-const json = (status: number, body: unknown) =>
-  Response.json(body, { status, headers: { 'cache-control': 'no-store' } })
+const json = (status: number, body: unknown) => Response.json(body, { status, headers: { 'cache-control': 'no-store' } })
 
 export async function POST(req: Request): Promise<Response> {
   const body = (await req.json().catch(() => null)) as { passId?: unknown; contentType?: unknown; bytes?: unknown } | null

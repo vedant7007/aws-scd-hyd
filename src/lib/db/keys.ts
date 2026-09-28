@@ -1,23 +1,18 @@
 import { randomBytes } from 'node:crypto'
-import type { Track } from './types'
 
 /** Primary keys. One place, so a key never gets templated by hand at a call site. */
 export const keys = {
   attendee: (passId: string) => ({ PK: `ATT#${passId}`, SK: 'PROFILE' }),
-  seat: (passId: string, sessionId: string) => ({ PK: `ATT#${passId}`, SK: `SEAT#${sessionId}` }),
   verificationLog: (passId: string, at: string) => ({ PK: `ATT#${passId}`, SK: `VERIFY#${at}` }),
+  /** One per technical session and workshop: its ceiling and how many seats are held. */
   session: (sessionId: string) => ({ PK: `SESSION#${sessionId}`, SK: 'META' }),
-  /** One per track: how many registrations count against its room. Amendment 1 section 2. */
-  trackCounter: (track: Track) => ({ PK: `TRACK#${track}`, SK: 'COUNTER' }),
   config: () => ({ PK: 'CONFIG', SK: 'EVENT' }),
-  earlyBird: () => ({ PK: 'EARLYBIRD', SK: 'COUNTER' }),
   user: (email: string) => ({ PK: `USER#${normaliseEmail(email)}`, SK: 'PROFILE' }),
   usersMeta: () => ({ PK: 'USERS', SK: 'META' }),
   crewAudit: (at: string, target: string) => ({ PK: 'CREWLOG', SK: `${at}#${normaliseEmail(target)}` }),
   /** Written once by the first-admin bootstrap so it can never run twice. */
   bootstrap: () => ({ PK: 'BOOTSTRAP', SK: 'ADMIN' }),
   reconcile: () => ({ PK: 'RECONCILE', SK: 'LATEST' }),
-  order: (orderId: string) => ({ PK: `ORDER#${orderId}`, SK: 'ATT' }),
   /** One per UTR ever submitted. Its existence is the uniqueness rule. */
   utr: (utr: string) => ({ PK: `UTR#${utr}`, SK: 'CLAIM' }),
   subscriber: (email: string) => ({ PK: `SUB#${normaliseEmail(email)}`, SK: 'PROFILE' }),
@@ -37,10 +32,6 @@ export const keys = {
 export const gsi1 = {
   /** The pass lookup. Amendment 2 section 1 keeps this pattern: GSI1PK = PASS#<passId>. */
   attendeeByPass: (passId: string) => ({ GSI1PK: `PASS#${passId}`, GSI1SK: 'ATT' }),
-  sessionBySlot: (slotId: string, sessionId: string) => ({
-    GSI1PK: `SLOT#${slotId}`,
-    GSI1SK: `SESSION#${sessionId}`,
-  }),
   subscriberByDate: (createdAt: string) => ({ GSI1PK: 'SUBS', GSI1SK: createdAt }),
   /** Every crew account, oldest first. */
   userByDate: (addedAt: string) => ({ GSI1PK: 'USERS', GSI1SK: addedAt }),

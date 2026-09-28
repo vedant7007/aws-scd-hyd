@@ -1,7 +1,6 @@
 import { BatchGetCommand, GetCommand, QueryCommand, ScanCommand } from '@aws-sdk/lib-dynamodb'
 import type { QueryCommandInput, ScanCommandInput } from '@aws-sdk/lib-dynamodb'
-import { sessionSpecs } from '../../content/sessions'
-import { tracks } from '../../content/tracks'
+import { programSessions } from '../../content/program'
 import { ddb, tableName } from './client'
 import { gsi1, keys, normalisePassId } from './keys'
 import type {
@@ -9,13 +8,9 @@ import type {
   EmailEvent,
   EmailEventType,
   EventConfig,
-  OrderPointer,
   ReconcileSummary,
-  Seat,
   Session,
   Subscriber,
-  Track,
-  TrackCounter,
   VerificationLog,
 } from './types'
 
@@ -72,68 +67,34 @@ export async function getAttendee(passId: string): Promise<Attendee | null> {
   return (res.Item as Attendee | undefined) ?? null
 }
 
-/**
- * The Razorpay webhook knows an order id and nothing else about us. The
- * pointer item written at registration resolves it.
- */
-export async function getAttendeeByOrder(orderId: string): Promise<Attendee | null> {
-  const res = await ddb.send(new GetCommand({ TableName: tableName(), Key: keys.order(orderId) }))
-  const pointer = res.Item as OrderPointer | undefined
-  return pointer ? getAttendee(pointer.passId) : null
-}
-
-/** One query returns the profile, every held seat and the admin log from the same partition. */
-export async function getAttendeeWithSeats(
-  passId: string,
-): Promise<{ attendee: Attendee | null; seats: Seat[]; log: VerificationLog[] }> {
-  const items = await queryAll<Attendee | Seat | VerificationLog>({
+/** One query returns the profile and the admin log from the same partition. */
+export async function getAttendeeWithLog(passId: string): Promise<{ attendee: Attendee | null; log: VerificationLog[] }> {
+  const items = await queryAll<Attendee | VerificationLog>({
     TableName: tableName(),
     KeyConditionExpression: 'PK = :pk',
     ExpressionAttributeValues: { ':pk': keys.attendee(passId).PK },
   })
   return {
     attendee: (items.find((i) => i.SK === 'PROFILE') as Attendee | undefined) ?? null,
-    seats: items.filter((i) => i.SK.startsWith('SEAT#')) as Seat[],
     log: (items.filter((i) => i.SK.startsWith('VERIFY#')) as VerificationLog[]).sort((a, b) => a.at.localeCompare(b.at)),
   }
 }
 
-/** Everything running opposite everything else in one time slot. */
-export function getSessionsInSlot(slotId: string): Promise<Session[]> {
-  return queryAll<Session>({
-    TableName: tableName(),
-    IndexName: 'GSI1',
-    KeyConditionExpression: 'GSI1PK = :pk',
-    ExpressionAttributeValues: { ':pk': gsi1.sessionBySlot(slotId, '').GSI1PK },
-  })
-}
-
 /**
- * All 12 sessions in content order, from the table. A session content
- * describes but the table lacks (never seeded) comes back as undefined in
- * its place, so a caller can tell "not seeded" from "full".
+ * The seven session counters in content order. A session no admin has sized
+ * yet has no item, and comes back as undefined in its place, so a caller can
+ * tell "not sized" from "full".
  */
-export async function getAllSessions(): Promise<(Session | undefined)[]> {
-  const specs = sessionSpecs()
+export async function getSessions(): Promise<(Session | undefined)[]> {
   const table = tableName()
   const found = new Map<string, Session>()
-  let requestKeys = specs.map((s) => keys.session(s.sessionId))
+  let requestKeys = programSessions.map((s) => keys.session(s.id))
   for (let attempt = 0; requestKeys.length > 0 && attempt < 6; attempt++) {
     const res = await ddb.send(new BatchGetCommand({ RequestItems: { [table]: { Keys: requestKeys } } }))
     for (const item of (res.Responses?.[table] ?? []) as Session[]) found.set(item.sessionId, item)
     requestKeys = (res.UnprocessedKeys?.[table]?.Keys ?? []) as typeof requestKeys
   }
-  return specs.map((s) => found.get(s.sessionId))
-}
-
-/** The three track counters, in content order. Undefined where never seeded. */
-export async function getTrackCounters(): Promise<(TrackCounter | undefined)[]> {
-  const table = tableName()
-  const res = await ddb.send(
-    new BatchGetCommand({ RequestItems: { [table]: { Keys: tracks.map((t) => keys.trackCounter(t.id)) } } }),
-  )
-  const found = new Map(((res.Responses?.[table] ?? []) as TrackCounter[]).map((c) => [c.track, c]))
-  return tracks.map((t) => found.get(t.id as Track))
+  return programSessions.map((s) => found.get(s.id))
 }
 
 export async function getConfig(): Promise<EventConfig | null> {
@@ -181,9 +142,9 @@ export async function listAttendees(): Promise<Attendee[]> {
     FilterExpression: 'SK = :sk AND begins_with(PK, :pk)',
     ExpressionAttributeValues: { ':sk': 'PROFILE', ':pk': 'ATT#' },
   })
-  // Records from before the six-state lifecycle carry neither a pass id nor
-  // a state. They are not attendees under this model and are left alone.
-  return rows.filter((a) => typeof a.passId === 'string' && typeof a.state === 'string')
+  // Records made under an earlier model (no technical session: the track and
+  // slot era) are not attendees under this one and are left alone.
+  return rows.filter((a) => typeof a.passId === 'string' && typeof a.state === 'string' && typeof a.technicalSession === 'string')
 }
 
 /** Written by the scheduled run. Null until it has ever run. */

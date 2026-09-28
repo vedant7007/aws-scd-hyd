@@ -1,5 +1,5 @@
 import { tierLabel } from '@/content/passes'
-import { trackName } from '@/content/sessions'
+import { programSession } from '@/content/program'
 import { currentCrew } from '@/lib/auth/admin'
 import { loadDashboard, toCsv } from '@/lib/db/stats'
 
@@ -22,10 +22,20 @@ export async function GET(): Promise<Response> {
     [],
     ['Total paid attendees', d.paid],
     [],
-    ['Pass ID', 'Name', 'Email', 'College', 'Tier', 'Track', 'Food', 'State'],
+    ['Pass ID', 'Name', 'Email', 'College', 'Tier', 'Technical session', 'Workshop', 'Food'],
+    // Verified only, and never a preview record: nobody caters for a test.
     ...d.attendees
-      .filter((a) => a.state === 'VERIFIED' || a.state === 'SESSIONS_SELECTED')
-      .map((a) => [a.passId, a.name, a.email, a.college, tierLabel(a.tier), trackName(a.homeTrack), a.foodPreference, a.state]),
+      .filter((a) => a.state === 'VERIFIED' && a.source !== 'preview')
+      .map((a) => [
+        a.passId,
+        a.name,
+        a.email,
+        a.college,
+        tierLabel(a.tier),
+        programSession(a.technicalSession)?.title ?? a.technicalSession,
+        a.workshop ? (programSession(a.workshop)?.title ?? a.workshop) : '',
+        a.foodPreference,
+      ]),
   ])
 
   const stamp = new Date().toISOString().slice(0, 10)

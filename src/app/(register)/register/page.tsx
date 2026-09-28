@@ -1,11 +1,14 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { connection } from 'next/server'
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
+import { Flow } from '@/components/register/Flow'
 import { LockedHero } from '@/components/register/LockedHero'
 import { NotifyForm, type PassChip } from '@/components/register/NotifyForm'
-import { event } from '@/content/event'
+import { REGISTRATION_OPEN, event } from '@/content/event'
 import { formatInr, passes } from '@/content/passes'
 import type { Tier } from '@/lib/db/types'
+import { registrationIsOpen } from '@/lib/tickets/launch'
 
 export const metadata: Metadata = {
   title: `Registrations open soon, ${event.shortName}`,
@@ -43,7 +46,15 @@ function TickerRun() {
   )
 }
 
-export default function RegisterPage() {
+export default async function RegisterPage() {
+  // While the code flag is off a production build keeps this page static.
+  // Otherwise it asks the table on every request, never at build time: the
+  // admin switch has to take effect on the next load.
+  if (REGISTRATION_OPEN || process.env.NODE_ENV !== 'production') {
+    await connection()
+    if (await registrationIsOpen()) return <Flow preview={false} />
+  }
+
   const chips: PassChip[] = passes.map((p) => ({
     id: p.id,
     name: p.name,

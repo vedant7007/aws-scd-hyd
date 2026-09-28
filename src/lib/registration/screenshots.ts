@@ -14,15 +14,18 @@ import { outputs, required } from '../outputs'
 
 // This module is server only. Nothing here may ever be reachable from the browser.
 
-const ALLOWED: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/heic': 'heic' }
-export const MAX_SCREENSHOT_BYTES = 8 * 1024 * 1024
+/** What the v3 flow accepts: JPG, PNG or WebP, 5 MB at most. The flow checks first; this is the rule. */
+const ALLOWED: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' }
+export const MAX_SCREENSHOT_BYTES = 5 * 1024 * 1024
 /** Long enough to upload a phone screenshot on bad wifi, short enough to be useless later. */
 const UPLOAD_URL_SECONDS = 10 * 60
 /** An admin opens it from the queue; a minute is plenty and the link dies in the history. */
 const VIEW_URL_SECONDS = 60
 
 let client: S3Client | null = null
-const s3 = () => (client ??= new S3Client({ region: REGION }))
+// WHEN_REQUIRED: by default the SDK signs a CRC32 of the (empty) body into a
+// presigned PUT, and S3 then rejects the real upload as a checksum mismatch.
+const s3 = () => (client ??= new S3Client({ region: REGION, requestChecksumCalculation: 'WHEN_REQUIRED' }))
 
 export function screenshotBucket(): string {
   return required((o) => o.custom?.scdScreenshotBucket, 'SCD_SCREENSHOT_BUCKET')
@@ -39,8 +42,8 @@ export type UploadGrant = { key: string; url: string; headers: Record<string, st
  */
 export async function presignUpload(passId: string, contentType: string, bytes: number): Promise<UploadGrant | { error: string }> {
   const ext = ALLOWED[contentType]
-  if (!ext) return { error: 'Upload a JPEG, PNG, WebP or HEIC screenshot.' }
-  if (!Number.isInteger(bytes) || bytes <= 0 || bytes > MAX_SCREENSHOT_BYTES) return { error: 'The screenshot must be under 8 MB.' }
+  if (!ext) return { error: 'That file type did not work. Use a JPG or PNG under 5 MB.' }
+  if (!Number.isInteger(bytes) || bytes <= 0 || bytes > MAX_SCREENSHOT_BYTES) return { error: 'That image is over 5 MB. Crop it or send a normal screenshot instead.' }
   const key = `screenshots/${passId}/${randomUUID()}.${ext}`
   const url = await getSignedUrl(
     s3(),

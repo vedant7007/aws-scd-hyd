@@ -5,7 +5,7 @@ import { callerIp, withinRateLimit } from '@/lib/db/rate-limit'
 /**
  * Amendment 2 section 2. The pass id entry form posts here.
  *
- * VERIFIED and SESSIONS_SELECTED redirect to the pass. Everything else,
+ * VERIFIED redirects to the ticket. Everything else,
  * an unknown id, a mistyped one, AWAITING_PAYMENT, PENDING_VERIFICATION,
  * REJECTED, ABANDONED, gets the one same redirect, built by the one same
  * line, so the response is byte for byte identical and the page cannot be
@@ -32,7 +32,7 @@ export async function POST(req: Request): Promise<Response> {
   const passId = normalisePassId(typed)
 
   const attendee = passId ? await getAttendeeByPass(passId) : null
-  if (attendee && (attendee.state === 'VERIFIED' || attendee.state === 'SESSIONS_SELECTED')) {
+  if (attendee && attendee.state === 'VERIFIED') {
     return new Response(null, { status: 303, headers: { location: `/pass/${attendee.passId}`, 'cache-control': 'no-store' } })
   }
 

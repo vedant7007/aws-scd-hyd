@@ -1,5 +1,3 @@
-import type { Room, SessionType, Slot, Track } from '../lib/db/types'
-
 export const event = {
   name: 'AWS Student Community Day Hyderabad',
   shortName: 'AWS SCD Hyderabad',
@@ -50,90 +48,31 @@ export const travel: { label: string; detail: string | null }[] = [
 ]
 
 /**
- * The four rooms VJIT has given us, with their real physical seat counts.
- * Three host a track each. The fourth is a buffer: overflow, a broken
- * projector, a speaker who needs a quiet room. It is never a session venue,
- * so it never appears in the schedule or the picker, and nothing counts its
- * seats.
- *
- * TODO(vedant): which of the four is the buffer is assumed to be the last one
- * listed. Move the role if that is wrong.
+ * The rooms VJIT has given us, with their real physical seat counts. Not
+ * read by registration: each technical session and workshop is sized on its
+ * own from the settings page. Kept here because those four numbers are what
+ * an admin sizes the sessions against, and the settings page shows them.
  */
-export const rooms: Room[] = [
-  { id: 'e-aud', name: 'E Block auditorium', physicalCapacity: 240, role: 'track' },
-  { id: 'c-g', name: 'C Block ground floor', physicalCapacity: 400, role: 'track' },
-  { id: 'c-1', name: 'C Block first floor', physicalCapacity: 100, role: 'track' },
-  { id: 'c-2', name: 'C Block second floor', physicalCapacity: 100, role: 'buffer' },
+export const rooms: { id: string; name: string; physicalCapacity: number }[] = [
+  { id: 'e-aud', name: 'E Block auditorium', physicalCapacity: 240 },
+  { id: 'c-g', name: 'C Block ground floor', physicalCapacity: 400 },
+  { id: 'c-1', name: 'C Block first floor', physicalCapacity: 100 },
+  { id: 'c-2', name: 'C Block second floor', physicalCapacity: 100 },
 ]
 
 /**
- * Seats held back from sale in EVERY room, for speakers, sponsors,
- * organisers, VIP flex and no-shows. Fifteen, by the organiser's decision.
- * A session's sellable capacity is its room's physical count minus this
- * unless sessionDetails says otherwise.
+ * Seats to hold back from sale in every room, for speakers, sponsors,
+ * organisers and no-shows. Fifteen, by the organiser's decision. The settings
+ * page suggests each room's count minus this.
  */
 export const ROOM_RESERVE = 15
 
 /**
- * PROVISIONAL. Which track runs in which room. The organiser has not
- * decided, and registration opens anyway, so these stand until they do:
- *
- *   AI and Agents  ->  C-block ground floor, 400 seats, sells 385
- *   Cloud          ->  E-block auditorium,   240 seats, sells 225
- *   Career         ->  C-block first floor,  100 seats, sells  85
- *
- * The room may change; the ceiling may only be raised. Once people have
- * registered against a track, moving it to a smaller room would oversell
- * it, which is not recoverable on the day, so the admin action that changes
- * a room refuses any ceiling below the track's registered count.
- */
-export const roomForTrack: Partial<Record<Track, string>> = {
-  ai: 'c-g',
-  cloud: 'e-aud',
-  career: 'c-1',
-}
-
-/**
- * Four slots. 3 tracks x 4 slots = 12 sessions. TODO(vedant): times are
- * undecided, so startsAt and endsAt are null and every surface prints the
- * label alone until they are set.
- */
-export const slots: Slot[] = [
-  { id: 's1', label: 'Slot 1', startsAt: null, endsAt: null },
-  { id: 's2', label: 'Slot 2', startsAt: null, endsAt: null },
-  { id: 's3', label: 'Slot 3', startsAt: null, endsAt: null },
-  { id: 's4', label: 'Slot 4', startsAt: null, endsAt: null },
-]
-
-/**
- * Per session detail, keyed by session id, which is "<slot>-<track>". Every
- * field is TODO(vedant) and absent until decided. Titles and speakers arrive
- * with the line-up. The type is never assumed: nothing is a workshop until
- * it is written here. sellableCapacity is how many of the room's physical
- * seats registration may claim; unset, it is the room's count minus
- * ROOM_RESERVE, and it is capped at the physical count either way. A session
- * whose track has no room has no capacity and refuses every claim.
- */
-export type SessionDetail = {
-  title?: string
-  speaker?: string
-  type?: SessionType
-  sellableCapacity?: number
-}
-export const sessionDetails: Partial<Record<string, SessionDetail>> = {}
-
-/**
- * Amendment 1 section 4. Whether students may choose their sessions yet.
- * Flipped by the admin release action (which also sends email 3) and stored
- * on the config item; this is only the default before that has ever run.
- */
-export const sessionsReleased: boolean = false
-
-/**
  * THE MASTER SWITCH. While this is false nothing sells, whatever the config
- * item says and whatever an admin clicks: the public pages show the notify
- * page instead of a form, and step one of the parked flow refuses. Flip it
- * to true only when the new registration flow is decided and built.
+ * item says and whatever an admin clicks: /register is the notify page and
+ * the hold route refuses. Admins can still walk the real flow at
+ * /register/preview. Flip it to true when the UPI id and the session sizes
+ * are set and the organisers are ready.
  */
 export const REGISTRATION_OPEN = false
 

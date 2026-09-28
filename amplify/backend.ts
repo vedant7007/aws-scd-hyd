@@ -152,19 +152,6 @@ backend.reconcile.addEnvironment('SCD_TABLE_NAME', table.tableName)
 for (const [key, value] of Object.entries(emailEnv)) backend.reconcile.addEnvironment(key, value)
 
 /**
- * Razorpay API keys, passed through from the deploying environment: the
- * Amplify app's variables in production, the shell for a sandbox. Absent means
- * the reconcile run fails loudly on its first API call and says which key is
- * missing, which the dashboard then shows. The webhook secret is not needed
- * here; only the Hosting server receives webhooks.
- */
-for (const key of ['RAZORPAY_KEY_ID', 'RAZORPAY_KEY_SECRET'] as const) {
-  backend.reconcile.addEnvironment(key, process.env[key] ?? '')
-}
-// Which way money moves. Manual unless the deploying environment says otherwise.
-backend.reconcile.addEnvironment('PAYMENT_MODE', process.env.PAYMENT_MODE ?? 'manual')
-
-/**
  * The role the Next.js server runs as in Amplify Hosting. SPEC.md section 13.
  *
  * Hosting does not attach one on its own. Without it every page that reads

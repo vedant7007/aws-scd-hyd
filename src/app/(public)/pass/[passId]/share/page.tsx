@@ -23,7 +23,7 @@ export const dynamic = 'force-dynamic'
 export default async function SharePage({ params }: PageProps<'/pass/[passId]/share'>) {
   const { passId: token } = await params
   const attendee = await getAttendee(normalisePassId(token) ?? '')
-  if (!attendee || (attendee.state !== 'VERIFIED' && attendee.state !== 'SESSIONS_SELECTED')) notFound()
+  if (!attendee || attendee.state !== 'VERIFIED') notFound()
 
   const story = `/api/pass/${token}/share?format=story`
   const card = `/api/pass/${token}/share?format=card`

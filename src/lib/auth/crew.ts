@@ -1,7 +1,7 @@
 import { GetCommand, QueryCommand } from '@aws-sdk/lib-dynamodb'
 import { ddb, tableName } from '../db/client'
 import { gsi1, keys, normaliseEmail } from '../db/keys'
-import { failedIndexes, transactWithRetry, type TransactItem } from '../db/seats'
+import { failedIndexes, transactWithRetry, type TransactItem } from '../db/tx'
 import type { CrewAudit, CrewRole, CrewUser, UsersMeta } from '../db/types'
 import { auditItem } from '../registration/state'
 

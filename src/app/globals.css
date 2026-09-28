@@ -828,3 +828,19 @@ body:has(.rg-grid) .page-bg {
   [data-sv] > span[style*="bm-popin"] { font-size:15px !important; padding:5px 9px !important; }
 }
 @media (max-width:620px) and (max-height:680px) { [data-sv] { height:96px; } [data-sc] p { font-size:13px !important; } }
+
+/* ===========================================================================
+   REGISTRATION FLOW, handoff v3 (components/register/Flow.tsx). Its own
+   foil runs past the card edge (to -100%, not the landing's 0%), and its
+   hover rules are prefixed rf- so they cannot collide with the landing's
+   generated dh- numbering.
+   =========================================================================== */
+@keyframes rf-sheen { 0%{transform:translate3d(-60%,0,0)} 55%,100%{transform:translate3d(60%,0,0)} }
+@keyframes rf-foil { 0%{background-position:100% 0} 100%{background-position:-100% 0} }
+@keyframes rf-holo { 0%{background-position:0% 50%} 100%{background-position:100% 50%} }
+@keyframes rg-coin-spin { 0%{transform:rotateY(0deg)} 100%{transform:rotateY(360deg)} }
+@keyframes rg-coin-pulse { 0%{box-shadow:0 0 0 0 rgba(255,184,77,.75)} 100%{box-shadow:0 0 0 16px rgba(255,184,77,0)} }
+@keyframes rg-coin-shine { 0%,40%{transform:translate3d(0,0,0) rotate(12deg)} 100%{transform:translate3d(320%,0,0) rotate(12deg)} }
+.rf-h1:hover{transform:translate3d(-4px,-4px,0) !important}
+.rf-h2:hover{transform:translate3d(-2px,-2px,0) !important}
+.rf-h3:hover{border-color:#FF9900 !important}

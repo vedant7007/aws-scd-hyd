@@ -1,48 +1,34 @@
-import { slots as fallbackSlots } from '../../content/event'
-import { roomById, sessionSpecs, trackName } from '../../content/sessions'
-import { tracks } from '../../content/tracks'
-import { getAllSessions, getConfig, getReconcileSummary, getTrackCounters, listAttendees, listEmailEvents } from './queries'
-import { REGISTRATION_STATES, type Attendee, type EmailEvent, type FoodPreference, type ReconcileSummary, type RegistrationState, type Slot, type Tier, type Track } from './types'
+import { programSessions, type ProgramSession } from '../../content/program'
+import { getReconcileSummary, getSessions, listAttendees, listEmailEvents } from './queries'
+import { REGISTRATION_STATES, type Attendee, type EmailEvent, type FoodPreference, type ReconcileSummary, type RegistrationState, type Tier } from './types'
 
 /**
- * One session, both capacity numbers side by side. sold is seats held, by
- * paid and pending records alike, since a pending record holds real seats.
- * reserve is what is kept back from sale; free is what is physically unsold.
- * Nulls are TODO(vedant): no room assigned, or no sellable count decided.
+ * One technical session or workshop against its ceiling. sold is seats held,
+ * by paid, pending and unpaid-but-holding records alike, since each holds a
+ * real seat until it is verified or its hold lapses. sellable is null until
+ * an admin sizes the session, and nothing sells until then.
  */
-export type SessionSeats = {
-  sessionId: string
-  slotId: string
-  slotLabel: string
-  track: Track
-  trackName: string
-  roomName: string | null
-  title: string | null
-  seeded: boolean
+export type SessionSeats = ProgramSession & {
+  /** An admin has set a size, so the counter exists. */
+  sized: boolean
   sold: number
   sellable: number | null
-  physical: number | null
-  /** physical minus sellable: seats held back from sale. */
-  reserve: number | null
-  /** physical minus sold: seats physically still free, reserve included. */
+  /** sellable minus sold. */
   free: number | null
+  /** Of sold, how many are verified: people actually coming. */
+  verified: number
 }
 
-/** Amendment 1 section 6. A track counter against its ceiling. */
-export type TrackLoad = { track: Track; trackName: string; registered: number; ceiling: number | null; seeded: boolean }
-
 export type Dashboard = {
+  /** Every record, preview ones included, for the admin table. */
   attendees: Attendee[]
+  /** Records made through the flow, not the admin preview. What every count below reads. */
   total: number
-  /** VERIFIED plus SESSIONS_SELECTED: the people actually coming. */
+  /** VERIFIED: the people actually coming. */
   paid: number
   byState: { state: RegistrationState; count: number }[]
-  /** PENDING_VERIFICATION, oldest UTR first. The default admin view. */
+  /** PENDING_VERIFICATION, oldest UTR first. The default admin view. Preview records included, marked. */
   queue: Attendee[]
-  /** VERIFIED with no sessions chosen, for chasing before the event. */
-  unselected: Attendee[]
-  trackLoad: TrackLoad[]
-  sessionsReleased: boolean
   byTier: { tier: Tier; count: number }[]
   byFood: { food: FoodPreference; count: number }[]
   checkedIn: number
@@ -71,75 +57,48 @@ const FOODS: FoodPreference[] = ['veg', 'nonveg']
  * rather than with extra queries.
  */
 export async function loadDashboard(): Promise<Dashboard> {
-  const [attendees, config, reconcile, bounces, complaints, counters] = await Promise.all([
+  const [attendees, reconcile, bounces, complaints, stored] = await Promise.all([
     listAttendees(),
-    getConfig(),
     getReconcileSummary(),
     listEmailEvents('bounce'),
     listEmailEvents('complaint'),
-    getTrackCounters(),
+    getSessions(),
   ])
 
-  const slots: Slot[] = config?.slots ?? fallbackSlots
-  const slotLabel = new Map(slots.map((s) => [s.id, s.label]))
+  // An admin walking the flow through the preview makes real records. They
+  // are theirs to verify or reject, but they are nobody's lunch.
+  const real = attendees.filter((a) => a.source !== 'preview')
+  const paid = real.filter((a) => a.state === 'VERIFIED')
 
-  // Content says what the 12 sessions are; the table says how many seats each
-  // has given out. A session content describes but the table lacks is shown
-  // as not seeded rather than as empty.
-  const specs = sessionSpecs()
-  const stored = await getAllSessions()
-
-  const paidOnly = attendees.filter((a) => a.state === 'VERIFIED' || a.state === 'SESSIONS_SELECTED')
-
-  const sessions: SessionSeats[] = specs.map((spec, i) => {
+  const sessions: SessionSeats[] = programSessions.map((spec, i) => {
     const item = stored[i]
     const sold = item?.seatsTaken ?? 0
-    const sellable = item ? item.sellableCapacity : spec.sellableCapacity
-    const physical = item ? item.physicalCapacity : spec.physicalCapacity
+    const sellable = item?.sellableCapacity ?? null
     return {
-      sessionId: spec.sessionId,
-      slotId: spec.slotId,
-      slotLabel: slotLabel.get(spec.slotId) ?? spec.slotId,
-      track: spec.track,
-      trackName: trackName(spec.track),
-      roomName: roomById(item?.roomId ?? spec.roomId)?.name ?? null,
-      title: item?.title ?? spec.title,
-      seeded: Boolean(item),
+      ...spec,
+      sized: Boolean(item),
       sold,
       sellable,
-      physical,
-      reserve: physical !== null && sellable !== null ? physical - sellable : null,
-      free: physical !== null ? physical - sold : null,
+      free: sellable !== null ? sellable - sold : null,
+      verified: paid.filter((a) => a.technicalSession === spec.id || a.workshop === spec.id).length,
     }
   })
 
   return {
     attendees,
-    total: attendees.length,
-    paid: paidOnly.length,
-    byState: REGISTRATION_STATES.map((state) => ({ state, count: attendees.filter((a) => a.state === state).length })),
+    total: real.length,
+    paid: paid.length,
+    byState: REGISTRATION_STATES.map((state) => ({ state, count: real.filter((a) => a.state === state).length })),
     queue: attendees
       .filter((a) => a.state === 'PENDING_VERIFICATION')
       .sort((a, b) => (a.utrSubmittedAt ?? a.createdAt).localeCompare(b.utrSubmittedAt ?? b.createdAt)),
-    unselected: attendees.filter((a) => a.state === 'VERIFIED').sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
-    trackLoad: counters.map((c, i) => ({
-      track: c?.track ?? (tracks[i]!.id as Track),
-      trackName: trackName(c?.track ?? (tracks[i]!.id as Track)),
-      registered: c?.registered ?? 0,
-      ceiling: c?.ceiling ?? null,
-      seeded: Boolean(c),
-    })),
-    sessionsReleased: config?.sessionsReleased ?? false,
-    byTier: TIERS.map((tier) => ({ tier, count: paidOnly.filter((a) => a.tier === tier).length })),
+    byTier: TIERS.map((tier) => ({ tier, count: paid.filter((a) => a.tier === tier).length })),
     // Caterer numbers count people who are actually coming, not refunds.
-    byFood: FOODS.map((food) => ({
-      food,
-      count: paidOnly.filter((a) => a.foodPreference === food).length,
-    })),
-    checkedIn: attendees.filter((a) => a.checkedInAt).length,
-    swagIssued: attendees.filter((a) => a.swagIssuedAt).length,
+    byFood: FOODS.map((food) => ({ food, count: paid.filter((a) => a.foodPreference === food).length })),
+    checkedIn: real.filter((a) => a.checkedInAt).length,
+    swagIssued: real.filter((a) => a.swagIssuedAt).length,
     sessions,
-    awaitingVerification: attendees.filter((a) => a.state === 'PENDING_VERIFICATION').length,
+    awaitingVerification: real.filter((a) => a.state === 'PENDING_VERIFICATION').length,
     reconcile,
     email: {
       bounces: bounces.length,
@@ -148,7 +107,7 @@ export async function loadDashboard(): Promise<Dashboard> {
       // A note means it was not attempted for a stated reason, not a failure.
       unsuppressed: [...bounces, ...complaints].filter((e) => !e.suppressed && !e.note).length,
       recent: [...bounces, ...complaints].sort((a, b) => b.occurredAt.localeCompare(a.occurredAt)).slice(0, 10),
-      confirmationsOwed: paidOnly.filter((a) => !a.confirmationSentAt && !/@example\.test$/i.test(a.email)).length,
+      confirmationsOwed: paid.filter((a) => !a.confirmationSentAt && !/@example\.test$/i.test(a.email)).length,
     },
   }
 }

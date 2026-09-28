@@ -1,8 +1,7 @@
 'use client'
 
 import { useActionState, useState } from 'react'
-import { registrationSwitchAction, trackRoomAction, type ActionState } from '@/app/admin/(secure)/actions'
-import type { Track } from '@/lib/db/types'
+import { registrationSwitchAction, sessionCapacityAction, type ActionState } from '@/app/admin/(secure)/actions'
 import { CONFIRM_CLOSE } from '@/lib/registration/reasons'
 
 /**
@@ -37,26 +36,18 @@ export function RegistrationSwitch({ open }: { open: boolean }) {
   )
 }
 
-export function TrackRoomForm({ track, current, rooms }: { track: Track; current: string; rooms: { id: string; label: string }[] }) {
-  const [state, action, pending] = useActionState(trackRoomAction, null as ActionState)
+/** One session's seat count. Lowering it under the seats already held is refused by the server, with the count. */
+export function SessionCapacityForm({ sessionId, current }: { sessionId: string; current: number | null }) {
+  const [state, action, pending] = useActionState(sessionCapacityAction, null as ActionState)
   return (
     <form action={action} className="flex flex-wrap items-end gap-3">
-      <input type="hidden" name="track" value={track} />
-      <div className="fld min-w-0 flex-[1_1_260px]">
-        <label htmlFor={`room-${track}`}>Room</label>
-        <select id={`room-${track}`} name="roomId" className="inp" defaultValue={current}>
-          <option value="" disabled>
-            Pick a room
-          </option>
-          {rooms.map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.label}
-            </option>
-          ))}
-        </select>
+      <input type="hidden" name="sessionId" value={sessionId} />
+      <div className="fld w-[140px]">
+        <label htmlFor={`cap-${sessionId}`}>Seats</label>
+        <input id={`cap-${sessionId}`} name="capacity" type="number" inputMode="numeric" min={0} max={2000} step={1} className="inp inp-num" defaultValue={current ?? ''} placeholder="-" />
       </div>
       <button type="submit" className="btn btn-sm" disabled={pending}>
-        {pending ? 'SAVING' : 'MOVE TRACK'}
+        {pending ? 'SAVING' : 'SET'}
       </button>
       {state ? (
         <p role="status" className={state.ok ? 'copy w-full' : 'err-text w-full'}>

@@ -1,13 +1,9 @@
 import { doorsLabel, event, venue } from '@/content/event'
-import type { FoodPreference, Tier, Track } from '@/lib/db/types'
+import type { FoodPreference, Tier } from '@/lib/db/types'
 import { QrPass } from './QrPass'
 
-export type PassSession = {
-  slotLabel: string
-  time: string | null
-  track: Track
-  title: string
-}
+/** One chosen session: "Technical" or "Workshop", and its title. */
+export type PassSession = { label: string; title: string }
 
 type Props = {
   passId: string
@@ -15,14 +11,9 @@ type Props = {
   college: string
   tier: Tier
   tierName: string
-  trackName: string
   food: FoodPreference
-  /** The four chosen sessions, once chosen. */
-  sessions?: PassSession[]
-  /** Only the final state carries the code. Amendment 1 section 4. */
-  showQr: boolean
-  /** What the sessions line says while there is nothing to list. */
-  sessionsNote?: string
+  /** Chosen at registration: the technical session, and the workshop on Premium and above. */
+  sessions: PassSession[]
 }
 
 export const FOOD_LABEL: Record<FoodPreference, string> = { veg: 'Veg', nonveg: 'Non-veg' }
@@ -33,12 +24,12 @@ const DAY = new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', t
   .toUpperCase()
 
 /**
- * The pass as the handoff draws it: a rounded ticket with striped ends and
- * side notches, the pass id on top, the QR at the foot. The same object in
- * every state so nothing about it is a surprise on the day; the states only
- * add to it. Marked data-pass-card so printing keeps just this.
+ * The ticket as the handoff draws it: a rounded ticket with striped ends and
+ * side notches, the pass id on top, the QR at the foot. Only a verified pass
+ * is ever drawn, so the QR is always there. Marked data-pass-card so
+ * printing keeps just this.
  */
-export function PassCard({ passId, name, college, tier, tierName, trackName, food, sessions, showQr, sessionsNote }: Props) {
+export function PassCard({ passId, name, college, tier, tierName, food, sessions }: Props) {
   return (
     <article data-pass-card="1" className="pass-card" aria-label={`Pass ${passId}`}>
       <span className="pass-decor" aria-hidden="true">
@@ -80,44 +71,28 @@ export function PassCard({ passId, name, college, tier, tierName, trackName, foo
       </div>
 
       <div className="pass-block">
-        <span className="lbl-sm">Track</span>
-        <span className="pass-val-sm">{trackName}</span>
+        <span className="lbl-sm">Your sessions</span>
+        <div className="flex flex-col gap-2">
+          {sessions.map((s) => (
+            <div key={s.label} className="pass-session">
+              <span className="num flex-none text-[13px] text-ink">{s.label}</span>
+              <span className="text-right text-[13px] leading-snug text-ink">{s.title}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="pass-block">
-        <span className="lbl-sm">Your sessions</span>
-        {sessions ? (
-          <div className="flex flex-col gap-2">
-            {sessions.map((s) => (
-              <div key={s.slotLabel} className="pass-session">
-                <span className="num flex-none text-[13px] text-ink">
-                  {s.time ?? s.slotLabel}
-                </span>
-                <span className="flex min-w-0 items-center gap-2">
-                  <span className="dot dot-sm dot-round" data-track={s.track} aria-hidden="true" />
-                  <span className="text-right text-[13px] leading-snug text-ink">{s.title}</span>
-                </span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <span className="pass-val-sm">{sessionsNote}</span>
-        )}
-      </div>
-
-      <div className={`pass-block${showQr ? '' : ' pass-block-last'}`}>
         <span className="lbl-sm">Place</span>
         <span className="pass-val-sm">{venue.name}</span>
       </div>
 
-      {showQr ? (
-        <div className="pass-scan">
-          <span className="shout" aria-hidden="true">
-            SCAN ME!
-          </span>
-          <QrPass passId={passId} />
-        </div>
-      ) : null}
+      <div className="pass-scan">
+        <span className="shout" aria-hidden="true">
+          SCAN ME!
+        </span>
+        <QrPass passId={passId} />
+      </div>
 
       <div className="pass-stripe pass-stripe-bottom" />
     </article>

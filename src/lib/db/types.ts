@@ -1,14 +1,10 @@
 export type Tier = 'basic' | 'premium' | 'ultra' | 'vip'
 /** Veg and non-veg only, by the organiser's decision. */
 export type FoodPreference = 'veg' | 'nonveg'
-export type AttendeeSource = 'checkout' | 'reconcile' | 'manual'
-export type Track = 'ai' | 'cloud' | 'career'
-/** TODO(vedant): unset on every session until decided. Nothing is a workshop by default. */
-export type SessionType = 'keynote' | 'talk' | 'qa' | 'workshop' | 'panel'
-export type PaymentMode = 'manual' | 'razorpay'
-/** Year of study, as the form offers it. Five values, stored as typed. */
-export type YearOfStudy = '1' | '2' | '3' | '4' | 'other'
-export const YEARS_OF_STUDY: YearOfStudy[] = ['1', '2', '3', '4', 'other']
+/** 'preview' marks a record an admin made through the preview of the flow: real, but never counted as an attendee. */
+export type AttendeeSource = 'checkout' | 'manual' | 'preview'
+/** Year of study, as the v3 flow offers it. Stored as typed. */
+export type YearOfStudy = '1' | '2' | '3' | '4' | '5+'
 /** Two roles. An admin does everything; a volunteer runs the gate scanner and nothing else. */
 export type CrewRole = 'admin' | 'volunteer'
 
@@ -19,29 +15,17 @@ export type CrewRole = 'admin' | 'volunteer'
  * sending two emails. The legal transitions are in lib/registration/state.ts
  * and nowhere else.
  *
- *   AWAITING_PAYMENT      form submitted, home track chosen, no UTR yet
+ *   AWAITING_PAYMENT      reached the payment step; seats held for 90 minutes, no UTR yet
  *   PENDING_VERIFICATION  UTR and screenshot submitted, nobody has checked
- *   VERIFIED              an admin matched the UTR against the bank statement
- *   SESSIONS_SELECTED     student has picked one session per slot
+ *   VERIFIED              an admin matched the UTR against the bank statement: the ticket
  *   REJECTED              admin could not find the payment
- *   ABANDONED             AWAITING_PAYMENT that expired without a UTR
+ *   ABANDONED             AWAITING_PAYMENT whose hold lapsed without a UTR; seats given back
+ *
+ * Sessions are chosen before payment in the v3 flow, so VERIFIED is final.
  */
-export type RegistrationState =
-  | 'AWAITING_PAYMENT'
-  | 'PENDING_VERIFICATION'
-  | 'VERIFIED'
-  | 'SESSIONS_SELECTED'
-  | 'REJECTED'
-  | 'ABANDONED'
+export type RegistrationState = 'AWAITING_PAYMENT' | 'PENDING_VERIFICATION' | 'VERIFIED' | 'REJECTED' | 'ABANDONED'
 
-export const REGISTRATION_STATES: RegistrationState[] = [
-  'AWAITING_PAYMENT',
-  'PENDING_VERIFICATION',
-  'VERIFIED',
-  'SESSIONS_SELECTED',
-  'REJECTED',
-  'ABANDONED',
-]
+export const REGISTRATION_STATES: RegistrationState[] = ['AWAITING_PAYMENT', 'PENDING_VERIFICATION', 'VERIFIED', 'REJECTED', 'ABANDONED']
 
 /** Every item carries the table keys. GSI1 keys are only on the items that need them. */
 type Keyed = {
@@ -53,43 +37,46 @@ type Keyed = {
 
 export type Attendee = Keyed & {
   /**
-   * The one identifier. SCD- and ten characters, generated at submission,
-   * never regenerated. It is the pass page URL, the QR payload, the UPI note
-   * reference, the CSV key and what the gate reads aloud.
+   * The one identifier. SCD- and ten characters, generated at the payment
+   * step, never regenerated. It is the pass page URL, the QR payload, the UPI
+   * note reference, the CSV key and what the gate reads aloud.
    */
   passId: string
+  firstName: string
+  middleName?: string
+  lastName: string
+  /** First, middle and last joined, as printed on the ticket. Kept so every reader has one field to show. */
   name: string
   /** Always lowercased on write. */
   email: string
+  /** +91 and ten digits. */
   phone: string
   college: string
-  tier: Tier
-  /** Chosen at registration. Counts against that track's counter. Selection may draw from more, per tracksAllowed. */
-  homeTrack: Track
-  foodPreference: FoodPreference
+  branch: string
+  /** Uppercased on write. */
+  rollNumber: string
   yearOfStudy: YearOfStudy
-  /** The 18+ confirmation ticked at registration. Never absent on a record made through the form. */
-  over18: boolean
+  foodPreference: FoodPreference
+  /** YYYY-MM-DD. 18 or older on the event day, checked by the server. */
+  dateOfBirth: string
+  tier: Tier
+  /** The technical session chosen at step two. Holds a seat in it while the record is live. */
+  technicalSession: string
+  /** Premium and above: the workshop chosen at step two. Holds a seat in it while the record is live. */
+  workshop?: string
   state: RegistrationState
-  paymentMode: PaymentMode
   /**
    * What the record is to be paid, in paise, decided by the server from
-   * content and LOCKED here at step one. Never from the client, never
-   * recomputed: the admin verifies against this number and no other.
+   * content and LOCKED here when the hold is made. Never from the client:
+   * the admin verifies against this number and no other.
    */
   amountPaise: number
-  /** True when the early bird discount was claimed at step one and amountPaise carries it. */
-  earlyBird?: boolean
-  /** The full price, kept beside a discounted amountPaise so a reinstate can fall back to it. */
-  listPricePaise?: number
-  /** The 50th early bird place went a moment before this record was made; it was charged full price and told so. */
-  earlyBirdMissed?: boolean
-  /** Razorpay only. */
-  orderId?: string
-  /** The provider payment that settled it, or UTR:<utr> for a manual payment. Written by the verify transition. */
+  /** SHA-256 of the browser's submission key. Only the browser that made the hold may change it. */
+  submissionKeyHash: string
+  /** UTR:<utr>, written by the verify transition. */
   paymentId?: string
   paidAt?: string
-  /** Manual payments. The 12 digit UTR the student typed. Unique across the table through a UTR# item. */
+  /** The UTR the student typed: 12 to 40 letters and digits. Unique across the table through a UTR# item. */
   utr?: string
   utrSubmittedAt?: string
   /** S3 key of the UPI screenshot in the private bucket. Only ever read through a presigned URL minted for an admin. */
@@ -101,15 +88,10 @@ export type Attendee = Keyed & {
   verifiedAt?: string
   /** While AWAITING_PAYMENT: when the sweep may move it to ABANDONED. ISO. Cleared on the UTR. */
   holdUntil?: string
-  sessionsSelectedAt?: string
   /** Email 1, sent on PENDING_VERIFICATION. */
   receiptSentAt?: string
-  /** Email 2, sent on VERIFIED. Absent means owed; reconcile retries. */
+  /** Email 2, the ticket, sent on VERIFIED. Absent means owed; reconcile retries. */
   confirmationSentAt?: string
-  /** Email 3, sent by the session release run. Its idempotency key. */
-  sessionsReleaseEmailSentAt?: string
-  /** Email 4, sent on SESSIONS_SELECTED. */
-  passReadySentAt?: string
   checkedInAt?: string
   swagIssuedAt?: string
   source: AttendeeSource
@@ -117,61 +99,18 @@ export type Attendee = Keyed & {
 }
 
 /**
- * One held seat: this attendee, this session. Four per attendee, one per
- * slot, written in the same transaction as the session's seatsTaken
- * increment and deleted in the same transaction as the decrement.
- */
-export type Seat = Keyed & {
-  passId: string
-  sessionId: string
-  slotId: string
-  track: Track
-  createdAt: string
-}
-
-/**
- * One of the 12 sessions, "<slot>-<track>". The structure comes from content
- * and is written by the seed; seatsTaken is the only field the site changes.
- *
- * physicalCapacity is the room's real seat count, null while the track has no
- * room. sellableCapacity is how many of those selection may claim, null
- * until decided. The claim condition is seatsTaken < sellableCapacity, so a
- * null sellable refuses every claim and never falls back to physical.
+ * One technical session or workshop, SESSION#<id>. Its title and level live
+ * in content/program.ts; the table holds only what changes. seatsTaken is
+ * incremented, conditionally on staying under sellableCapacity, in the same
+ * transaction that makes or moves a hold, and given back in the same
+ * transaction that abandons one. A null sellableCapacity refuses every
+ * claim: nothing sells against a room nobody has sized.
  */
 export type Session = Keyed & {
   sessionId: string
-  slotId: string
-  track: Track
-  roomId: string | null
-  title: string | null
-  speaker: string | null
-  type: SessionType | null
-  physicalCapacity: number | null
   sellableCapacity: number | null
   seatsTaken: number
 }
-
-/**
- * Amendment 1 section 2. How many registrations count against a track's
- * room, incremented conditionally at step one of registration so nobody
- * reaches the payment screen for a track that cannot seat them, decremented
- * only when a record is abandoned. The ceiling is the sellable capacity of
- * the track's room, null while that is undecided, which refuses every
- * registration for the track.
- */
-export type TrackCounter = Keyed & {
-  track: Track
-  registered: number
-  ceiling: number | null
-}
-
-/**
- * The early bird pool, one item, same pattern as the track counter. claimed
- * is incremented conditionally in the step one transaction and decremented
- * in the abandon transaction, so the discount can never be given more than
- * ceiling times.
- */
-export type EarlyBirdCounter = Keyed & { claimed: number; ceiling: number }
 
 /** One crew account. Role decides what the server will serve them. */
 export type CrewUser = Keyed & {
@@ -186,7 +125,7 @@ export type UsersMeta = Keyed & { admins: number }
 
 /** Every change to a crew account or a setting, who, to whom, when. Append only. */
 export type CrewAudit = Keyed & {
-  action: 'add' | 'role' | 'remove' | 'bootstrap' | 'registration-open' | 'registration-close' | 'track-room'
+  action: 'add' | 'role' | 'remove' | 'bootstrap' | 'registration-open' | 'registration-close' | 'session-capacity'
   by: string
   target: string
   role?: CrewRole
@@ -194,27 +133,11 @@ export type CrewAudit = Keyed & {
   at: string
 }
 
-export type Room = {
-  id: string
-  name: string
-  physicalCapacity: number
-  /** A buffer room is never a session venue and never appears in a grid or picker. */
-  role: 'track' | 'buffer'
-}
-/** Times are null until decided; every surface prints the label alone then. */
-export type Slot = { id: string; label: string; startsAt: string | null; endsAt: string | null }
-
 export type EventConfig = Keyed & {
-  rooms: Room[]
-  slots: Slot[]
-  roomForTrack: Partial<Record<Track, string>>
-  /** The switch. Flipped by an admin from the settings page; enforced in the step one route. */
+  /** The switch. Flipped by an admin from the settings page; enforced in the hold route. */
   registrationOpen: boolean
   registrationOpenChangedAt?: string
   registrationOpenChangedBy?: string
-  /** Set by the admin release action. Gates the picker and triggers email 3. */
-  sessionsReleased: boolean
-  sessionsReleasedAt?: string
 }
 
 /**
@@ -227,7 +150,7 @@ export type UtrClaim = Keyed & { utr: string; passId: string; submittedAt: strin
 /** One admin action on a registration. Append only. */
 export type VerificationLog = Keyed & {
   passId: string
-  action: 'verify' | 'reject' | 'reinstate' | 'change-selection'
+  action: 'verify' | 'reject' | 'reinstate'
   utr?: string
   by: string
   at: string
@@ -244,28 +167,12 @@ export type Subscriber = Keyed & {
   source?: string
 }
 
-/** Projection of a Session sent to the browser so the picker can show live seats. */
-export type SeatCount = {
-  sessionId: string
-  seatsTaken: number
-  sellableCapacity: number | null
-}
-
-/** Points a provider order at the record it pays for. Written with the record. Razorpay only. */
-export type OrderPointer = Keyed & { orderId: string; passId: string }
-
 /** Summary of the most recent scheduled run, SPEC.md section 8. */
 export type ReconcileSummary = Keyed & {
   ranAt: string
-  provider: string
-  /** Settled payments the provider reported for the window. Razorpay mode. */
-  checked: number
-  inserted: number
-  deactivated: number
-  /** Emails sent on this run. */
+  /** Owed ticket emails sent on this run. */
   emailed: number
-  mismatches: number
-  /** AWAITING_PAYMENT records whose hold lapsed on this run, moved to ABANDONED. */
+  /** AWAITING_PAYMENT records whose hold lapsed on this run, moved to ABANDONED with their seats given back. */
   abandoned?: number
   ok: boolean
   error?: string

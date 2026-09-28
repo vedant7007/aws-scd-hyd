@@ -63,18 +63,10 @@ export async function POST(req: Request): Promise<Response> {
     return json(404, { ok: false, passId: ref, message: 'No pass with that id.' })
   }
 
-  // Amendment 1 section 5. Only a finished pass gets through. A verified
-  // attendee who never chose sessions is told apart from an invalid pass,
+  // Only a verified pass gets through. Sessions were chosen at registration,
+  // so a verified pass is complete; anything else is told apart by its state,
   // because a volunteer at 9am cannot debug a generic error.
-  if (attendee.state === 'VERIFIED') {
-    return json(200, {
-      ok: false,
-      passId: ref,
-      attendee: summarise(attendee),
-      message: 'Verified, but has NOT picked sessions. Send them to the help desk to choose before they go in.',
-    })
-  }
-  if (attendee.state !== 'SESSIONS_SELECTED') {
+  if (attendee.state !== 'VERIFIED') {
     return json(200, {
       ok: false,
       passId: ref,

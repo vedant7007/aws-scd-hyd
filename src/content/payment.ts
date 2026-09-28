@@ -1,21 +1,32 @@
 /**
- * Manual payment by UPI. Amendment 1 section 2. The student pays the
- * college's UPI QR from their own app, quoting their pass id in the note,
- * then comes back and submits the UTR and a screenshot.
+ * Manual payment by UPI, as the v3 flow draws it. The student scans a QR
+ * the page generates for the exact amount, with their pass id in the note,
+ * pays from their own app, then comes back with the UTR and a screenshot.
+ *
+ * The QR is built from these two values, so there is no image to ship.
  */
 export const payment = {
-  /** The college's UPI QR, in public/. TODO(vedant): the image is not in the repo yet; the launch guard blocks until it is. */
-  qrAssetPath: '/assets/upi-qr.png',
-  /** TODO(vedant): the UPI id behind the QR, for a "copy" fallback when a camera cannot read the screen. Null hides the fallback. */
+  /** TODO(vedant): the college account's UPI id. Registration cannot open while this is null: the launch guard refuses. */
   upiId: null as string | null,
-  /** Who the student will see as the payee in their app. TODO(vedant): confirm against the college account. */
+  /** TODO(vedant): the payee name the student's UPI app will show. Confirm against the college account. */
   payeeName: 'Vidya Jyothi Institute of Technology',
 } as const
 
 /**
- * Amendment 1 section 2.3. How long an AWAITING_PAYMENT record keeps its
- * place against the track counter before the sweep abandons it. Ninety
- * minutes by the organiser's decision. The sweep runs hourly, so the
- * effective hold is this to this plus sixty minutes.
+ * The link a UPI app opens: payee, name, the exact amount in rupees, INR,
+ * and the pass id as the note so the bank statement row can be matched to
+ * the record by eye.
+ */
+export function upiLink(upiId: string, amountPaise: number, passId: string): string {
+  // encodeURIComponent, not URLSearchParams: some UPI apps print a '+' for a space literally.
+  const q = { pa: upiId, pn: payment.payeeName, am: (amountPaise / 100).toFixed(2), cu: 'INR', tn: passId }
+  return `upi://pay?${Object.entries(q).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&')}`
+}
+
+/**
+ * How long a record holds its seats once the student reaches the payment
+ * step, before the sweep gives them back. Ninety minutes by the organiser's
+ * decision. The sweep runs hourly, so the effective hold is this to this
+ * plus sixty minutes; the page counts down the ninety.
  */
 export const holdMinutes = 90
