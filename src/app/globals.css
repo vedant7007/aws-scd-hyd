@@ -971,41 +971,6 @@ body:has(.rg-grid) .page-bg {
 }
 @keyframes rg-drift { to { transform:translate3d(28px,28px,0); } }
 
-/* The crosshair that tracks the pointer.
-   Two hairlines across the grid, the way a terminal or a drawing program
-   marks where the cursor is. Everything on this site is drawn in hard pixels,
-   so the ruling reads as part of the grid rather than something laid over it.
-
-   Registering the custom property is what buys the smooth colour: an
-   unregistered one has no type, so a browser can only step between its
-   values. inherits:true so the two lines pick the colour up from the parent
-   and one animation drives both. Where @property is unsupported the colour
-   steps, which is no worse than before. */
-@property --rg-gc { syntax:'<color>'; inherits:true; initial-value:#9FE3B6; }
-
-.rg-cross {
-  position:absolute; inset:0; pointer-events:none;
-  --rg-gc:var(--fmt-keynote);
-  animation:rg-hue 18s linear infinite;
-}
-.rg-cross > i {
-  position:absolute; display:block; background:var(--rg-gc); opacity:.42;
-  will-change:transform;
-  /* Short and linear: long enough to glide, not so long that it lags behind. */
-  transition:transform .14s linear;
-}
-/* Parked well off screen until a pointermove places them. */
-.rg-cross > i:nth-child(1) { top:0; bottom:0; left:0; width:2px; transform:translate3d(var(--cx,-9999px),0,0); }
-.rg-cross > i:nth-child(2) { left:0; right:0; top:0; height:2px; transform:translate3d(0,var(--cy,-9999px),0); }
-
-@keyframes rg-hue {
-  0%,100% { --rg-gc:var(--fmt-keynote); }
-  20% { --rg-gc:var(--fmt-technical); }
-  40% { --rg-gc:var(--fmt-workshop); }
-  60% { --rg-gc:var(--fmt-panel); }
-  80% { --rg-gc:var(--fmt-qa); }
-}
-
 /* The ticker under the header. Full bleed, so it lives outside .page. */
 .rg-marq { position:relative; z-index:10; overflow:hidden; background:var(--panel); border-top:3px solid var(--line); border-bottom:3px solid var(--line); }
 .rg-marq-in { display:flex; width:max-content; padding:9px 0; animation:bm-march 26s linear infinite; }
@@ -1018,7 +983,10 @@ body:has(.rg-grid) .page-bg {
 @media (max-width:900px) { .rg-split { grid-template-columns:minmax(0,1fr); } }
 
 .rg-side { display:flex; flex-direction:column; align-items:center; gap:14px; }
-.rg-main { display:flex; flex-direction:column; align-items:flex-start; gap:18px; }
+/* A container, so the heading can size off this column rather than off the
+   viewport. At around 1000px the two are very different numbers: the column
+   is roughly half the width, and a vw sized heading spilled out of it. */
+.rg-main { display:flex; flex-direction:column; align-items:flex-start; gap:18px; container-type:inline-size; }
 
 .rg-status { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
 .rg-chip {
@@ -1033,7 +1001,9 @@ body:has(.rg-grid) .page-bg {
    token and as text on the light ground it lands at 2.1:1. */
 .rg-h1 {
   margin:0; font-family:var(--font-display); line-height:.95; color:var(--ink);
-  font-size:clamp(38px,7.4vw,76px); text-shadow:4px 4px 0 var(--h-sh1);
+  /* cqi, not vw: REGISTRATIONS is one unbreakable word about 7.2em wide, so
+     it has to be measured against the column that has to hold it. */
+  font-size:clamp(34px,13cqi,76px); text-shadow:4px 4px 0 var(--h-sh1);
 }
 .rg-h1 > span { color:var(--amber-ink); }
 
@@ -1127,8 +1097,7 @@ body:has(.rg-grid) .page-bg {
 @media (max-width:440px) { .nt-row { flex-wrap:wrap; } .nt-row > .btn { width:100%; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .rg-marq-in, .rg-dot, .rg-shake, .rg-grid::before, .rg-cross { animation:none; }
-  .rg-cross > i { transition:none; }
+  .rg-marq-in, .rg-dot, .rg-shake, .rg-grid::before { animation:none; }
   /* The glare parks off the face rather than freezing mid sweep across it. */
   .rg-body::after { animation:none; transform:translate3d(-110%,0,0); }
   .rg-lock:hover .rg-shackle, .rg-lock:active .rg-shackle { transform:translate3d(-50%,0,0); }

@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { DriftGrid } from '@/components/register/DriftGrid'
 import { LockedHero } from '@/components/register/LockedHero'
 import { NotifyForm, type PassChip } from '@/components/register/NotifyForm'
 import { event, venue } from '@/content/event'
@@ -70,7 +69,10 @@ export default function RegisterPage() {
 
   return (
     <>
-      <DriftGrid />
+      {/* The drifting grid. It must stay OUTSIDE .page.rise: .rise leaves its
+          children with a transform, and a transformed ancestor makes
+          position:fixed resolve against that ancestor, not the viewport. */}
+      <div className="rg-grid" aria-hidden="true" />
 
       <div className="rg-marq" aria-hidden="true">
         <div className="rg-marq-in">
