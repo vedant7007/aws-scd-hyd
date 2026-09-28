@@ -248,9 +248,14 @@ export default async function AdminDashboardPage() {
               NOTIFY LIST
             </span>
             {/* Everyone who asked to be told when registrations open. */}
-            <a className="btn btn-primary btn-sm" href="/api/admin/notify-csv" download>
-              EXPORT CSV
-            </a>
+            <span className="flex flex-wrap gap-2">
+              <Link href="/admin/notify" className="btn btn-sm">
+                VIEW LIST
+              </Link>
+              <a className="btn btn-primary btn-sm" href="/api/admin/notify-csv" download>
+                EXPORT CSV
+              </a>
+            </span>
           </div>
           <p className="row-body">
             Addresses left on the closed registration page, newest first, with the passes each person said they were eyeing. Write to this list the day registrations open.
