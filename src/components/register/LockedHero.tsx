@@ -41,11 +41,6 @@ export function LockedHero() {
         <span className="rg-body" aria-hidden="true">
           <span className="rg-keyhole" />
         </span>
-        <span className="rg-pix" aria-hidden="true">
-          <i />
-          <i />
-          <i />
-        </span>
       </button>
 
       {/* The caption is the button's own running commentary, so it is polite:

@@ -1081,12 +1081,6 @@ body:has(.rg-grid) .page-bg {
 .rg-keyhole::before { content:""; position:absolute; top:0; left:0; right:0; height:45%; background:var(--on-fill); }
 .rg-keyhole::after { content:""; position:absolute; top:40%; left:30%; width:40%; bottom:0; background:var(--on-fill); }
 
-/* Loose pixels, the handoff's confetti. Decorative, so aria-hidden upstream. */
-.rg-pix { position:absolute; top:-1%; left:74%; display:grid; grid-template-columns:repeat(2,1fr); gap:calc(var(--lk) * .02); }
-.rg-pix > i { display:block; width:calc(var(--lk) * .1); height:calc(var(--lk) * .1); }
-.rg-pix > i:nth-child(1) { background:var(--focus); }
-.rg-pix > i:nth-child(2) { background:var(--gold-fill); }
-.rg-pix > i:nth-child(3) { grid-column:2; background:var(--mint-fill); }
 
 .rg-lock:hover .rg-shackle { transform:translate3d(-50%,-4px,0); }
 .rg-lock:active .rg-shackle { transform:translate3d(-50%,3px,0); }
