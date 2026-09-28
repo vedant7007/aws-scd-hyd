@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { IBM_Plex_Mono, Pixelify_Sans, Roboto } from 'next/font/google'
 import './globals.css'
+import { Beacon } from '@/components/layout/Beacon'
 import { CloudTransition } from '@/components/layout/CloudTransition'
 import { ThemeGuard } from '@/components/layout/ThemeGuard'
 import { event, venue } from '@/content/event'
@@ -60,6 +61,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
         {children}
         <ThemeGuard />
         <CloudTransition />
+        <Beacon />
       </body>
     </html>
   )

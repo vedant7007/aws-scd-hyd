@@ -1102,3 +1102,19 @@ body:has(.rg-grid) .page-bg {
   .rg-body::after { animation:none; transform:translate3d(-110%,0,0); }
   .rg-lock:hover .rg-shackle, .rg-lock:active .rg-shackle { transform:translate3d(-50%,0,0); }
 }
+
+/* --- admin traffic (/admin/traffic) --------------------------------------- */
+
+/* Fourteen bars, one per day. Plain boxes rather than a chart library: the
+   whole thing is one ordered list, and each bar carries its own label. */
+.tr-bars {
+  list-style:none; margin:0; padding:18px 16px 14px;
+  display:grid; grid-template-columns:repeat(14,minmax(0,1fr)); gap:6px;
+  height:220px; box-sizing:border-box;
+}
+.tr-bar { display:flex; flex-direction:column; justify-content:flex-end; align-items:stretch; gap:5px; min-width:0; }
+.tr-col { display:block; min-height:2px; background:var(--orange); border:2px solid var(--line); box-sizing:border-box; }
+.tr-val { font-size:11px; text-align:center; color:var(--ink); min-height:1em; }
+.tr-day { font-size:9.5px; letter-spacing:.02em; text-align:center; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:clip; }
+/* Every other date on a phone, or they overprint. The bars stay. */
+@media (max-width:560px) { .tr-bar:nth-child(even) .tr-day { visibility:hidden; } .tr-val { font-size:9.5px; } }

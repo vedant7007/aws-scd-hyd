@@ -255,6 +255,12 @@ export default async function AdminDashboardPage() {
           <p className="row-body">
             Addresses left on the closed registration page, newest first, with the passes each person said they were eyeing. Write to this list the day registrations open.
           </p>
+          <div className="row">
+            <span className="copy">How many who reached the page left an address</span>
+            <Link href="/admin/traffic" className="btn btn-mono-sm">
+              Traffic
+            </Link>
+          </div>
         </section>
       </div>
 

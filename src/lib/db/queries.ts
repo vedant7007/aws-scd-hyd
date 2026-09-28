@@ -152,6 +152,25 @@ export function listSubscribers(): Promise<Subscriber[]> {
   })
 }
 
+export type HitRow = { SK: string; views?: number; visits?: number }
+
+/**
+ * Every traffic row for each day asked for, keyed by day. One Query per day
+ * rather than a scan: fourteen small reads against fourteen partitions.
+ */
+export async function getTraffic(days: string[]): Promise<Record<string, HitRow[]>> {
+  const rows = await Promise.all(
+    days.map((day) =>
+      queryAll<HitRow>({
+        TableName: tableName(),
+        KeyConditionExpression: 'PK = :pk',
+        ExpressionAttributeValues: { ':pk': keys.hits(day, '').PK },
+      }),
+    ),
+  )
+  return Object.fromEntries(days.map((d, i) => [d, rows[i]!]))
+}
+
 /**
  * The admin table. A scan is deliberate here, see SPEC.md section 6.
  * Do not add a GSI to avoid it.
