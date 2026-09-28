@@ -49,6 +49,10 @@ const normalise = (file) => relative('.', file).replace(/\\/g, '/')
 const HANDOFF_FILES = [
   ...globSync('src/components/landing/**/*.{ts,tsx}').map(normalise),
   'src/lib/clouds.ts',
+  // The launch page paints a canvas. fillStyle takes a colour string, not a
+  // custom property, so its palette cannot resolve through the theme file the
+  // way a stylesheet's would. Its chrome still does: see the .lx-* block.
+  ...globSync('src/components/launch/**/*.{ts,tsx}').map(normalise),
 ]
 
 /** '*' exempts the file entirely, otherwise only the named rules are skipped. */

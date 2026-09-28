@@ -943,6 +943,18 @@ html[data-theme="dark"] .pass-foil[data-tier="vip"] { background-image:linear-gr
    one email field. Nothing here sells anything.
    =========================================================================== */
 
+/* /register draws its own drifting grid, so .page-bg's static one underneath
+   would lay a second set of lines at a different pitch (34px against 28px)
+   and the two read as a moire, not a grid. Keep .page-bg's blooms, which are
+   the page's only colour, and let .rg-grid be the only ruling. */
+body:has(.rg-grid) .page-bg {
+  background-image:
+    radial-gradient(62% 42% at 12% -6%, var(--bloom-a), transparent 70%),
+    radial-gradient(58% 40% at 96% 6%, var(--bloom-b), transparent 70%),
+    radial-gradient(64% 46% at 52% 104%, var(--bloom-c), transparent 72%);
+  background-size:auto;
+}
+
 /* The drifting grid. A clipped fixed layer with an oversized inner sheet: the
    sheet drifts one cell into the corner and repeats, so the motion has no
    seam. The clip matters, an oversized fixed box extends document
@@ -1106,4 +1118,65 @@ html[data-theme="dark"] .pass-foil[data-tier="vip"] { background-image:linear-gr
   /* The glare parks off the face rather than freezing mid sweep across it. */
   .rg-body::after { animation:none; transform:translate3d(-110%,0,0); }
   .rg-lock:hover .rg-shackle, .rg-lock:active .rg-shackle { transform:translate3d(-50%,0,0); }
+}
+
+/* ===========================================================================
+   LAUNCH CONTROL (/launch). Secret, unlinked, and the only full bleed screen
+   on the site: the canvas is the page and the words sit on top of it.
+   =========================================================================== */
+
+.lx-wrap { position:fixed; inset:0; z-index:40; overflow:hidden; background:var(--hard); }
+.lx-canvas { position:absolute; inset:0; width:100%; height:100%; display:block; image-rendering:pixelated; }
+.lx-burst { position:absolute; inset:0; pointer-events:none; overflow:hidden; }
+
+/* Bottom weighted, so the skyline and the sunrise own the frame and the words
+   sit under them rather than across the Charminar. */
+.lx-ui {
+  position:absolute; inset:0; display:flex; flex-direction:column;
+  align-items:center; justify-content:flex-end; gap:16px;
+  padding:24px 24px clamp(30px,7vh,84px); text-align:center;
+}
+.lx-eye { font-family:var(--font-mono); font-size:11px; letter-spacing:.24em; text-transform:uppercase; color:#9FE3B6; }
+.lx-h1 {
+  margin:0; font-family:var(--font-display); line-height:.95; color:#F4F7FB;
+  font-size:clamp(38px,9vw,88px); text-shadow:5px 5px 0 rgba(5,7,12,.55);
+}
+.lx-h1 > span { color:#FFB84D; }
+.lx-copy { margin:0; max-width:40ch; font-size:15px; line-height:1.6; color:#D8E2F0; text-shadow:0 2px 6px rgba(5,7,12,.8); }
+/* The reveal lands on a full morning sky, so the light text it inherits needs
+   a plate under it. Fixed rather than theme aware: the sky behind is painted
+   by the canvas and owes nothing to --bg. */
+.lx-done {
+  display:flex; flex-direction:column; align-items:center; gap:16px;
+  padding:26px clamp(22px,5vw,46px);
+  background:rgba(5,7,12,.74); border:3px solid rgba(244,247,251,.2);
+  animation:lx-in .7s cubic-bezier(.19,1,.22,1) both;
+}
+@keyframes lx-in { from { opacity:0; transform:translate3d(0,18px,0); } to { opacity:1; transform:none; } }
+
+.lx-btn {
+  display:inline-flex; align-items:center; justify-content:center;
+  min-height:56px; padding:0 30px; cursor:pointer;
+  font-family:var(--font-display); font-size:21px;
+  background:#FF9900; color:#14161C; border:4px solid #14161C;
+  box-shadow:6px 6px 0 rgba(5,7,12,.6);
+  transition:transform .1s steps(2), box-shadow .1s steps(2);
+}
+.lx-btn:hover { transform:translate3d(-3px,-3px,0); box-shadow:9px 9px 0 rgba(5,7,12,.6); }
+.lx-btn:active { transform:translate3d(3px,3px,0); box-shadow:3px 3px 0 rgba(5,7,12,.6); }
+
+/* The countdown. Mono, because Pixelify's digits are ambiguous and this is
+   nothing but digits. */
+.lx-count {
+  position:absolute; inset:0; display:grid; place-items:center;
+  font-family:var(--font-mono); font-weight:600;
+  font-size:clamp(90px,26vw,240px); line-height:1; color:#F4F7FB;
+  text-shadow:0 0 40px rgba(255,153,0,.55);
+  animation:lx-tick 1s steps(1) infinite;
+}
+@keyframes lx-tick { 0% { transform:scale(1.14); opacity:1; } 30%,100% { transform:scale(1); opacity:.92; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .lx-count, .lx-done { animation:none; }
+  .lx-btn:hover, .lx-btn:active { transform:none; }
 }
