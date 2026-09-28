@@ -4,10 +4,9 @@ import { formatInr, tierLabel } from '@/content/passes'
 import { programSession } from '@/content/program'
 import { requireAdmin } from '@/lib/auth/admin'
 import { loadDashboard } from '@/lib/db/stats'
-import type { FoodPreference, Tier } from '@/lib/db/types'
+import type { Tier } from '@/lib/db/types'
 import { launchStatus } from '@/lib/tickets/launch'
 
-const FOOD_LABEL: Record<FoodPreference, string> = { veg: 'Veg', nonveg: 'Non-veg' }
 const when = (iso: string) => new Date(iso).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' })
 
 function Stat({ label, value, note, tone }: { label: string; value: string | number; note?: string; tone?: 'ok' | 'warn' | 'err' }) {
@@ -48,7 +47,6 @@ export default async function AdminDashboardPage() {
     tierName: tierLabel(a.tier),
     technical: programSession(a.technicalSession)?.title ?? a.technicalSession,
     workshop: a.workshop ? (programSession(a.workshop)?.title ?? a.workshop) : null,
-    food: a.foodPreference,
     state: a.state,
     amountLabel: formatInr(a.amountPaise),
     utr: a.utr ?? null,
@@ -177,25 +175,23 @@ export default async function AdminDashboardPage() {
           </div>
         </section>
 
-        <section className="card flex flex-col" aria-labelledby="food-h">
+        <section className="card flex flex-col" aria-labelledby="lunch-h">
           <div className="card-head">
-            <span id="food-h" className="card-title">
-              FOOD FOR THE CATERER
+            <span id="lunch-h" className="card-title">
+              LUNCH HEADCOUNT
             </span>
             {/* This number goes to the caterer, so it has to leave the screen. */}
-            <a className="btn btn-primary btn-sm" href="/api/admin/food-csv" download>
+            <a className="btn btn-primary btn-sm" href="/api/admin/attendees-csv" download>
               EXPORT CSV
             </a>
           </div>
-          {d.byFood.map((f) => (
-            <div key={f.food} className="row">
-              <span className="h3">{FOOD_LABEL[f.food].toUpperCase()}</span>
-              <span className="stat-val stat-val-sm" data-tone={f.food === 'veg' ? 'ok' : 'err'}>
-                {f.count}
-              </span>
-            </div>
-          ))}
-          <p className="row-body">Counts verified attendees only, so rejections and abandoned registrations are not catered for. Send the final count the night before.</p>
+          <div className="row">
+            <span className="h3">VERIFIED, COMING</span>
+            <span className="stat-val stat-val-sm" data-tone="ok">
+              {d.paid}
+            </span>
+          </div>
+          <p className="row-body">Lunch is on every pass, one kind for everyone. Counts verified attendees only, previews excluded. The CSV is the full roster with sessions. Send the final count the night before.</p>
         </section>
 
         <section className="card flex flex-col" aria-labelledby="notify-h">

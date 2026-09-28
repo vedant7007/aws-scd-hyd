@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ScanResult } from '@/app/api/admin/scan/route'
 import { tierLabel } from '@/content/passes'
-import type { FoodPreference } from '@/lib/db/types'
 import {
   drainQueue,
   enqueue,
@@ -21,7 +20,7 @@ type Feedback = {
   passId: string
   name?: string
   tier?: string
-  food?: string
+  college?: string
   message: string
 }
 
@@ -38,8 +37,6 @@ const BANNER: Record<Tone, { text: string; note: string; glyph: string; tone: 'o
   problem: { text: 'NOT ADMITTED', note: 'do not admit', glyph: '×', tone: 'err' },
   queued: { text: 'SAVED OFFLINE', note: 'sends itself later', glyph: '…', tone: 'queued' },
 }
-
-const FOOD_LABEL: Record<string, string> = { veg: 'VEG', nonveg: 'NON-VEG' } satisfies Record<FoodPreference, string>
 
 async function post(passId: string, action: QueuedAction | 'lookup'): Promise<Response> {
   return fetch('/api/admin/scan', {
@@ -107,7 +104,7 @@ export function Scanner({ roster }: { roster: RosterEntry[] }) {
         passId: ref,
         name: data.attendee?.name,
         tier: data.attendee?.tier,
-        food: data.attendee?.foodPreference,
+        college: data.attendee?.college,
         message:
           data.message ??
           (action === 'lookup'
@@ -127,7 +124,7 @@ export function Scanner({ roster }: { roster: RosterEntry[] }) {
           passId: ref,
           name: cached?.name,
           tier: cached?.tier,
-          food: cached?.foodPreference,
+          college: cached?.college,
           message: cached ? 'Offline, showing the cached roster.' : 'Offline and not in the cached roster.',
         })
         return
@@ -144,7 +141,7 @@ export function Scanner({ roster }: { roster: RosterEntry[] }) {
         passId: ref,
         name: cached?.name,
         tier: cached?.tier,
-        food: cached?.foodPreference,
+        college: cached?.college,
         message: 'Offline. Saved on this phone and will send itself when the network comes back.',
       })
     }
@@ -184,7 +181,6 @@ export function Scanner({ roster }: { roster: RosterEntry[] }) {
   }
 
   const banner = feedback ? BANNER[feedback.tone] : null
-  const isFood = (f: string | undefined): f is FoodPreference => f === 'veg' || f === 'nonveg'
 
   return (
     <div className="flex flex-col gap-3.5">
@@ -262,10 +258,8 @@ export function Scanner({ roster }: { roster: RosterEntry[] }) {
                   <span className="big-word">{(feedback.tier ? tierLabel(feedback.tier) : '-').toUpperCase()}</span>
                 </div>
                 <div className="card flex flex-col gap-1 p-3.5">
-                  <span className="lbl-sm">Food</span>
-                  <span className="big-word" data-tone={feedback.food === 'nonveg' ? 'err' : 'ok'}>
-                    {isFood(feedback.food) ? FOOD_LABEL[feedback.food] : (feedback.food ?? '-')}
-                  </span>
+                  <span className="lbl-sm">College</span>
+                  <span className="big-word [overflow-wrap:anywhere]">{(feedback.college ?? '-').toUpperCase()}</span>
                 </div>
               </div>
             ) : null}

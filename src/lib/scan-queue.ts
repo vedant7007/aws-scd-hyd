@@ -92,7 +92,6 @@ export type RosterEntry = {
   passId: string
   name: string
   tier: string
-  foodPreference: string
   college: string
 }
 

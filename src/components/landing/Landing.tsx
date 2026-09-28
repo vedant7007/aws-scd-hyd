@@ -706,7 +706,7 @@ export function Landing({ registrationOpen, doors, prices }: Props) {
               </details>
               <details style={{border:'3px solid var(--line)',background:'var(--surface)'}}>
                 <summary style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:'14px',padding:'20px 22px',cursor:'pointer',fontFamily:'var(--font-display)',fontSize:'clamp(21.3px,5.3vw,26.3px)',color:'var(--ink)'}}>Is food included?<span data-faq-plus="1" style={{flex:'none',fontFamily:'var(--font-mono)',fontSize:'18px',color:'var(--amber-ink)',transition:'transform .16s steps(3)'}}>+</span></summary>
-                <div style={{padding:'0 22px 22px',fontSize:'15px',lineHeight:'1.65',color:'var(--body)',maxWidth:'68ch'}}>Yes, on every tier. You choose veg or non-veg when you register, and that choice goes straight to the caterer, so pick it carefully.</div>
+                <div style={{padding:'0 22px 22px',fontSize:'15px',lineHeight:'1.65',color:'var(--body)',maxWidth:'68ch'}}>Yes, on every tier. Everyone gets the same lunch, so there is nothing to pick when you register.</div>
               </details>
               <details style={{border:'3px solid var(--line)',background:'var(--surface)'}}>
                 <summary style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:'14px',padding:'20px 22px',cursor:'pointer',fontFamily:'var(--font-display)',fontSize:'clamp(21.3px,5.3vw,26.3px)',color:'var(--ink)'}}>What is in the swag?<span data-faq-plus="1" style={{flex:'none',fontFamily:'var(--font-mono)',fontSize:'18px',color:'var(--amber-ink)',transition:'transform .16s steps(3)'}}>+</span></summary>

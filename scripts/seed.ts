@@ -19,7 +19,7 @@ import { createHmac } from 'node:crypto'
 import { BatchWriteCommand, QueryCommand, ScanCommand } from '@aws-sdk/lib-dynamodb'
 import { ddb, tableName } from '../src/lib/db/client'
 import { gsi1, keys, newPassId, PASS_ALPHABET, PASS_LENGTH } from '../src/lib/db/keys'
-import type { Attendee, EventConfig, FoodPreference, RegistrationState, Session, Tier } from '../src/lib/db/types'
+import type { Attendee, EventConfig, RegistrationState, Session, Tier } from '../src/lib/db/types'
 import { registrationOpen } from '../src/content/event'
 import { passes } from '../src/content/passes'
 import { holdMinutes } from '../src/content/payment'
@@ -56,7 +56,6 @@ const LAST = ['Reddy', 'Rao', 'Sharma', 'Naidu', 'Iyer', 'Khan', 'Gupta', 'Menon
 const COLLEGES = ['VJIT', 'CBIT', 'JNTUH', 'Vasavi', 'MGIT', 'CVR', 'GRIET']
 const BRANCHES = ['CSE', 'IT', 'ECE', 'CSE (AI & ML)', 'EEE']
 const TIERS: Tier[] = ['basic', 'premium', 'ultra', 'vip']
-const FOODS: FoodPreference[] = ['veg', 'nonveg']
 /** Weighted towards the states an organiser looks at most. */
 const STATES: RegistrationState[] = [
   'VERIFIED', 'VERIFIED', 'VERIFIED', 'VERIFIED', 'PENDING_VERIFICATION',
@@ -86,7 +85,6 @@ function buildAttendees(createdAt: string): Attendee[] {
       branch: pick(BRANCHES, i),
       rollNumber: `22SEED${String(1000 + i)}`,
       yearOfStudy: pick(YEARS, i),
-      foodPreference: pick(FOODS, i),
       dateOfBirth: `200${i % 6}-0${(i % 9) + 1}-1${i % 10}`,
       tier,
       technicalSession: pick(technicalSessions, i).id,

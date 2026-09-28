@@ -23,7 +23,6 @@ export default async function ScanPage() {
       passId: a.passId,
       name: a.name,
       tier: a.tier,
-      foodPreference: a.foodPreference,
       college: a.college,
     }))
 

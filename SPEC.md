@@ -29,7 +29,7 @@ A public event website with four jobs.
 1. **Sell the event.** Landing page, tracks, speakers, schedule, venue, FAQ. This is most of the site and most of the work.
 2. **Sell tickets.** Four paid tiers. We own the registration flow; the money moves by UPI straight to the college account, and a person on the team matches each UTR against the bank statement. We never see a card, an account or a PIN.
 3. **Give each attendee a pass.** Sessions are chosen while registering. Once the payment is verified, a private link in the confirmation email opens their QR ticket. **There is no student login anywhere.**
-4. **Run the day.** An organiser dashboard for check-in scanning, live counts, food totals and swag issuance.
+4. **Run the day.** An organiser dashboard for check-in scanning, live counts, the lunch headcount and swag issuance.
 
 ### Explicitly not building
 
@@ -184,7 +184,7 @@ Every transition is a conditional write asserting the current state. An attempt 
 Nothing else is legal. `state` is a DynamoDB reserved word and is aliased `#state` in every expression.
 
 **Attendee attributes**
-`passId, firstName, middleName?, lastName, name` (the three joined)`, email` (lowercased)`, phone` (`+91` and ten digits)`, college, branch, rollNumber` (uppercased)`, yearOfStudy` (`1`..`5+`)`, foodPreference` (`veg` | `nonveg`)`, dateOfBirth, tier` (`basic` | `premium` | `ultra` | `vip`, shown as Regular, Premium, Platinum, VIP)`, technicalSession, workshop?, state, amountPaise, submissionKeyHash, holdUntil, utr, utrSubmittedAt, screenshotKey, rejectionReason, verifiedBy, verifiedAt, paymentId, paidAt, receiptSentAt, confirmationSentAt, checkedInAt, swagIssuedAt, source` (`checkout` | `manual` | `preview`)`, createdAt`
+`passId, firstName, middleName?, lastName, name` (the three joined)`, email` (lowercased)`, phone` (`+91` and ten digits)`, college, branch, rollNumber` (uppercased)`, yearOfStudy` (`1`..`5+`)`,, dateOfBirth, tier` (`basic` | `premium` | `ultra` | `vip`, shown as Regular, Premium, Platinum, VIP)`, technicalSession, workshop?, state, amountPaise, submissionKeyHash, holdUntil, utr, utrSubmittedAt, screenshotKey, rejectionReason, verifiedBy, verifiedAt, paymentId, paidAt, receiptSentAt, confirmationSentAt, checkedInAt, swagIssuedAt, source` (`checkout` | `manual` | `preview`)`, createdAt`
 
 **Session counter attributes**
 `sessionId, sellableCapacity` (null until an admin sets it)`, seatsTaken`. Seven of them: technical sessions `t1` to `t5` and workshops `w1`, `w2`, named in `content/program.ts`.
@@ -239,9 +239,9 @@ UPI only, since the v3 handoff (28 September 2026). The college's UPI id, a QR g
 
 1. **Pick your pass.** Four metallic cards and a side by side comparison table whose column headers also pick.
 2. **Pick your sessions.** The keynote is on every plan. One technical session of five, required. Premium and above: one workshop of two, required; on Regular the workshop block offers the upgrade instead. Dropping below Premium clears the workshop.
-3. **Who is coming?** First, middle (optional) and last name, email, phone, college, branch, roll number, year, food, date of birth. Under 18 on the event day blocks the step with the handoff's red panel.
+3. **Who is coming?** First, middle (optional) and last name, email, phone, college, branch, roll number, year, date of birth. There is no food question: lunch is one kind for everyone (organiser decision, 28 September 2026), and the Speak and Sponsor forms do not ask either. Under 18 on the event day blocks the step with the handoff's red panel.
 4. **Check it over.** Every answer, the amount, edit links.
-5. **Pay by UPI.** Going to this step calls `POST /api/registrations/hold`, which makes the `AWAITING_PAYMENT` record **and claims a seat in the technical session and the workshop in one transaction**, each conditional on `seatsTaken < sellableCapacity`. A full session refuses the whole thing: no record, the student is sent back to step 2 with that session named. Coming back from step 4 again moves the same record's seats and keeps its clock. The QR is `upi://pay?pa=<upiId>&pn=<payee>&am=<amount>&cu=INR&tn=<passId>`, drawn in the browser; the hold counts down 90 minutes, orange under ten. The screenshot goes straight to the private bucket (section 7), and SUBMIT posts the UTR and the object key to `/api/registrations/submit`: `PENDING_VERIFICATION`, email 1.
+5. **Pay by UPI.** Going to this step calls `POST /api/registrations/hold`, which makes the `AWAITING_PAYMENT` record **and claims a seat in the technical session and the workshop in one transaction**, each conditional on `seatsTaken < sellableCapacity`. A full session refuses the whole thing: no record, the student is sent back to step 2 with that session named. Coming back from step 4 again moves the same record's seats and keeps its clock. The QR is `upi://pay?pa=<upiId>&pn=<payee>&am=<amount>&cu=INR&tn=<passId>`, drawn in the browser. The UPI id itself is never printed on the page or sent in an API response: the QR and the one-tap app link are the only ways to pay. The hold counts down 90 minutes, orange under ten. The screenshot goes straight to the private bucket (section 7), and SUBMIT posts the UTR and the object key to `/api/registrations/submit`: `PENDING_VERIFICATION`, email 1.
 
 **Received** shows the pass id, the timeline and what was sent; a refresh keeps it. **Expired** offers START AGAIN, which reuses the same browser's record if the sweep has not reached it yet.
 
@@ -354,7 +354,7 @@ The v3 handoff folds all three into the home page. Each is a permanent redirect 
 
 `/pass` is where a student types their pass id. A `VERIFIED` id redirects to the pass. Anything else, an unknown id included, gets the one generic message, byte for byte the same response, so the page cannot be used to discover which ids exist.
 
-`/pass/[passId]` renders only for `VERIFIED`: the ticket, with the QR encoding the pass id, name, college, tier, the technical session and workshop, and food preference. Every other state and every unknown id is the same real 404, naming nothing. Legible on a phone in bright sunlight at a gate: high contrast, large QR.
+`/pass/[passId]` renders only for `VERIFIED`: the ticket, with the QR encoding the pass id, name, college, tier, the technical session and workshop. Every other state and every unknown id is the same real 404, naming nothing. Legible on a phone in bright sunlight at a gate: high contrast, large QR.
 
 ### `/register`
 
@@ -377,9 +377,9 @@ The handoff's Speak and Sponsor screens (one component, `components/forms/ApplyF
 ### `/admin`, `/admin/scan`, `/admin/users`, `/admin/settings`
 Cognito sign-in, then a role from the table (section 7). `/admin/scan` is the one screen a volunteer gets; everything else is admin only. `/admin/users` manages the crew; `/admin/settings` holds the registration switch and the seat count of each of the seven sessions.
 
-Dashboard: the launch blockers first; the `PENDING_VERIFICATION` queue, oldest first, with Verify and Reject; counts for all five states; a verified view; search by pass id, UTR, email and roll number; reinstate for `ABANDONED`; seats per session, held, sellable, free and verified; **food preference totals with CSV export** (this number goes to the caterer, verified and non-preview only); the notify list; the last sweep run.
+Dashboard: the launch blockers first; the `PENDING_VERIFICATION` queue, oldest first, with Verify and Reject; counts for all five states; a verified view; search by pass id, UTR, email and roll number; reinstate for `ABANDONED`; seats per session, held, sellable, free and verified; **the lunch headcount with the attendee CSV** (`/api/admin/attendees-csv`: verified and non-preview only, with sessions); the notify list; the last sweep run.
 
-Scanner: camera QR scan reads the pass id, looks it up, shows name, tier and food preference in large type, buttons to mark checked in and swag issued. **Only `VERIFIED` admits.** An already-checked-in scan says so rather than silently succeeding. **Queue writes and retry on failure, because campus wifi will fail on the day.**
+Scanner: camera QR scan reads the pass id, looks it up, shows name, tier and college in large type, buttons to mark checked in and swag issued. **Only `VERIFIED` admits.** An already-checked-in scan says so rather than silently succeeding. **Queue writes and retry on failure, because campus wifi will fail on the day.**
 
 ---
 

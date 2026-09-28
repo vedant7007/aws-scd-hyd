@@ -84,7 +84,6 @@ export async function POST(req: Request): Promise<Response> {
     amountPaise: a.amountPaise,
     holdUntil: a.holdUntil,
     upi: {
-      upiId: payment.upiId,
       payee: payment.payeeName,
       // Null while the UPI id is unset: the preview shows the gap instead of a QR that pays nobody.
       link: payment.upiId ? upiLink(payment.upiId, a.amountPaise, a.passId) : null,

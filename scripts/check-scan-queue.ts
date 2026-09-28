@@ -103,7 +103,7 @@ async function main(): Promise<void> {
   {
     const s = memoryStore()
     saveRoster(s, [
-      { passId: 'SEED-001', name: 'Aarav Reddy', tier: 'basic', foodPreference: 'veg', college: 'VJIT' },
+      { passId: 'SEED-001', name: 'Aarav Reddy', tier: 'basic', college: 'VJIT' },
     ])
     assert.equal(lookupCached(s, 'SEED-001')?.name, 'Aarav Reddy')
     assert.equal(lookupCached(s, 'NOPE-000'), null)

@@ -7,7 +7,7 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
 import { formatInr, passFor } from '@/content/passes'
 import { EVENT_DAY, MINIMUM_AGE, TIER_LEVEL, YEARS, ageOnEventDay, technicalSessions, workshops, type Level, type Year } from '@/content/program'
-import type { FoodPreference, Tier } from '@/lib/db/types'
+import type { Tier } from '@/lib/db/types'
 
 /**
  * The v3 registration flow, ported from the handoff's Registration Flow
@@ -36,10 +36,6 @@ const TIERS: TierLook[] = [
 ]
 
 const LEVEL_BG: Record<Level, string> = { Beginner: '#9FE3B6', Intermediate: '#FFB84D', Advanced: '#F2A7C3', 'Beginner–Intermediate': '#A9E3FF' }
-const FOODS: { id: FoodPreference; label: string }[] = [
-  { id: 'veg', label: 'VEG' },
-  { id: 'nonveg', label: 'NON-VEG' },
-]
 const CMP: [string, number][] = [
   ['Lunch', 1],
   ['Opening keynote', 1],
@@ -70,7 +66,7 @@ const EMPTY: Fields = { first: '', middle: '', last: '', email: '', phone: '', c
 type Upload = { status: 'none' | 'uploading' | 'done' | 'failed'; name: string; url: string; pct: number; err: string; key: string }
 const NO_UPLOAD: Upload = { status: 'none', name: '', url: '', pct: 0, err: '', key: '' }
 /** holdEnds 0 means no clock: a rejected record being resubmitted keeps its seats with no deadline. */
-export type Hold = { passId: string; holdEnds: number; amountPaise: number; upiId: string | null; payee: string; link: string | null }
+export type Hold = { passId: string; holdEnds: number; amountPaise: number; payee: string; link: string | null }
 
 /**
  * The payment step on its own, for the link in the rejection email and for
@@ -84,7 +80,6 @@ export type Resume = {
   workshop: string
   first: string
   email: string
-  food: FoodPreference
   rejection: string | null
 }
 
@@ -95,7 +90,6 @@ type Saved = {
   tech: string
   workshop: string
   year: Year | ''
-  food: FoodPreference | ''
   fields: Fields
   hold: Hold | null
   utr: string
@@ -144,7 +138,6 @@ export function Flow({ preview, resume }: { preview: boolean; resume?: Resume })
   const [tech, setTech] = useState(resume?.tech ?? '')
   const [workshop, setWorkshop] = useState(resume?.workshop ?? '')
   const [year, setYear] = useState<Year | ''>('')
-  const [food, setFood] = useState<FoodPreference | ''>(resume?.food ?? '')
   const [fields, setFields] = useState<Fields>(resume ? { ...EMPTY, first: resume.first, email: resume.email } : EMPTY)
   const [err, setErr] = useState<Record<string, string>>({})
   const [hold, setHold] = useState<Hold | null>(resume?.hold ?? null)
@@ -152,7 +145,7 @@ export function Flow({ preview, resume }: { preview: boolean; resume?: Resume })
   const [utr, setUtr] = useState('')
   const [utrTouched, setUtrTouched] = useState(false)
   const [up, setUp] = useState<Upload>(NO_UPLOAD)
-  const [copied, setCopied] = useState<'' | 'upi' | 'id'>('')
+  const [copied, setCopied] = useState<'' | 'id'>('')
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState('')
   const [formKey, setFormKey] = useState(0)
@@ -177,7 +170,6 @@ export function Flow({ preview, resume }: { preview: boolean; resume?: Resume })
         setTech(s.tech)
         setWorkshop(s.workshop)
         setYear(s.year)
-        setFood(s.food)
         setFields({ ...EMPTY, ...s.fields })
         setHold(s.hold)
         setUtr(s.utr)
@@ -193,13 +185,13 @@ export function Flow({ preview, resume }: { preview: boolean; resume?: Resume })
 
   useEffect(() => {
     if (!loaded) return
-    const s: Saved = { step, phase, tier, tech, workshop, year, food, fields, hold, utr, submissionKey: key.current }
+    const s: Saved = { step, phase, tier, tech, workshop, year, fields, hold, utr, submissionKey: key.current }
     try {
       sessionStorage.setItem(STORE, JSON.stringify(s))
     } catch {
       // Private window with storage off: the flow still works, it just forgets on refresh.
     }
-  }, [loaded, step, phase, tier, tech, workshop, year, food, fields, hold, utr])
+  }, [loaded, step, phase, tier, tech, workshop, year, fields, hold, utr])
 
   // The hold clock. Only the payment step counts down.
   useEffect(() => {
@@ -233,7 +225,6 @@ export function Flow({ preview, resume }: { preview: boolean; resume?: Resume })
     else if (d.length !== 10) e.phone = 'Enter exactly 10 digits, without +91.'
     if (!f.college.trim()) e.college = 'Which college are you from?'
     if (!year) e.year = 'Pick your year.'
-    if (!food) e.food = 'Pick veg or non-veg.'
     return e
   }
 
@@ -270,7 +261,7 @@ export function Flow({ preview, resume }: { preview: boolean; resume?: Resume })
   }
 
   /** Server field names to the flow's steps, for a refusal the browser did not catch. */
-  const STEP_OF: Record<string, number> = { tier: 1, tech: 2, workshop: 2, first: 3, middle: 3, last: 3, email: 3, phone: 3, college: 3, branch: 3, roll: 3, year: 3, food: 3, dob: 3 }
+  const STEP_OF: Record<string, number> = { tier: 1, tech: 2, workshop: 2, first: 3, middle: 3, last: 3, email: 3, phone: 3, college: 3, branch: 3, roll: 3, year: 3, dob: 3 }
 
   async function placeHold(): Promise<void> {
     if (!tier) return
@@ -293,7 +284,6 @@ export function Flow({ preview, resume }: { preview: boolean; resume?: Resume })
           branch: fields.branch,
           rollNumber: fields.roll.toUpperCase(),
           yearOfStudy: year,
-          foodPreference: food,
           dateOfBirth: fields.dob,
           submissionKey: key.current,
           ...(hold ? { passId: hold.passId } : {}),
@@ -306,10 +296,10 @@ export function Flow({ preview, resume }: { preview: boolean; resume?: Resume })
         passId?: string
         amountPaise?: number
         holdUntil?: string
-        upi?: { upiId: string | null; payee: string; link: string | null }
+        upi?: { payee: string; link: string | null }
       }
       if (res.ok && body.ok && body.passId && body.holdUntil && body.upi) {
-        setHold({ passId: body.passId, holdEnds: Date.parse(body.holdUntil), amountPaise: body.amountPaise ?? amount, upiId: body.upi.upiId, payee: body.upi.payee, link: body.upi.link })
+        setHold({ passId: body.passId, holdEnds: Date.parse(body.holdUntil), amountPaise: body.amountPaise ?? amount, payee: body.upi.payee, link: body.upi.link })
         setNow(Date.now())
         setErr({})
         setStep(5)
@@ -459,12 +449,11 @@ export function Flow({ preview, resume }: { preview: boolean; resume?: Resume })
   const fillDemo = () => {
     setFields({ first: 'Sneha', middle: '', last: 'Reddy', email: 'sneha.reddy@example.com', phone: '9876543210', college: 'VNR VJIET', branch: 'CSE', roll: '22071A0512', dob: '2004-06-14' })
     setYear('3')
-    setFood('veg')
     setErr({})
     setFormKey((k) => k + 1)
   }
 
-  const copy = (text: string, what: 'upi' | 'id') => {
+  const copy = (text: string, what: 'id') => {
     navigator.clipboard?.writeText(text).catch(() => {})
     setCopied(what)
   }
@@ -481,7 +470,6 @@ export function Flow({ preview, resume }: { preview: boolean; resume?: Resume })
   const ready = u.ok && up.status === 'done'
   const techName = technicalSessions.find((o) => o.id === tech)?.title ?? ''
   const wsName = workshops.find((o) => o.id === workshop)?.title ?? ''
-  const foodName = food === 'veg' ? 'Veg' : food === 'nonveg' ? 'Non-veg' : ''
   const fullName = [fields.first, fields.middle, fields.last].map((x) => x.trim()).filter(Boolean).join(' ')
   const missing = step === 3 ? Object.keys(validate()).length : 0
   const sessLeft = (tech ? 0 : 1) + (lvl >= 2 && !workshop ? 1 : 0)
@@ -507,7 +495,6 @@ export function Flow({ preview, resume }: { preview: boolean; resume?: Resume })
     { label: 'Branch', value: fields.branch },
     { label: 'Roll number', value: fields.roll.toUpperCase() },
     { label: 'Year', value: year ? `Year ${year}` : '' },
-    { label: 'Food', value: foodName },
     { label: 'Date of birth', value: fields.dob ? new Date(`${fields.dob}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '' },
   ]
 
@@ -672,18 +659,6 @@ export function Flow({ preview, resume }: { preview: boolean; resume?: Resume })
                   </div>
                   <span role="alert" style={S.err}>{err.year}</span>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span id="rg-food-l" style={S.label}>Food preference</span>
-                  <div role="group" aria-labelledby="rg-food-l" style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: '10px' }}>
-                    {FOODS.map((x) => (
-                      <button key={x.id} type="button" onClick={() => (setFood(x.id), clearErr('food'))} aria-pressed={food === x.id} style={chip(food === x.id, true)}>
-                        {x.label}
-                      </button>
-                    ))}
-                  </div>
-                  <span style={S.hint}>This count goes to the caterer and cannot change on the day.</span>
-                  <span role="alert" style={S.err}>{err.food}</span>
-                </div>
                 <Field id="dob" label="Date of birth" type="date" value={fields.dob} onChange={onField} err={err.dob} autoComplete="bday" min="1960-01-01" max="2012-12-31" style={{ fontFamily: 'var(--font-mono)' }} wrapStyle={{ maxWidth: '280px' }}>
                   <span style={S.hint}>You need to be 18 or over on {EVENT_DAY_LABEL}.</span>
                 </Field>
@@ -800,19 +775,8 @@ export function Flow({ preview, resume }: { preview: boolean; resume?: Resume })
                       <span style={S.rowL}>Payee</span>
                       <span style={{ textAlign: 'right', color: 'var(--ink)' }}>{hold.payee}</span>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', padding: '7px 0', borderBottom: '1px solid var(--line-soft)', fontSize: '13px' }}>
-                      <span style={S.rowL}>UPI ID</span>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--ink)', wordBreak: 'break-all' }}>{hold.upiId ?? 'Not set yet'}</span>
-                        {hold.upiId ? (
-                          <button type="button" onClick={() => copy(hold.upiId!, 'upi')} style={{ minHeight: '34px', padding: '0 9px', border: '2px solid var(--line)', background: 'var(--surface)', color: 'var(--ink)', fontFamily: 'var(--font-mono)', fontSize: '10px', letterSpacing: '.1em' }}>
-                            {copied === 'upi' ? 'COPIED' : 'COPY'}
-                          </button>
-                        ) : null}
-                      </span>
-                    </div>
                     <span style={{ paddingTop: '8px', fontSize: '12.5px', lineHeight: '1.5', color: 'var(--muted)' }}>
-                      On this phone? {hold.link ? <a href={hold.link}>Open your UPI app</a> : 'Open your UPI app'}, screenshot the QR and open it from your UPI app&apos;s scanner, or pay to the UPI ID. Put {hold.passId} in the note if the app asks.
+                      On this phone? {hold.link ? <a href={hold.link}>Open your UPI app</a> : 'Open your UPI app'}, or screenshot the QR and open it from your UPI app&apos;s scanner. Put {hold.passId} in the note if the app asks.
                     </span>
                   </div>
                 </div>
@@ -948,7 +912,6 @@ export function Flow({ preview, resume }: { preview: boolean; resume?: Resume })
                     { label: 'Pass', value: t?.name ?? '' },
                     { label: 'Technical', value: techName },
                     ...(lvl >= 2 ? [{ label: 'Workshop', value: wsName }] : []),
-                    { label: 'Food', value: foodName },
                     { label: 'Amount sent', value: money(amount) },
                     { label: 'UTR', value: utrCompact },
                   ].map((r) => (

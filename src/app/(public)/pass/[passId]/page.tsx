@@ -62,7 +62,6 @@ export default async function PassPage({ params }: PageProps<'/pass/[passId]'>) 
         college={attendee.college}
         tier={attendee.tier}
         tierName={tierLabel(attendee.tier)}
-        food={attendee.foodPreference}
         sessions={sessions}
       />
 

@@ -37,7 +37,6 @@ export default async function PayPage({ params }: PageProps<'/register/pay/[pass
       passId: a.passId,
       holdEnds: a.state === 'AWAITING_PAYMENT' ? Date.parse(a.holdUntil!) : 0,
       amountPaise: a.amountPaise,
-      upiId: payment.upiId,
       payee: payment.payeeName,
       link: payment.upiId ? upiLink(payment.upiId, a.amountPaise, a.passId) : null,
     },
@@ -46,7 +45,6 @@ export default async function PayPage({ params }: PageProps<'/register/pay/[pass
     workshop: a.workshop ?? '',
     first: a.firstName,
     email: a.email,
-    food: a.foodPreference,
     rejection: a.state === 'REJECTED' ? (a.rejectionReason ?? 'The UTR did not match a payment in the college statement.') : null,
   }
   return <Flow preview={a.source === 'preview'} resume={resume} />

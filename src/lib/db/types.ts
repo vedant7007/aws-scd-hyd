@@ -1,6 +1,5 @@
 export type Tier = 'basic' | 'premium' | 'ultra' | 'vip'
 /** Veg and non-veg only, by the organiser's decision. */
-export type FoodPreference = 'veg' | 'nonveg'
 /** 'preview' marks a record an admin made through the preview of the flow: real, but never counted as an attendee. */
 export type AttendeeSource = 'checkout' | 'manual' | 'preview'
 /** Year of study, as the v3 flow offers it. Stored as typed. */
@@ -56,7 +55,6 @@ export type Attendee = Keyed & {
   /** Uppercased on write. */
   rollNumber: string
   yearOfStudy: YearOfStudy
-  foodPreference: FoodPreference
   /** YYYY-MM-DD. 18 or older on the event day, checked by the server. */
   dateOfBirth: string
   tier: Tier

@@ -4,7 +4,7 @@ import { ddb, tableName } from './db/client'
 import { PASS_ALPHABET, normaliseEmail, normalisePassId } from './db/keys'
 import { isReservedAddress, sendEmail } from './email/send'
 import { REPLY_TO } from './email/templates'
-import { MEALS, REPORT_KINDS, SPEAK_FORMATS, SPONSOR_KINDS } from './forms-options'
+import { REPORT_KINDS, SPEAK_FORMATS, SPONSOR_KINDS } from './forms-options'
 
 /**
  * The three forms the v3 handoff draws with no backend behind them: apply
@@ -105,9 +105,7 @@ export function validateForm(kind: FormKind, b: Record<string, unknown>): Checke
   const detail = long('detail')
   if (!detail) return { error: { field: 'detail', message: 'Tell us a bit more.' } }
   if (detail.length < 30) return { error: { field: 'detail', message: 'A few more lines, please, this is what we judge it on.' } }
-  const meal = str('meal')
-  if (!MEALS.some((m) => m.id === meal) || (!sponsor && meal === 'mixed')) return { error: { field: 'meal', message: 'Pick a meal preference.' } }
-  Object.assign(fields, { topic, detail, meal: label(MEALS, meal) })
+  Object.assign(fields, { topic, detail })
 
   return { email: normaliseEmail(email), fields }
 }
@@ -124,7 +122,6 @@ const LABELS: Record<string, string> = {
   offer: 'Can put in',
   topic: 'Title',
   detail: 'Detail',
-  meal: 'Meal',
   about: 'About',
   passId: 'Pass ID',
 }

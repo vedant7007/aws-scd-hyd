@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { MEALS, SPEAK_FORMATS, SPONSOR_KINDS } from '@/lib/forms-options'
+import { SPEAK_FORMATS, SPONSOR_KINDS } from '@/lib/forms-options'
 
 /**
  * The handoff's Speak and Sponsor screens, which are one component with a
@@ -10,7 +10,8 @@ import { MEALS, SPEAK_FORMATS, SPONSOR_KINDS } from '@/lib/forms-options'
  * get a mail they can reply to, and the reference shown is the stored one.
  *
  * Departures: the speaker form's "Which track?" question is gone, because
- * the site has no tracks since v3; no em dashes; the sponsor intro keeps the
+ * the site has no tracks since v3; there is no meal question, lunch is one
+ * kind for everyone; no em dashes; the sponsor intro keeps the
  * site's wording rather than a head count nobody has confirmed.
  */
 
@@ -48,7 +49,6 @@ const COPY = {
     topicPlaceholder: 'What is it called',
     detailLabel: 'What will you cover',
     detailPlaceholder: 'Three or four lines on the content, who it is for, and what they walk away able to do.',
-    mealHelp: 'Lunch is on us. Same options as everyone else.',
     submit: 'SEND APPLICATION >',
     foot: 'Accepted speakers get one free pass to the day. We read every application and you will hear either way, a no from us is still a reply.',
     doneTitle: 'APPLICATION IN',
@@ -66,7 +66,6 @@ const COPY = {
     topicPlaceholder: 'Rough is fine, we will shape it with you',
     detailLabel: 'What you want out of the day',
     detailPlaceholder: 'Hiring? Brand awareness? Testing a product with students? Tell us the real goal and roughly what you can commit.',
-    mealHelp: 'For anyone from your side who is on campus that day. If your team is split, pick mixed.',
     submit: 'SEND ENQUIRY >',
     foot: 'One free pass to the day comes with any sponsorship. We reply within two working days, usually the same day, and nothing is committed until you say yes in writing.',
     doneTitle: 'THANK YOU, WE WILL CALL',
@@ -103,7 +102,6 @@ export function ApplyForm({ kind }: { kind: Kind }) {
   const [f, setF] = useState<Fields>(EMPTY)
   const [format, setFormat] = useState('')
   const [kinds, setKinds] = useState<string[]>([])
-  const [meal, setMeal] = useState('')
   const [err, setErr] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState(false)
   const [sent, setSent] = useState<{ ref: string; what: string; email: string } | null>(null)
@@ -132,7 +130,6 @@ export function ApplyForm({ kind }: { kind: Kind }) {
     if (!f.topic.trim()) e.topic = sponsor ? 'Give it a working title.' : 'Your talk needs a title.'
     if (!f.detail.trim()) e.detail = 'Tell us a bit more.'
     else if (f.detail.trim().length < 30) e.detail = 'A few more lines, please, this is what we judge it on.'
-    if (!meal) e.meal = 'Pick a meal preference.'
     return e
   }
 
@@ -150,7 +147,7 @@ export function ApplyForm({ kind }: { kind: Kind }) {
       const res = await fetch('/api/forms', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ form: kind, ...f, format, kinds, meal, company: honeypot.current?.value ?? '' }),
+        body: JSON.stringify({ form: kind, ...f, format, kinds, company: honeypot.current?.value ?? '' }),
       })
       const body = (await res.json().catch(() => ({}))) as { ok?: boolean; ref?: string; field?: string; message?: string }
       if (res.ok && body.ok && body.ref) {
@@ -174,7 +171,6 @@ export function ApplyForm({ kind }: { kind: Kind }) {
     setF(EMPTY)
     setFormat('')
     setKinds([])
-    setMeal('')
     setErr({})
     setFormKey((k) => k + 1)
   }
@@ -312,21 +308,6 @@ export function ApplyForm({ kind }: { kind: Kind }) {
                 <span style={ERR}>{err.detail}</span>
                 <span style={COUNT}>{f.detail.length} chars</span>
               </div>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <span id="ap-meal-l" style={LABEL}>
-                Meal preference <Req />
-              </span>
-              <div role="group" aria-labelledby="ap-meal-l" style={{ display: 'grid', gap: '9px', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,150px),1fr))' }}>
-                {MEALS.filter((m) => sponsor || m.id !== 'mixed').map((m) => (
-                  <button key={m.id} type="button" aria-pressed={meal === m.id} onClick={() => (setMeal(m.id), clear('meal'))} style={chip(meal === m.id, 'var(--mint-fill)')}>
-                    {m.label}
-                  </button>
-                ))}
-              </div>
-              <span style={{ fontSize: '12px', lineHeight: '1.5', color: 'var(--muted)' }}>{c.mealHelp}</span>
-              <span style={ERR}>{err.meal}</span>
             </div>
 
             {err.form ? (

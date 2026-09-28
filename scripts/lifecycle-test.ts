@@ -70,7 +70,6 @@ async function seedIn(state: RegistrationState, extra: Partial<Attendee> = {}): 
     branch: 'CSE',
     rollNumber: 'TEST0001',
     yearOfStudy: '2',
-    foodPreference: 'veg',
     dateOfBirth: '2004-01-01',
     tier: 'basic',
     technicalSession: 't1',
@@ -100,7 +99,6 @@ const input = (over: Partial<HoldInput> = {}): HoldInput => ({
   branch: 'CSE',
   rollNumber: 'TEST0002',
   yearOfStudy: '3',
-  foodPreference: 'veg',
   dateOfBirth: '2004-01-01',
   ...over,
 })
@@ -504,9 +502,9 @@ async function volunteerHttp(): Promise<void> {
       assert.equal(new URL(r.headers.get('location') ?? '', BASE).pathname, '/admin/scan')
       await noLeak(r, path)
     }
-    const csv = await as('/api/admin/food-csv')
+    const csv = await as('/api/admin/attendees-csv')
     assert.equal(csv.status, 403)
-    await noLeak(csv, 'food-csv')
+    await noLeak(csv, 'attendees-csv')
     const shot = await as(`/admin/screenshot/${pend.passId}`)
     assert.equal(shot.status, 403)
     await noLeak(shot, 'screenshot')

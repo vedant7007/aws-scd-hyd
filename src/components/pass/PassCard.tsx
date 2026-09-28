@@ -1,5 +1,5 @@
 import { doorsLabel, event, venue } from '@/content/event'
-import type { FoodPreference, Tier } from '@/lib/db/types'
+import type { Tier } from '@/lib/db/types'
 import { QrPass } from './QrPass'
 
 /** One chosen session: "Technical" or "Workshop", and its title. */
@@ -11,12 +11,10 @@ type Props = {
   college: string
   tier: Tier
   tierName: string
-  food: FoodPreference
   /** Chosen at registration: the technical session, and the workshop on Premium and above. */
   sessions: PassSession[]
 }
 
-export const FOOD_LABEL: Record<FoodPreference, string> = { veg: 'Veg', nonveg: 'Non-veg' }
 
 /** "30 OCT", from the one date in content/event.ts. */
 const DAY = new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', timeZone: 'Asia/Kolkata' })
@@ -29,7 +27,7 @@ const DAY = new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', t
  * is ever drawn, so the QR is always there. Marked data-pass-card so
  * printing keeps just this.
  */
-export function PassCard({ passId, name, college, tier, tierName, food, sessions }: Props) {
+export function PassCard({ passId, name, college, tier, tierName, sessions }: Props) {
   return (
     <article data-pass-card="1" className="pass-card" aria-label={`Pass ${passId}`}>
       <span className="pass-decor" aria-hidden="true">
@@ -65,8 +63,8 @@ export function PassCard({ passId, name, college, tier, tierName, food, sessions
           <span className="pass-val-num">{doorsLabel}</span>
         </div>
         <div>
-          <span className="lbl-sm">Food</span>
-          <span className="pass-val-sm">{FOOD_LABEL[food]}</span>
+          <span className="lbl-sm">Lunch</span>
+          <span className="pass-val-sm">Included</span>
         </div>
       </div>
 

@@ -36,7 +36,6 @@ const input = (who: string): HoldInput => ({
   branch: 'CSE',
   rollNumber: `RACE${who}`,
   yearOfStudy: '3',
-  foodPreference: 'veg',
   dateOfBirth: '2004-01-01',
 })
 

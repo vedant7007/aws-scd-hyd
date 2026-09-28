@@ -2,7 +2,7 @@
 
 import { useActionState, useMemo, useState } from 'react'
 import { reinstateAction, rejectAction, verifyAction, type ActionState } from '@/app/admin/(secure)/actions'
-import type { FoodPreference, RegistrationState, Tier } from '@/lib/db/types'
+import type { RegistrationState, Tier } from '@/lib/db/types'
 import { REJECTION_REASONS, rejectionCodes } from '@/lib/registration/reasons'
 
 export type Row = {
@@ -19,7 +19,6 @@ export type Row = {
   tierName: string
   technical: string
   workshop: string | null
-  food: FoodPreference
   state: RegistrationState
   amountLabel: string
   utr: string | null
@@ -143,8 +142,6 @@ export function AdminConsole({ rows }: { rows: Row[] }) {
   )
 }
 
-const FOOD: Record<FoodPreference, string> = { veg: 'Veg', nonveg: 'Non-veg' }
-
 function RowCard({ row }: { row: Row }) {
   const [verifyState, verify, verifying] = useActionState(verifyAction, null)
   const [rejectState, reject, rejecting] = useActionState(rejectAction, null)
@@ -172,9 +169,9 @@ function RowCard({ row }: { row: Row }) {
 
       <dl className="grid gap-x-4 gap-y-2 [grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr))]">
         <div className="flex flex-col gap-0.5">
-          <dt className="lbl-sm">Pass · food</dt>
+          <dt className="lbl-sm">Pass</dt>
           <dd className="copy text-ink">
-            {row.tierName} · {FOOD[row.food]}
+            {row.tierName}
             {row.checkedIn ? <span className="lbl-sm"> · checked in</span> : null}
           </dd>
         </div>

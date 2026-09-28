@@ -16,11 +16,6 @@ export const SPONSOR_KINDS = [
   { id: 'stall', label: 'STALL' },
   { id: 'other', label: 'SOMETHING ELSE' },
 ] as const
-export const MEALS = [
-  { id: 'veg', label: 'VEG' },
-  { id: 'nonveg', label: 'NON-VEG' },
-  { id: 'mixed', label: 'MIXED TEAM' },
-] as const
 export const REPORT_KINDS = [
   { id: 'conduct', label: 'CONDUCT' },
   { id: 'registration', label: 'REGISTRATION' },

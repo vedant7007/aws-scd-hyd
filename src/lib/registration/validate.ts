@@ -1,6 +1,6 @@
 import { MINIMUM_AGE, YEARS, ageOnEventDay, hasWorkshop, technicalSessions, workshops, type Year } from '../../content/program'
 import { tierIds } from '../../content/passes'
-import type { FoodPreference, Tier } from '../db/types'
+import type { Tier } from '../db/types'
 
 /**
  * The server's own reading of the flow's form. The flow checks all of this
@@ -23,7 +23,6 @@ export type HoldInput = {
   branch: string
   rollNumber: string
   yearOfStudy: Year
-  foodPreference: FoodPreference
   dateOfBirth: string
 }
 
@@ -42,7 +41,6 @@ const FIELDS = [
   'branch',
   'rollNumber',
   'yearOfStudy',
-  'foodPreference',
   'dateOfBirth',
   'submissionKey',
   'passId',
@@ -50,7 +48,6 @@ const FIELDS = [
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 const SUBMISSION_KEY = /^[A-Za-z0-9_-]{16,64}$/
-const FOODS: FoodPreference[] = ['veg', 'nonveg']
 
 /** Ten digits, as the flow asks, with a +91 or leading 0 tolerated. Stored as +91XXXXXXXXXX. */
 export function normalisePhone(raw: string): string | null {
@@ -123,8 +120,6 @@ export function validateHold(body: unknown): { input: HoldInput; submissionKey: 
   const year = b.yearOfStudy
   if (typeof year !== 'string' || !(YEARS as readonly string[]).includes(year)) return { error: { field: 'year', message: 'Pick your year.' } }
 
-  const food = b.foodPreference
-  if (typeof food !== 'string' || !FOODS.includes(food as FoodPreference)) return { error: { field: 'food', message: 'Pick veg or non-veg.' } }
 
   const dob = typeof b.dateOfBirth === 'string' ? b.dateOfBirth : ''
   const age = ageOnEventDay(dob)
@@ -151,7 +146,6 @@ export function validateHold(body: unknown): { input: HoldInput; submissionKey: 
       branch,
       rollNumber: roll.toUpperCase(),
       yearOfStudy: year as Year,
-      foodPreference: food as FoodPreference,
       dateOfBirth: dob,
     },
     submissionKey,

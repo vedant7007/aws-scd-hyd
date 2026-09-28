@@ -205,7 +205,7 @@ ${url}
 
 Open it before you arrive so it is loaded, then show the QR at the gate.
 
-Lunch is included. If your food preference has changed, reply to this email today.
+Lunch is included.
 
 ${footerText}`,
     html: `<p>Hi ${esc(r.firstName)},</p>
@@ -217,7 +217,7 @@ ${footerText}`,
 <h2>Your ticket</h2>
 <p><a href="${url}"><strong>${url}</strong></a></p>
 <p>Open it before you arrive so it is loaded, then show the QR at the gate.</p>
-<p>Lunch is included. If your food preference has changed, reply to this email today.</p>
+<p>Lunch is included.</p>
 ${footerHtml}`,
   }
 }

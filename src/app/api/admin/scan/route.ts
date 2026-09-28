@@ -11,7 +11,7 @@ export type ScanResult = {
   ok: boolean
   passId: string
   /** Set when the pass exists. */
-  attendee?: { name: string; tier: string; foodPreference: string; college: string }
+  attendee?: { name: string; tier: string; college: string }
   checkedInAt?: string
   swagIssuedAt?: string
   /** True when this exact action had already been done before this scan. */
@@ -25,7 +25,6 @@ const json = (status: number, body: ScanResult | { ok: false; message: string })
 const summarise = (a: Attendee) => ({
   name: a.name,
   tier: a.tier,
-  foodPreference: a.foodPreference,
   college: a.college,
 })
 

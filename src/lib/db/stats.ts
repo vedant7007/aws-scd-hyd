@@ -1,6 +1,6 @@
 import { programSessions, type ProgramSession } from '../../content/program'
 import { getReconcileSummary, getSessions, listAttendees, listEmailEvents } from './queries'
-import { REGISTRATION_STATES, type Attendee, type EmailEvent, type FoodPreference, type ReconcileSummary, type RegistrationState, type Tier } from './types'
+import { REGISTRATION_STATES, type Attendee, type EmailEvent, type ReconcileSummary, type RegistrationState, type Tier } from './types'
 
 /**
  * One technical session or workshop against its ceiling. sold is seats held,
@@ -30,7 +30,6 @@ export type Dashboard = {
   /** PENDING_VERIFICATION, oldest UTR first. The default admin view. Preview records included, marked. */
   queue: Attendee[]
   byTier: { tier: Tier; count: number }[]
-  byFood: { food: FoodPreference; count: number }[]
   checkedIn: number
   swagIssued: number
   sessions: SessionSeats[]
@@ -49,7 +48,6 @@ export type Dashboard = {
 }
 
 const TIERS: Tier[] = ['basic', 'premium', 'ultra', 'vip']
-const FOODS: FoodPreference[] = ['veg', 'nonveg']
 
 /**
  * Everything the dashboard shows, in one pass. The attendee list comes from a
@@ -93,8 +91,6 @@ export async function loadDashboard(): Promise<Dashboard> {
       .filter((a) => a.state === 'PENDING_VERIFICATION')
       .sort((a, b) => (a.utrSubmittedAt ?? a.createdAt).localeCompare(b.utrSubmittedAt ?? b.createdAt)),
     byTier: TIERS.map((tier) => ({ tier, count: paid.filter((a) => a.tier === tier).length })),
-    // Caterer numbers count people who are actually coming, not refunds.
-    byFood: FOODS.map((food) => ({ food, count: paid.filter((a) => a.foodPreference === food).length })),
     checkedIn: real.filter((a) => a.checkedInAt).length,
     swagIssued: real.filter((a) => a.swagIssuedAt).length,
     sessions,
