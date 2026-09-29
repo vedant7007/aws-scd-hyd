@@ -11,11 +11,14 @@ import { UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import { ddb, tableName } from '../src/lib/db/client'
 import { keys } from '../src/lib/db/keys'
 
+// An explicit SCD_TABLE_NAME wins: tableName() prefers the local sandbox
+// outputs file, and the switch must hit the table it is told to.
+const table = process.env.SCD_TABLE_NAME || tableName()
 const arg = process.argv[2]
 if (arg !== 'on' && arg !== 'off') {
   console.error('usage: npm run site -- on|off')
   process.exit(1)
 }
 ddb
-  .send(new UpdateCommand({ TableName: tableName(), Key: keys.config(), UpdateExpression: 'SET siteOffline = :v', ExpressionAttributeValues: { ':v': arg === 'off' } }))
-  .then(() => console.log(`site ${arg === 'off' ? 'OFFLINE (503 everywhere)' : 'ONLINE'} on ${tableName()}`))
+  .send(new UpdateCommand({ TableName: table, Key: keys.config(), UpdateExpression: 'SET siteOffline = :v', ExpressionAttributeValues: { ':v': arg === 'off' } }))
+  .then(() => console.log(`site ${arg === 'off' ? 'OFFLINE (503 everywhere)' : 'ONLINE'} on ${table}`))

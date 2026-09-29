@@ -2,6 +2,9 @@ import type { Metadata } from 'next'
 import { ReportForm } from '@/components/forms/ReportForm'
 import { conductContacts, event, venue } from '@/content/event'
 
+/** Rendered per request, never cached at the CDN, so the kill switch in src/proxy.ts reaches it. */
+export const dynamic = 'force-dynamic'
+
 export const metadata: Metadata = {
   title: 'Code of conduct',
   description: `The code of conduct for ${event.name}: what we expect, what is not acceptable, and who to call or WhatsApp if something goes wrong.`,
