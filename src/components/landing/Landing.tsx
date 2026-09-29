@@ -623,12 +623,27 @@ export function Landing({ registrationOpen, doors, prices }: Props) {
                   </span>
                 </span>
                 <span style={{background:'var(--bg)',border:'2px solid var(--line-soft)',display:'flex',alignItems:'center',justifyContent:'center',padding:'20px',minHeight:'200px'}}>
-                  <Image src="/assets/csxia-logo.jpeg" alt="CSXIA" width={200} height={200} sizes="220px" style={{width:'100%',maxWidth:'220px',height:'auto',display:'block',imageRendering:'auto'}} />
+                  <Image src="/assets/csxia-logo.jpeg" alt="CSXIA" width={1150} height={912} sizes="220px" style={{width:'100%',maxWidth:'220px',height:'auto',display:'block',imageRendering:'auto'}} />
                 </span>
                 <span style={{fontFamily:'var(--font-display)',fontSize:'32.5px',color:'var(--ink)'}}>CSXIA</span>
                 <span style={{fontSize:'13.5px',lineHeight:'1.55',color:'var(--body)'}}>Engage. Learn. Build. Level up.</span>
                 <span style={{marginTop:'auto',fontFamily:'var(--font-mono)',fontSize:'10px',letterSpacing:'.16em',textTransform:'uppercase',color:'var(--mint-ink)'}}>View on LinkedIn →</span>
               </a>
+              <div style={{border:'3px solid var(--line)',background:'var(--surface)',padding:'24px 22px',display:'flex',flexDirection:'column',gap:'14px',color:'var(--ink)'}}>
+                <span style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:'10px'}}>
+                  <span style={{fontFamily:'var(--font-mono)',fontSize:'9.5px',letterSpacing:'.2em',textTransform:'uppercase',color:'var(--mint-ink)'}}>Community partner</span>
+                  <span style={{display:'flex',gap:'3px'}} aria-hidden="true">
+                    <span style={{width:'8px',height:'8px',background:'#9FE3B6'}}></span>
+                    <span style={{width:'8px',height:'8px',background:'#9FE3B6'}}></span>
+                    <span style={{width:'8px',height:'8px',background:'var(--bar)'}}></span>
+                  </span>
+                </span>
+                <span style={{background:'#FFFFFF',border:'2px solid var(--line-soft)',display:'flex',alignItems:'center',justifyContent:'center',padding:'20px',minHeight:'200px'}}>
+                  <Image src="/assets/ug-hyderabad.jpeg" alt="User Groups Hyderabad" width={200} height={200} sizes="220px" style={{width:'100%',maxWidth:'200px',height:'auto',display:'block',imageRendering:'auto'}} />
+                </span>
+                <span style={{fontFamily:'var(--font-display)',fontSize:'32.5px',color:'var(--ink)'}}>USER GROUPS HYDERABAD</span>
+                <span style={{fontSize:'13.5px',lineHeight:'1.55',color:'var(--body)'}}>The AWS community in Hyderabad.</span>
+              </div>
               <div className="dh-h22" style={{border:'3px dashed var(--line-dash)',background:'var(--surface)',padding:'24px 22px',display:'flex',flexDirection:'column',gap:'12px',transition:'transform .14s steps(3),border-color .14s steps(2)'}}>
                 <span style={{fontFamily:'var(--font-mono)',fontSize:'9.5px',letterSpacing:'.2em',textTransform:'uppercase',color:'var(--muted)'}}>Slot open</span>
                 <span style={{background:'var(--panel)',border:'2px solid var(--line-soft)',display:'flex',alignItems:'center',justifyContent:'center',minHeight:'200px',fontFamily:'var(--font-display)',fontSize:'70px',color:'#D6CFC5'}}>?</span>
