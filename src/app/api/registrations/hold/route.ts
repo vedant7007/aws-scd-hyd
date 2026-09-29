@@ -1,4 +1,4 @@
-import { accountFor, upiLink } from '@/content/payment'
+import { payment, upiLink } from '@/content/payment'
 import { programSession } from '@/content/program'
 import { callerIp, withinRateLimit } from '@/lib/db/rate-limit'
 import { placeHold } from '@/lib/registration/flow'
@@ -12,11 +12,6 @@ import { launchStatus } from '@/lib/tickets/launch'
  * the hold this browser already made. Returns what the payment screen needs.
  * Nothing here verifies anyone.
  *
- * ?preview=1 is the test registration at /register/preview: open to anyone
- * with the link, it pays the organiser's test UPI account, and the record it
- * makes is marked preview so no
- * count reads it.
- *
  * Rate limits. The audience is students on college wifi, hundreds behind one
  * NATed address, so a per-IP limit tight enough to matter would 429 a whole
  * campus on launch morning. The limit that protects people is per email; the
@@ -29,18 +24,14 @@ const PER_IP_PER_HOUR = 500
 const json = (status: number, body: unknown) => Response.json(body, { status, headers: { 'cache-control': 'no-store' } })
 
 export async function POST(req: Request): Promise<Response> {
-  const preview = new URL(req.url).searchParams.get('preview') === '1'
-
-  if (!preview) {
-    // The switch, read from the table on this request. A direct POST while
-    // closed is refused here and creates nothing; hiding the page is not
-    // the enforcement.
-    const launch = await launchStatus()
-    if (!launch.registrationOpen) return json(403, { ok: false, reason: 'closed', message: 'Registrations are closed.' })
-    if (launch.enforced && launch.blockers.length) {
-      console.error(`[hold] REFUSED. registration is open but selling is blocked: ${launch.blockers.map((b) => b.detail).join(' | ')}`)
-      return json(503, { ok: false, message: 'Registration is paused for a moment. Nothing was charged. Try again later.' })
-    }
+  // The switch, read from the table on this request. A direct POST while
+  // closed is refused here and creates nothing; hiding the page is not
+  // the enforcement.
+  const launch = await launchStatus()
+  if (!launch.registrationOpen) return json(403, { ok: false, reason: 'closed', message: 'Registrations are closed.' })
+  if (launch.enforced && launch.blockers.length) {
+    console.error(`[hold] REFUSED. registration is open but selling is blocked: ${launch.blockers.map((b) => b.detail).join(' | ')}`)
+    return json(503, { ok: false, message: 'Registration is paused for a moment. Nothing was charged. Try again later.' })
   }
 
   const body: unknown = await req.json().catch(() => null)
@@ -58,7 +49,7 @@ export async function POST(req: Request): Promise<Response> {
     return json(429, { ok: false, message: 'Too many registrations from this network in the last hour. Nothing was charged. Try again a little later.' })
   }
 
-  const out = await placeHold(v.input, v.submissionKey, v.passId, preview ? 'preview' : 'checkout')
+  const out = await placeHold(v.input, v.submissionKey, v.passId, 'checkout')
   if (!out.ok) {
     const s = programSession(out.sessionId)
     const isWorkshop = s?.kind === 'workshop'
@@ -72,8 +63,8 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   const a = out.attendee
-  const account = accountFor(a.source)
-  console.info(`[hold] ${a.passId} ${out.moved ? 'moved' : 'held'}, ${a.amountPaise} paise, ${a.technicalSession}${a.workshop ? `+${a.workshop}` : ''}${preview ? ' (preview)' : ''}`)
+  const account = payment.live
+  console.info(`[hold] ${a.passId} ${out.moved ? 'moved' : 'held'}, ${a.amountPaise} paise, ${a.technicalSession}${a.workshop ? `+${a.workshop}` : ''}`)
   return json(200, {
     ok: true,
     passId: a.passId,
@@ -82,7 +73,7 @@ export async function POST(req: Request): Promise<Response> {
     upi: {
       // Never shown: the page prints no payee or UPI id, only the QR.
       payee: null,
-      // Null while the UPI id is unset: the preview shows the gap instead of a QR that pays nobody.
+      // Null while the UPI id is unset: the page shows the gap instead of a QR that pays nobody.
       link: account ? upiLink(account, a.passId) : null,
     },
   })

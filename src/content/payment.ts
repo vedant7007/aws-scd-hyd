@@ -3,14 +3,9 @@
  * the page generates for the exact amount, with their pass id in the note,
  * pays from their own app, then comes back with the UTR and a screenshot.
  *
- * Two accounts, both from the server environment and never from this file,
- * because the repo is public:
- *
- *   live  SCD_UPI_ID, SCD_UPI_PAYEE, SCD_UPI_MC: the college account, read
- *         from the college's own merchant QR. Every real registration.
- *   test  SCD_UPI_TEST_ID: the organiser's own account. Only records made
- *         at /register/preview pay here, for testing end to end with real
- *         money before the college account takes it.
+ * The account comes from the server environment and never from this file,
+ * because the repo is public: SCD_UPI_ID, SCD_UPI_PAYEE and SCD_UPI_MC, the
+ * college's Canara account as its own merchant QR carries them.
  *
  * The id is never printed on a page or sent in an API response, only
  * encoded in the QR and the one-tap app link.
@@ -19,14 +14,10 @@ export type UpiAccount = { upiId: string; payeeName: string | null; merchantCode
 
 const env = (k: string) => process.env[k]?.trim() || null
 
-export const payment = {
-  /** Registration cannot open while this is unset: the launch guard refuses. */
-  live: env('SCD_UPI_ID') ? ({ upiId: env('SCD_UPI_ID')!, payeeName: env('SCD_UPI_PAYEE'), merchantCode: env('SCD_UPI_MC') } as UpiAccount) : null,
-  test: env('SCD_UPI_TEST_ID') ? ({ upiId: env('SCD_UPI_TEST_ID')!, payeeName: null, merchantCode: null } as UpiAccount) : null,
+/** Registration cannot open while this is unset: the launch guard refuses. */
+export const payment: { live: UpiAccount | null } = {
+  live: env('SCD_UPI_ID') ? { upiId: env('SCD_UPI_ID')!, payeeName: env('SCD_UPI_PAYEE'), merchantCode: env('SCD_UPI_MC') } : null,
 }
-
-/** The account a record pays: the test one for preview records while it is set, the college one otherwise. */
-export const accountFor = (source: string): UpiAccount | null => (source === 'preview' ? (payment.test ?? payment.live) : payment.live)
 
 /**
  * The link a UPI app opens: payee, name, merchant code where the bank's QR

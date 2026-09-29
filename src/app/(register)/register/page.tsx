@@ -11,8 +11,8 @@ import type { Tier } from '@/lib/db/types'
 import { registrationIsOpen } from '@/lib/tickets/launch'
 
 export const metadata: Metadata = {
-  title: `Registrations open soon, ${event.shortName}`,
-  description: `Registrations for ${event.name} on ${event.dateLabel} have not opened yet. Leave your email and we will tell you the moment they do.`,
+  title: 'Register',
+  description: `Register for ${event.name} on ${event.dateLabel}. Pick a pass from Rs 499, choose your cloud or AI session and hands-on workshop, and pay by UPI. Lunch on every pass.`,
 }
 
 /**
@@ -52,7 +52,7 @@ export default async function RegisterPage() {
   // admin switch has to take effect on the next load.
   if (REGISTRATION_OPEN || process.env.NODE_ENV !== 'production') {
     await connection()
-    if (await registrationIsOpen()) return <Flow preview={false} />
+    if (await registrationIsOpen()) return <Flow />
   }
 
   const chips: PassChip[] = passes.map((p) => ({

@@ -132,7 +132,7 @@ const chip = (on: boolean, display = false): CSSProperties => ({
 
 /* ---- the component ------------------------------------------------------- */
 
-export function Flow({ preview, resume }: { preview: boolean; resume?: Resume }) {
+export function Flow({ resume }: { resume?: Resume }) {
   const router = useRouter()
   const [step, setStep] = useState(resume ? 5 : 1)
   const [phase, setPhase] = useState<'form' | 'review'>('form')
@@ -270,7 +270,7 @@ export function Flow({ preview, resume }: { preview: boolean; resume?: Resume })
     setBusy(true)
     setNotice('')
     try {
-      const res = await fetch(`/api/registrations/hold${preview ? '?preview=1' : ''}`, {
+      const res = await fetch('/api/registrations/hold', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({

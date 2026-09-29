@@ -1,10 +1,10 @@
 import type { Metadata } from 'next'
 import { ReportForm } from '@/components/forms/ReportForm'
-import { event, venue } from '@/content/event'
+import { conductContacts, event, venue } from '@/content/event'
 
 export const metadata: Metadata = {
-  title: `Code of conduct, ${event.shortName}`,
-  description: `The code of conduct for ${event.name}.`,
+  title: 'Code of conduct',
+  description: `The code of conduct for ${event.name}: what we expect, what is not acceptable, and who to call or WhatsApp if something goes wrong.`,
 }
 
 const REPORT_MAILTO = `mailto:${event.contactEmail}?subject=${encodeURIComponent('Code of conduct report')}`
@@ -110,6 +110,25 @@ export default function CodeOfConductPage() {
             On the day, find Ruthvik or any volunteer in an organiser lanyard, and they will bring him to you. You do not have to explain
             yourself to a stranger first.
           </p>
+          <div className="flex flex-col gap-2.5">
+            <span className="lbl eye-amber">Call or WhatsApp</span>
+            {conductContacts.map((c) => (
+              <div key={c.phone} className="card flex flex-wrap items-center justify-between gap-2.5 p-3">
+                <span className="flex flex-col gap-0.5">
+                  <span className="h3">{c.name.toUpperCase()}</span>
+                  <span className="num text-[13px] text-muted">{c.display}</span>
+                </span>
+                <span className="flex flex-wrap gap-2">
+                  <a href={`https://wa.me/${c.phone}`} className="btn btn-mint btn-sm" target="_blank" rel="noopener noreferrer" aria-label={`WhatsApp ${c.name}`}>
+                    WHATSAPP
+                  </a>
+                  <a href={`tel:+${c.phone}`} className="btn btn-sm" aria-label={`Call ${c.name}`}>
+                    CALL
+                  </a>
+                </span>
+              </div>
+            ))}
+          </div>
           <a href={REPORT_MAILTO} className="btn btn-ink self-start">
             MAIL US NOW
           </a>

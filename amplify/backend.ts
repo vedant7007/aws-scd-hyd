@@ -143,8 +143,8 @@ const emailEnv = {
    Grants.
    --------------------------------------------------------------------------- */
 
-// The reconcile Lambda reads and writes the table, asks Razorpay what settled,
-// and sends the confirmation for anything it applies or finds owed.
+// The reconcile Lambda reads and writes the table: it sweeps lapsed holds
+// and resends any payment-verified mail that failed to go.
 const reconcileLambda = backend.reconcile.resources.lambda
 table.grantReadWriteData(reconcileLambda)
 reconcileLambda.addToRolePolicy(sesSend)

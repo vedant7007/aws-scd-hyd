@@ -26,7 +26,7 @@ export type Row = {
   screenshot: boolean
   rejectionReason: string | null
   createdAt: string
-  /** Made through the admin preview: real, verifiable, never counted. */
+  /** Made through the old test link: real, verifiable, never counted. */
   preview: boolean
   checkedIn: boolean
 }

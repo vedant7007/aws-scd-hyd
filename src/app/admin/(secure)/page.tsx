@@ -111,13 +111,6 @@ export default async function AdminDashboardPage() {
           REGISTRATIONS
         </h2>
         <AdminConsole rows={rows} />
-        <p className="hint">
-          Walk the real flow without opening it to the public at{' '}
-          <Link href="/register/preview" className="num">
-            /register/preview
-          </Link>
-          . Records made there are marked PREVIEW and never counted.
-        </p>
       </section>
 
       <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))]">

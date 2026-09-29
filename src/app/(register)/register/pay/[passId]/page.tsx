@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound, redirect } from 'next/navigation'
 import { Flow, type Resume } from '@/components/register/Flow'
-import { accountFor, upiLink } from '@/content/payment'
+import { payment, upiLink } from '@/content/payment'
 import { normalisePassId } from '@/lib/db/keys'
 import { getAttendee } from '@/lib/db/queries'
 
@@ -38,7 +38,7 @@ export default async function PayPage({ params }: PageProps<'/register/pay/[pass
       holdEnds: a.state === 'AWAITING_PAYMENT' ? Date.parse(a.holdUntil!) : 0,
       amountPaise: a.amountPaise,
       payee: null,
-      link: accountFor(a.source) ? upiLink(accountFor(a.source)!, a.passId) : null,
+      link: payment.live ? upiLink(payment.live, a.passId) : null,
     },
     tier: a.tier,
     tech: a.technicalSession,
@@ -48,5 +48,5 @@ export default async function PayPage({ params }: PageProps<'/register/pay/[pass
     email: a.email,
     rejection: a.state === 'REJECTED' ? (a.rejectionReason ?? 'The UTR did not match a payment in the college statement.') : null,
   }
-  return <Flow preview={a.source === 'preview'} resume={resume} />
+  return <Flow resume={resume} />
 }

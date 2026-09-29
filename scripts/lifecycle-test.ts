@@ -383,12 +383,6 @@ async function http(): Promise<void> {
   assert.ok(!/@/.test(body) && !body.includes(pend.passId))
   ok('non-admin screenshot request: 403 with no address and no id')
 
-  const preview = await fetch(`${BASE}/api/registrations/hold?preview=1`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...input(), submissionKey: submissionKey() }) })
-  const pv = (await preview.json()) as { passId?: string; upi?: { link: string | null } }
-  assert.equal(preview.status, 200)
-  if (pv.passId) holding.push(pv.passId)
-  assert.equal((await getAttendee(pv.passId!))?.source, 'preview', 'a test registration is marked preview')
-  ok('the test registration at /register/preview is open to anyone and its record is marked preview')
 }
 
 /* ---- the switch ----------------------------------------------------------- */

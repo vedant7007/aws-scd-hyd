@@ -133,7 +133,7 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 
 Locally, credentials come from the `scd` CLI profile, so set `AWS_PROFILE=scd` rather than putting keys in `.env.local`. In Amplify Hosting, the SSR compute role supplies credentials automatically and there are no keys at all.
 
-The admin preview at `/register/preview` is what lets the whole flow be walked on the live site with registration closed; see section 11.
+Test registrations go through `npm run test:lifecycle` against the sandbox.
 
 ---
 
@@ -231,7 +231,7 @@ The Scan is deliberate. At a few thousand items it costs a fraction of a rupee a
 
 ## 8. Payments and registration
 
-UPI only, since the v3 handoff (28 September 2026). The college's UPI id, a QR generated for the exact amount, a UTR and a screenshot, and an admin verifying against the bank statement. The Razorpay integration and its `PAYMENT_MODE` switch were removed then; they are in git history before that date if they are ever wanted back.
+UPI only, since the v3 handoff (28 September 2026). The college's UPI id, a QR generated with the pass id as the note, a UTR and a screenshot, and an admin verifying against the bank statement. The Razorpay integration and its `PAYMENT_MODE` switch were removed then; they are in git history before that date if they are ever wanted back.
 
 ### The flow
 
@@ -362,9 +362,9 @@ While registration is closed (section 8), `/register` is the notify page, ported
 
 While open, `/register` is the flow, section 8. In production the closed page stays static; the open check runs per request, never at build time.
 
-### `/register/preview`
+### `/register/preview` (removed)
 
-The test registration (29 September 2026): the real flow exactly as students see it, open to anyone with the link, never linked, noindex and disallowed in robots.txt. The one difference is the money: these records pay the organiser's test UPI account (`SCD_UPI_TEST_ID`) while real registrations pay the college (`SCD_UPI_ID`, `SCD_UPI_PAYEE`, `SCD_UPI_MC`, read from the college's Canara merchant QR). Both live only in the server environment, never in this public repo. Test records are marked `source: preview`: verified, emailed and scanned like any other, never in a count or the caterer total.
+The public test link that paid the organiser's own account was removed on 29 September 2026, after the end-to-end test. Records it made keep `source: preview`: badged in the queue, never counted.
 
 ### `/register/pay/[passId]`
 
@@ -473,12 +473,12 @@ Kept current as work lands. Everything else in this file is the plan, this secti
 | Landing page | ported from the design handoff (Landing Bitmap). Its own header and footer, theme in localStorage under `scd-theme`, cloud page transition on every route. APPLY TO SPEAK and BECOME A SPONSOR open the `/speak` and `/sponsor` forms |
 | Schedule, speakers, sponsors, code of conduct, register, pass, pass entry, admin | ported to the handoff design under `src/app/(public)/` and `src/app/admin/`, one shared header and footer, pre-handoff stylesheet dropped |
 | Sessions, not tracks | the public site is built on the five session formats in `content/formats.ts`; registration picks from `content/program.ts`. Tracks, rooms per track, slots and the per-slot picker are deleted |
-| Registrations | **closed in code.** `REGISTRATION_OPEN` is false, every CTA reads NOTIFY ME, `/register` is the notify page. The v3 flow is built and walkable by admins at `/register/preview` |
+| Registrations | **open** since 29 September 2026, paying the college account |
 | Design v3 | **Phase 1 live.** The landing and `/register` are regenerated from the v3 handoff markup (`C:/CODING/awsscdhyd_design`, bundle `(1)`). Display face is **Jersey 10** (it replaced Pixelify Sans, whose C read as an O); it has one weight and is never set bold. Shared display sizes in `globals.css` were scaled by 1.25, the ratio the handoff itself applied. Inner pages use the handoff's chrome: a `< SCD.HYD 26` back link and the theme toggle, footer with the site name and the legal line. Ported screens keep the handoff's content-box model under `[data-landing]` / `[data-dc]`. Phases 2 and 3 are built: the registration flow, and real Speak, Sponsor and report forms. |
 | Traffic | **live.** A beacon in the root layout posts one page view per route change to `/api/hit`, which adds to `HITS#<IST day>` rows keyed `TOTAL`, `PATH#<route>` and `REF#<host>`. No cookie, IP address, user agent or visitor id is stored; a visit is the first view in a browser tab, counted by the browser. Paths outside an allowlist fold into `(other)`, so a caller can inflate a counter but never create keys. Crew pages, crawlers and Do Not Track / GPC browsers are not counted. `/admin/traffic`, admin only, shows 14 days, top pages, sources and how many `/register` visits left an address |
 | Prices | Rs 499 / 799 / 999 / 1,299, confirmed 24 September 2026, every perk written out on every card |
 | Registration flow, v3 | five steps and the received and expired screens, ported from the handoff. Seats per session claimed at the payment step, moved on edit, released by the sweep. Race test and the 26-check acceptance suite (`npm run test:lifecycle`, with `TEST_BASE_URL` for the HTTP checks) pass against the sandbox; a browser walkthrough from pass to received, including a real screenshot upload, passes on desktop and at 390px |
-| Payments | UPI only. Razorpay removed on 28 September 2026 (in git history). The launch guard currently lists two blockers: the UPI id and the session seat counts |
+| Payments | UPI only, to the college account. Razorpay was removed on 28 September 2026, and its settings were deleted from Amplify on 29 September. The test link /register/preview was removed on 29 September |
 | Organiser auth, dashboard, scanner | verification queue with sessions and student details, five-state counts, PREVIEW badges, reinstate, seats per session; scanner admits only `VERIFIED` |
 | Reconcile | hourly, verified to report and repair a deleted record |
 | Email | five transactional bodies in one module, each with an idempotency mark; SES sending verified end to end from the sandbox |

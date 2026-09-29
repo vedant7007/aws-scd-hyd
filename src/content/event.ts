@@ -70,11 +70,10 @@ export const ROOM_RESERVE = 15
 /**
  * THE MASTER SWITCH. While this is false nothing sells, whatever the config
  * item says and whatever an admin clicks: /register is the notify page and
- * the hold route refuses. Anyone with the link can still walk the real flow at
- * /register/preview.
+ * the hold route refuses.
  *
  * Opened for real on 29 September 2026 at the organiser's word, after the
- * end-to-end test at /register/preview. Real registrations pay the college.
+ * end-to-end test with real payments. Registrations pay the college.
  */
 export const REGISTRATION_OPEN = true
 
@@ -90,3 +89,12 @@ export const about = [
   'A keynote to open, technical sessions on Cloud Engineering and AI, hands-on workshops, a panel and an open Q&A. Your pass decides which of these you get.',
   'It is run by volunteers from the AWS Student Builders Group at VJIT, and it is not an AWS event.',
 ]
+
+/**
+ * People to call or WhatsApp about conduct or anything urgent, as the
+ * organiser listed them (29 September 2026). Numbers are +91, digits only.
+ */
+export const conductContacts = [
+  { name: 'Ruthvik', phone: '919492504574', display: '+91 94925 04574' },
+  { name: 'Vedant', phone: '918897749889', display: '+91 88977 49889' },
+] as const

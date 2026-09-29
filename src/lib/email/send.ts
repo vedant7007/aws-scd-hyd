@@ -75,23 +75,39 @@ export async function sendEmail(mail: Mail): Promise<SendResult> {
     return { transport: 'console', messageId: `console-${Date.now()}` }
   }
 
-  const res = await ses().send(
-    new SendEmailCommand({
-      FromEmailAddress: required('SES_FROM'),
-      ReplyToAddresses: [mail.replyTo ?? required('SES_REPLY_TO')],
-      Destination: { ToAddresses: [to] },
-      ConfigurationSetName: configurationSet(),
-      Content: {
-        Simple: {
-          Subject: { Data: mail.subject, Charset: 'UTF-8' },
-          Body: {
-            Text: { Data: mail.text, Charset: 'UTF-8' },
-            Html: { Data: mail.html, Charset: 'UTF-8' },
+  // SES allows 14 sends a second on this account. Fifty students submitting
+  // at once would otherwise get some receipts refused, so a throttled send
+  // waits a random moment and tries again, up to six times.
+  const send = () =>
+    ses().send(
+      new SendEmailCommand({
+        FromEmailAddress: required('SES_FROM'),
+        ReplyToAddresses: [mail.replyTo ?? required('SES_REPLY_TO')],
+        Destination: { ToAddresses: [to] },
+        ConfigurationSetName: configurationSet(),
+        Content: {
+          Simple: {
+            Subject: { Data: mail.subject, Charset: 'UTF-8' },
+            Body: {
+              Text: { Data: mail.text, Charset: 'UTF-8' },
+              Html: { Data: mail.html, Charset: 'UTF-8' },
+            },
           },
         },
-      },
-    }),
-  )
+      }),
+    )
+  let res
+  for (let attempt = 0; ; attempt++) {
+    try {
+      res = await send()
+      break
+    } catch (err) {
+      const name = (err as { name?: string }).name ?? ''
+      const throttled = /Throttl|TooManyRequests|LimitExceeded/i.test(name)
+      if (!throttled || attempt >= 5) throw err
+      await new Promise((r) => setTimeout(r, 200 * 2 ** attempt + Math.random() * 400))
+    }
+  }
 
   return { transport: 'ses', messageId: res.MessageId ?? '' }
 }

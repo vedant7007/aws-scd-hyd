@@ -6,6 +6,7 @@ import { CloudTransition } from '@/components/layout/CloudTransition'
 import { ThemeGuard } from '@/components/layout/ThemeGuard'
 import { event, venue } from '@/content/event'
 import { CLOUDS_BOOT } from '@/lib/clouds'
+import { siteUrl } from '@/lib/site'
 import { THEME_BOOT } from '@/lib/theme'
 
 /**
@@ -39,9 +40,51 @@ const mono = IBM_Plex_Mono({
   variable: '--font-mono-face',
 })
 
+const DESCRIPTION = `${event.name} 2026: a student-run AWS community conference on ${event.dateLabel} at ${venue.name}, ${event.city}. Cloud and AI sessions, hands-on AWS workshops, a panel and a project expo. Passes from Rs 499, lunch included.`
+
+/**
+ * Site-wide metadata for search and link previews. Pages set their own
+ * title (it slots into the template) and description; every page gets a
+ * canonical URL from its own path, so the www and bare-domain copies, and
+ * any tracking parameters, all count as one page to search engines.
+ */
 export const metadata: Metadata = {
-  title: event.name,
-  description: `${event.name}, ${event.dateLabel}, at ${venue.name}. A day of cloud engineering and AI, run by ${event.host}.`,
+  metadataBase: new URL(siteUrl()),
+  title: { default: `${event.name} 2026 · 30 October, VJIT`, template: `%s · ${event.shortName} 2026` },
+  description: DESCRIPTION,
+  applicationName: event.name,
+  keywords: [
+    'AWS Student Community Day',
+    'AWS Student Community Day Hyderabad',
+    'AWS SCD Hyderabad',
+    'AWS community day Hyderabad 2026',
+    'AWS event Hyderabad',
+    'cloud computing event Hyderabad',
+    'AI event Hyderabad',
+    'student tech conference Hyderabad',
+    'AWS workshop Hyderabad',
+    'VJIT',
+    'Vidya Jyothi Institute of Technology',
+    'AWS Student Builders Group',
+    'AWS User Group Hyderabad',
+    'tech events Hyderabad October 2026',
+  ],
+  authors: [{ name: event.host }],
+  creator: event.host,
+  publisher: event.host,
+  category: 'technology',
+  alternates: { canonical: './' },
+  openGraph: {
+    type: 'website',
+    locale: 'en_IN',
+    url: './',
+    siteName: event.name,
+    title: `${event.name} 2026`,
+    description: DESCRIPTION,
+  },
+  twitter: { card: 'summary_large_image', title: `${event.name} 2026`, description: DESCRIPTION },
+  robots: { index: true, follow: true, googleBot: { index: true, follow: true, 'max-image-preview': 'large', 'max-snippet': -1 } },
+  formatDetection: { telephone: false, email: false, address: false },
 }
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {

@@ -1,6 +1,6 @@
 export type Tier = 'basic' | 'premium' | 'ultra' | 'vip'
 /** Veg and non-veg only, by the organiser's decision. */
-/** 'preview' marks a record an admin made through the preview of the flow: real, but never counted as an attendee. */
+/** 'preview' marks a record made through the old test link (removed 29 September 2026): real, but never counted. */
 export type AttendeeSource = 'checkout' | 'manual' | 'preview'
 /** Year of study, as the v3 flow offers it. Stored as typed. */
 export type YearOfStudy = '1' | '2' | '3' | '4' | '5+'
