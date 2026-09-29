@@ -83,7 +83,7 @@ export async function POST(req: Request): Promise<Response> {
       // Never shown: the page prints no payee or UPI id, only the QR.
       payee: null,
       // Null while the UPI id is unset: the preview shows the gap instead of a QR that pays nobody.
-      link: account ? upiLink(account, a.amountPaise, a.passId) : null,
+      link: account ? upiLink(account, a.passId) : null,
     },
   })
 }

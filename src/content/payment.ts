@@ -30,14 +30,16 @@ export const accountFor = (source: string): UpiAccount | null => (source === 'pr
 
 /**
  * The link a UPI app opens: payee, name, merchant code where the bank's QR
- * carries one, the exact amount in rupees, INR, and the pass id as the note
- * so the bank statement row can be matched to the record by eye.
+ * carries one, INR, and the pass id as the note so the bank statement row
+ * can be matched to the record by eye. No amount: the organiser wants the
+ * student to type it (29 September 2026); the page prints the exact figure
+ * beside the QR, and the admin still verifies against the stored amount.
  */
-export function upiLink(account: UpiAccount, amountPaise: number, passId: string): string {
+export function upiLink(account: UpiAccount, passId: string): string {
   const q: Record<string, string> = { pa: account.upiId }
   if (account.payeeName) q.pn = account.payeeName
   if (account.merchantCode) q.mc = account.merchantCode
-  Object.assign(q, { am: (amountPaise / 100).toFixed(2), cu: 'INR', tn: passId })
+  Object.assign(q, { cu: 'INR', tn: passId })
   // encodeURIComponent, not URLSearchParams: some UPI apps print a '+' for a
   // space literally. '@' stays literal, as every bank's own QR prints it.
   return `upi://pay?${Object.entries(q).map(([k, v]) => `${k}=${encodeURIComponent(v).replace(/%40/g, '@')}`).join('&')}`

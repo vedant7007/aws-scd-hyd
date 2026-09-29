@@ -70,16 +70,14 @@ export const ROOM_RESERVE = 15
 /**
  * THE MASTER SWITCH. While this is false nothing sells, whatever the config
  * item says and whatever an admin clicks: /register is the notify page and
- * the hold route refuses. Admins can still walk the real flow at
+ * the hold route refuses. Anyone with the link can still walk the real flow at
  * /register/preview.
  *
- * Opened on 29 September 2026 at the organiser's request, for testing with
- * a temporary UPI account. Even so, nothing sells in production until the
- * launch guard is clear: the UPI id set on the server and every session
- * given a seat count on /admin/settings. Until then /register stays the
- * notify page.
+ * Locked again on 29 September 2026 at the organiser's request, until they
+ * say otherwise. Testing runs through /register/preview, which does not
+ * read this flag and pays the organiser's test UPI account.
  */
-export const REGISTRATION_OPEN = true
+export const REGISTRATION_OPEN = false
 
 /**
  * The admin switch on the settings page, stored on the config item. It can

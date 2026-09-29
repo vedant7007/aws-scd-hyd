@@ -193,9 +193,9 @@ function validation(): void {
   assert.equal(normaliseUtr('axis1234567890ab'), 'AXIS1234567890AB')
   assert.equal(normaliseUtr('12345678901'), null, 'eleven characters is too short')
   assert.equal(normaliseUtr('1234-5678-9012'), null, 'punctuation is refused')
-  const link = upiLink({ upiId: 'college@bank', payeeName: 'VJIT College', merchantCode: '8299' }, 79900, 'SCD-ABCDEFGHJK')
+  const link = upiLink({ upiId: 'college@bank', payeeName: 'VJIT College', merchantCode: '8299' }, 'SCD-ABCDEFGHJK')
   assert.ok(link.startsWith('upi://pay?pa=college@bank&'), link)
-  assert.ok(link.includes('pn=VJIT%20College') && link.includes('mc=8299') && link.includes('am=799.00') && link.includes('tn=SCD-ABCDEFGHJK') && link.includes('cu=INR') && !link.includes('+'), link)
+  assert.ok(link.includes('pn=VJIT%20College') && link.includes('mc=8299') && !link.includes('am=') && link.includes('tn=SCD-ABCDEFGHJK') && link.includes('cu=INR') && !link.includes('+'), link)
   ok('server validation: amount, workshop by tier, age on the event day, phone, UTR shape and the UPI link')
 }
 

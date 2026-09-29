@@ -38,7 +38,7 @@ export default async function PayPage({ params }: PageProps<'/register/pay/[pass
       holdEnds: a.state === 'AWAITING_PAYMENT' ? Date.parse(a.holdUntil!) : 0,
       amountPaise: a.amountPaise,
       payee: null,
-      link: accountFor(a.source) ? upiLink(accountFor(a.source)!, a.amountPaise, a.passId) : null,
+      link: accountFor(a.source) ? upiLink(accountFor(a.source)!, a.passId) : null,
     },
     tier: a.tier,
     tech: a.technicalSession,

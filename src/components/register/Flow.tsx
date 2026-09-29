@@ -754,7 +754,7 @@ export function Flow({ preview, resume }: { preview: boolean; resume?: Resume })
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', textAlign: 'center' }}>
                       <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', letterSpacing: '.2em', textTransform: 'uppercase', color: 'var(--ink)', background: 'var(--surface)', padding: '2px 6px' }}>Pay exactly</span>
                       <span style={{ fontFamily: 'var(--font-mono)', fontWeight: '600', fontSize: '40px', lineHeight: '1', color: '#14161C', background: '#FF9900', border: '3px solid #14161C', padding: '6px 16px', boxShadow: '4px 4px 0 #14161C' }}>{money(amount)}</span>
-                      <span style={{ fontSize: '13px', lineHeight: '1.5', color: 'var(--ink)', background: 'var(--surface)', padding: '4px 8px', maxWidth: '34ch' }}>Not rounded. A different amount cannot be matched to you.</span>
+                      <span style={{ fontSize: '13px', lineHeight: '1.5', color: 'var(--ink)', background: 'var(--surface)', padding: '4px 8px', maxWidth: '34ch' }}>Type this amount in your UPI app after scanning. Not rounded: a different amount cannot be matched to you.</span>
                     </div>
                   </div>
                   <div style={{ background: 'var(--surface)', borderTop: '3px solid var(--line)', padding: '6px 14px 10px', display: 'flex', flexDirection: 'column' }}>
