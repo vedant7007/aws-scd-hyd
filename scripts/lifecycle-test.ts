@@ -194,7 +194,7 @@ function validation(): void {
   assert.equal(normaliseUtr('12345678901'), null, 'eleven characters is too short')
   assert.equal(normaliseUtr('1234-5678-9012'), null, 'punctuation is refused')
   const link = upiLink('college@bank', 79900, 'SCD-ABCDEFGHJK')
-  assert.ok(link.startsWith('upi://pay?pa=college%40bank&'), link)
+  assert.ok(link.startsWith('upi://pay?pa=college@bank&'), link)
   assert.ok(link.includes('am=799.00') && link.includes('tn=SCD-ABCDEFGHJK') && link.includes('cu=INR') && !link.includes('+'), link)
   ok('server validation: amount, workshop by tier, age on the event day, phone, UTR shape and the UPI link')
 }
@@ -394,23 +394,27 @@ async function theSwitch(): Promise<void> {
   console.log('\nregistration switch')
   const before = (await import('../src/lib/db/queries').then((m) => m.getConfig()))?.registrationOpen
   await setRegistrationOpen(false, 'test@admin')
-  const inFlight = await seedIn('AWAITING_PAYMENT')
-  assert.ok((await submitUtr(inFlight.passId, nextUtr(), `screenshots/${inFlight.passId}/t.jpg`)).ok, 'UTR accepted while closed')
-  assert.ok((await verify(inFlight.passId, 'test@admin')).ok, 'verification works while closed')
-  ok('closed: an in-flight record submits its UTR and is verified as normal')
+  // Always put the switch back, even when a check fails, or the sandbox is left closed.
+  try {
+    const inFlight = await seedIn('AWAITING_PAYMENT')
+    assert.ok((await submitUtr(inFlight.passId, nextUtr(), `screenshots/${inFlight.passId}/t.jpg`)).ok, 'UTR accepted while closed')
+    assert.ok((await verify(inFlight.passId, 'test@admin')).ok, 'verification works while closed')
+    ok('closed: an in-flight record submits its UTR and is verified as normal')
 
-  if (BASE && process.env.SCD_DEV_REGISTRATION_OPEN !== '1') {
-    const email = `closed.${Date.now()}@scd-test.example`
-    const r = await fetch(`${BASE}/api/registrations/hold`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ ...input({ email }), submissionKey: submissionKey() }),
-    })
-    assert.equal(r.status, 403)
-    assert.ok(!(await listAttendees()).some((a) => a.email === email), 'no record was created by the refused POST')
-    ok('closed: a direct POST to the hold route is a 403 and creates nothing')
+    if (BASE && process.env.SCD_DEV_REGISTRATION_OPEN !== '1') {
+      const email = `closed.${Date.now()}@scd-test.example`
+      const r = await fetch(`${BASE}/api/registrations/hold`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ ...input({ email }), submissionKey: submissionKey() }),
+      })
+      assert.equal(r.status, 403)
+      assert.ok(!(await listAttendees()).some((a) => a.email === email), 'no record was created by the refused POST')
+      ok('closed: a direct POST to the hold route is a 403 and creates nothing')
+    }
+  } finally {
+    await setRegistrationOpen(before ?? true, 'test@admin')
   }
-  await setRegistrationOpen(before ?? true, 'test@admin')
 }
 
 async function roles(): Promise<void> {

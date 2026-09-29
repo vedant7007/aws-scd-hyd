@@ -31,8 +31,8 @@ type TierLook = { id: Tier; name: string; metal: string; edge: string; dark: str
 const TIERS: TierLook[] = [
   { id: 'basic', name: 'REGULAR', metal: 'COPPER', edge: '#6B3417', dark: '#3A1A08', light: '#FFD9BF', bg: 'linear-gradient(135deg,#F7D6BF 0%,#E0A07A 26%,#FADFCB 46%,#C57446 70%,#EDB896 100%)', from: '', adds: ['Keynote + 1 technical session', 'Q&A and Project Expo', 'Lunch', 'Swag kit · tier 1'] },
   { id: 'premium', name: 'PREMIUM', metal: 'GOLD', edge: '#5E3F04', dark: '#3A2600', light: '#FFF0B0', bg: 'linear-gradient(135deg,#FFF2BF 0%,#E8C052 26%,#FFF7D6 46%,#C5921A 70%,#F2D370 100%)', from: 'REGULAR', adds: ['1 hands-on workshop', 'Swag kit · tier 2'] },
-  { id: 'ultra', name: 'PLATINUM', metal: 'PLATINUM', edge: '#3E4758', dark: '#1E2533', light: '#DDE6F5', bg: 'linear-gradient(135deg,#F8FAFD 0%,#CBD3DF 26%,#FFFFFF 46%,#A3AFC1 70%,#E4E9F1 100%)', from: 'PREMIUM', adds: ['Panel discussion', 'Swag kit · tier 3'] },
-  { id: 'vip', name: 'VIP', metal: 'DIAMOND', edge: '#14161C', dark: '#14161C', light: '#F5B5CF', holo: true, bg: 'linear-gradient(115deg,#E8F8FF,#C9B6F5 16%,#F5B5CF 30%,#FFF0B8 44%,#A8EBC4 58%,#A9E3FF 72%,#D9C9FF 86%,#E8F8FF)', from: 'PLATINUM', adds: ['Front-row seating', 'Speaker networking + photo', 'Dedicated assistance', 'Swag kit · tier 4'] },
+  { id: 'ultra', name: 'PLATINUM', metal: 'PLATINUM', edge: '#3E4758', dark: '#1E2533', light: '#DDE6F5', bg: 'linear-gradient(135deg,#F8FAFD 0%,#CBD3DF 26%,#FFFFFF 46%,#A3AFC1 70%,#E4E9F1 100%)', from: 'PREMIUM', adds: ['Panel discussion', 'Reserved seat booking', 'Swag kit · tier 3'] },
+  { id: 'vip', name: 'VIP', metal: 'DIAMOND', edge: '#14161C', dark: '#14161C', light: '#F5B5CF', holo: true, bg: 'linear-gradient(115deg,#E8F8FF,#C9B6F5 16%,#F5B5CF 30%,#FFF0B8 44%,#A8EBC4 58%,#A9E3FF 72%,#D9C9FF 86%,#E8F8FF)', from: 'PLATINUM', adds: ['Front-row seating', 'Speaker networking', 'Dedicated assistance', 'Swag kit · tier 4'] },
 ]
 
 const LEVEL_BG: Record<Level, string> = { Beginner: '#9FE3B6', Intermediate: '#FFB84D', Advanced: '#F2A7C3', 'Beginner–Intermediate': '#A9E3FF' }
@@ -44,8 +44,9 @@ const CMP: [string, number][] = [
   ['Project Expo', 1],
   ['1 hands-on workshop', 2],
   ['Panel discussion', 3],
+  ['Reserved seat booking', 3],
   ['Reserved front-row seating', 4],
-  ['Speaker networking + group photo', 4],
+  ['Speaker networking', 4],
   ['Dedicated VIP assistance', 4],
 ]
 const NAMES = ['', 'Choose a pass', 'Your sessions', 'Your details', 'Check', 'Pay by UPI']
@@ -66,7 +67,7 @@ const EMPTY: Fields = { first: '', middle: '', last: '', email: '', phone: '', c
 type Upload = { status: 'none' | 'uploading' | 'done' | 'failed'; name: string; url: string; pct: number; err: string; key: string }
 const NO_UPLOAD: Upload = { status: 'none', name: '', url: '', pct: 0, err: '', key: '' }
 /** holdEnds 0 means no clock: a rejected record being resubmitted keeps its seats with no deadline. */
-export type Hold = { passId: string; holdEnds: number; amountPaise: number; payee: string; link: string | null }
+export type Hold = { passId: string; holdEnds: number; amountPaise: number; payee: string | null; link: string | null }
 
 /**
  * The payment step on its own, for the link in the rejection email and for
@@ -296,7 +297,7 @@ export function Flow({ preview, resume }: { preview: boolean; resume?: Resume })
         passId?: string
         amountPaise?: number
         holdUntil?: string
-        upi?: { payee: string; link: string | null }
+        upi?: { payee: string | null; link: string | null }
       }
       if (res.ok && body.ok && body.passId && body.holdUntil && body.upi) {
         setHold({ passId: body.passId, holdEnds: Date.parse(body.holdUntil), amountPaise: body.amountPaise ?? amount, payee: body.upi.payee, link: body.upi.link })
@@ -548,6 +549,9 @@ export function Flow({ preview, resume }: { preview: boolean; resume?: Resume })
             {inForm && step === 2 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '26px' }}>
                 <p style={{ margin: '0', fontSize: '15px', lineHeight: '1.6', color: 'var(--body)', maxWidth: '56ch' }}>Some sessions come with every pass and are already on your plan. Where there is a choice, pick one.</p>
+                <p role="note" style={{ margin: '0', alignSelf: 'flex-start', border: '3px dashed var(--line-dash)', padding: '10px 14px', fontSize: '13px', lineHeight: '1.55', color: 'var(--body)' }}>
+                  <strong style={{ color: 'var(--ink)' }}>Sessions are subject to change.</strong> Titles, speakers and timings may shift before the day. If yours changes, we will email you.
+                </p>
                 <div style={S.col}>
                   <span style={S.eye}>{'// 01 · KEYNOTE'}</span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '14px', border: '3px solid var(--line)', background: 'var(--surface)', padding: '14px 16px' }}>
@@ -606,8 +610,9 @@ export function Flow({ preview, resume }: { preview: boolean; resume?: Resume })
                     <Extra lvl={lvl} pickTier={pickTier} name="Q&A SESSION" note="Everyone attends." need={1} />
                     <Extra lvl={lvl} pickTier={pickTier} name="PROJECT EXPO" note="Walk through student projects all day. Everyone gets in." need={1} />
                     <Extra lvl={lvl} pickTier={pickTier} name="PANEL DISCUSSION" note="Already on your plan." need={3} up="ultra" upName="Platinum" />
+                    <Extra lvl={lvl} pickTier={pickTier} name="RESERVED SEAT" note="A seat booked for you in your sessions." need={3} up="ultra" upName="Platinum" />
                     <Extra lvl={lvl} pickTier={pickTier} name="FRONT-ROW SEATING" note="Reserved for you." need={4} up="vip" upName="VIP" />
-                    <Extra lvl={lvl} pickTier={pickTier} name="SPEAKER NETWORKING" note="Time with the speakers, plus a group photo." need={4} up="vip" upName="VIP" />
+                    <Extra lvl={lvl} pickTier={pickTier} name="SPEAKER NETWORKING" note="Time with the speakers." need={4} up="vip" upName="VIP" />
                     <Extra lvl={lvl} pickTier={pickTier} name="DEDICATED ASSISTANCE" note="A volunteer looks after you on the day." need={4} up="vip" upName="VIP" />
                   </div>
                 </div>
@@ -758,7 +763,7 @@ export function Flow({ preview, resume }: { preview: boolean; resume?: Resume })
                           <QRCodeSVG value={hold.link} size={248} level="M" marginSize={0} role="img" aria-label={`UPI payment QR code for ${money(amount)}`} style={{ display: 'block', width: 'min(56vw,208px)', height: 'min(56vw,208px)' }} />
                         ) : (
                           <span role="img" aria-label="No UPI QR yet" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', width: 'min(56vw,208px)', height: 'min(56vw,208px)', background: 'repeating-linear-gradient(45deg,#FFFFFF 0 8px,#F1EEE9 8px 16px)', fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '.1em', color: '#14161C', padding: '0 12px', boxSizing: 'border-box' }}>
-                            UPI ID NOT SET YET. THE QR APPEARS HERE ONCE IT IS.
+                            PAYMENT QR NOT SET YET. IT APPEARS HERE ONCE IT IS.
                           </span>
                         )}
                       </span>
@@ -771,10 +776,12 @@ export function Flow({ preview, resume }: { preview: boolean; resume?: Resume })
                     </div>
                   </div>
                   <div style={{ background: 'var(--surface)', borderTop: '3px solid var(--line)', padding: '6px 14px 10px', display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', padding: '7px 0', borderBottom: '1px solid var(--line-soft)', fontSize: '13px' }}>
-                      <span style={S.rowL}>Payee</span>
-                      <span style={{ textAlign: 'right', color: 'var(--ink)' }}>{hold.payee}</span>
-                    </div>
+                    {hold.payee ? (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', padding: '7px 0', borderBottom: '1px solid var(--line-soft)', fontSize: '13px' }}>
+                        <span style={S.rowL}>Payee</span>
+                        <span style={{ textAlign: 'right', color: 'var(--ink)' }}>{hold.payee}</span>
+                      </div>
+                    ) : null}
                     <span style={{ paddingTop: '8px', fontSize: '12.5px', lineHeight: '1.5', color: 'var(--muted)' }}>
                       On this phone? {hold.link ? <a href={hold.link}>Open your UPI app</a> : 'Open your UPI app'}, or screenshot the QR and open it from your UPI app&apos;s scanner. Put {hold.passId} in the note if the app asks.
                     </span>

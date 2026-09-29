@@ -251,7 +251,7 @@ export function Landing({ registrationOpen, doors, prices }: Props) {
         <div id="prog" data-hstage="1" style={{position:'relative',zIndex:'10',height:'500vh'}}>
           <div style={{position:'sticky',top:'0',height:'100vh',overflow:'hidden',display:'flex',flexDirection:'column',justifyContent:'center',gap:'clamp(12px,2.6vh,24px)',padding:'clamp(64px,11vh,96px) 0 clamp(28px,5vh,48px)'}}>
             <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:'12px',padding:'0 clamp(18px,5vw,56px)',fontFamily:'var(--font-mono)',fontSize:'10.5px',letterSpacing:'.22em',textTransform:'uppercase',color:'var(--muted)'}}>
-              <span style={{color:'var(--mint-ink)'}}>{'// THE SESSIONS'}</span>
+              <span style={{color:'var(--mint-ink)'}}>{'// THE SESSIONS'}<span style={{color:'var(--muted)'}}> · SUBJECT TO CHANGE</span></span>
               <span data-hcount="1">SESSION 01 / 05</span>
             </div>
             <div data-htrack="1" style={{display:'flex',alignItems:'center',gap:'clamp(16px,2.6vw,32px)',padding:'0 clamp(18px,5vw,56px)',willChange:'transform'}}>
@@ -702,7 +702,7 @@ export function Landing({ registrationOpen, doors, prices }: Props) {
               </details>
               <details style={{border:'3px solid var(--line)',background:'var(--surface)'}}>
                 <summary style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:'14px',padding:'20px 22px',cursor:'pointer',fontFamily:'var(--font-display)',fontSize:'clamp(21.3px,5.3vw,26.3px)',color:'var(--ink)'}}>How do sessions and seats work?<span data-faq-plus="1" style={{flex:'none',fontFamily:'var(--font-mono)',fontSize:'18px',color:'var(--amber-ink)',transition:'transform .16s steps(3)'}}>+</span></summary>
-                <div style={{padding:'0 22px 22px',fontSize:'15px',lineHeight:'1.65',color:'var(--body)',maxWidth:'68ch'}}>There are five kinds of session: a keynote, technical sessions (Cloud Engineering and AI), hands-on workshops, a panel discussion and an open Q&A. Every pass gets the keynote, one technical session and the Q&A. Premium adds a hands-on workshop, Platinum adds the panel, and VIP adds front-row seating, a speaker group photo, networking with speakers and dedicated assistance. Timings are announced closer to the day.</div>
+                <div style={{padding:'0 22px 22px',fontSize:'15px',lineHeight:'1.65',color:'var(--body)',maxWidth:'68ch'}}>There are five kinds of session: a keynote, technical sessions (Cloud Engineering and AI), hands-on workshops, a panel discussion and an open Q&A. Every pass gets the keynote, one technical session and the Q&A. Premium adds a hands-on workshop, Platinum adds the panel and a reserved seat, and VIP adds front-row seating, networking with speakers and dedicated assistance. Sessions are subject to change, and timings are announced closer to the day.</div>
               </details>
               <details style={{border:'3px solid var(--line)',background:'var(--surface)'}}>
                 <summary style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:'14px',padding:'20px 22px',cursor:'pointer',fontFamily:'var(--font-display)',fontSize:'clamp(21.3px,5.3vw,26.3px)',color:'var(--ink)'}}>Is food included?<span data-faq-plus="1" style={{flex:'none',fontFamily:'var(--font-mono)',fontSize:'18px',color:'var(--amber-ink)',transition:'transform .16s steps(3)'}}>+</span></summary>

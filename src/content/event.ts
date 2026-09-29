@@ -71,10 +71,15 @@ export const ROOM_RESERVE = 15
  * THE MASTER SWITCH. While this is false nothing sells, whatever the config
  * item says and whatever an admin clicks: /register is the notify page and
  * the hold route refuses. Admins can still walk the real flow at
- * /register/preview. Flip it to true when the UPI id and the session sizes
- * are set and the organisers are ready.
+ * /register/preview.
+ *
+ * Opened on 29 September 2026 at the organiser's request, for testing with
+ * a temporary UPI account. Even so, nothing sells in production until the
+ * launch guard is clear: the UPI id set on the server and every session
+ * given a seat count on /admin/settings. Until then /register stays the
+ * notify page.
  */
-export const REGISTRATION_OPEN = false
+export const REGISTRATION_OPEN = true
 
 /**
  * The admin switch on the settings page, stored on the config item. It can

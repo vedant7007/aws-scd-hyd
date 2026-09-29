@@ -134,6 +134,7 @@ ${r.passId}
 
 YOUR SESSIONS
 ${lines.join('\n')}
+Sessions are subject to change. If yours does, we will email you.
 
 When:  ${event.dateLabel}, doors ${doors} IST
 Where: ${venue.name}
@@ -152,6 +153,7 @@ ${footerText}`,
 <p><strong>${esc(r.passId)}</strong></p>
 <h2>Your sessions</h2>
 <p>${lines.map(esc).join('<br>')}</p>
+<p>Sessions are subject to change. If yours does, we will email you.</p>
 <h2>When and where</h2>
 <p>${esc(event.dateLabel)}, doors ${doors} IST<br>${esc(venue.name)}<br><a href="${venue.directionsUrl}">Open in Google Maps</a></p>
 <h2>Refunds</h2>

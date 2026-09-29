@@ -59,7 +59,7 @@ export const passes: Pass[] = [
     id: 'ultra',
     name: 'Platinum',
     pricePaise: 99900,
-    perks: ['Swag kit · tier 3', 'Lunch', KEYNOTE, TECHNICAL, QA, WORKSHOP, PANEL],
+    perks: ['Swag kit · tier 3', 'Lunch', KEYNOTE, TECHNICAL, QA, WORKSHOP, PANEL, 'Reserved seat booking'],
     swag: null,
   },
   {
@@ -75,7 +75,6 @@ export const passes: Pass[] = [
       WORKSHOP,
       PANEL,
       'Reserved front-row seating',
-      'Speaker group photo',
       'Special networking with speakers',
       'Dedicated VIP assistance',
     ],

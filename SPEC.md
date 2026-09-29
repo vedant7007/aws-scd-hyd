@@ -263,13 +263,13 @@ The admin dashboard's default view is the `PENDING_VERIFICATION` queue, oldest U
 
 ### The master switch and the registration switch
 
-`REGISTRATION_OPEN` in `content/event.ts` is **false**. While it is, nothing sells: `launchStatus()` ANDs it with the admin switch, the hold route refuses, every REGISTER control reads NOTIFY ME and `/register` is the notify page. Opening is a code change on purpose: it should be a deploy someone reviewed, not a click.
+`REGISTRATION_OPEN` in `content/event.ts` was false until 29 September 2026, when the organiser opened it for testing with a temporary UPI account. While it is false, nothing sells: `launchStatus()` ANDs it with the admin switch, the hold route refuses, every REGISTER control reads NOTIFY ME and `/register` is the notify page. Opening is a code change on purpose: it should be a deploy someone reviewed, not a click.
 
 Below it, the `registrationOpen` switch on `/admin/settings` closes registration without a deploy (type CLOSE to confirm). It is enforced in the hold route, not by hiding a button. Closing stops new holds and nothing else: a student already paying can still submit, and verification keeps working.
 
 ### The launch guard
 
-`src/lib/tickets/launch.ts` refuses to take a hold, in production, while any of these holds: a tier without a price, the college UPI id unset (`content/payment.ts`), no screenshot bucket, `VERIFICATION_WINDOW` empty, no admin, or any of the seven sessions without a seat count. Every blocker is listed on the dashboard. Development is exempt so the flow can be exercised, and `SCD_DEV_REGISTRATION_OPEN=1` opens it outside production. `npm run check:launch` proves each condition blocks on its own.
+`src/lib/tickets/launch.ts` refuses to take a hold, in production, while any of these holds: a tier without a price, the UPI id unset (`SCD_UPI_ID` in the server environment, never in the public repo; `SCD_UPI_PAYEE` optional), no screenshot bucket, `VERIFICATION_WINDOW` empty, no admin, or any of the seven sessions without a seat count. Every blocker is listed on the dashboard. Development is exempt so the flow can be exercised, and `SCD_DEV_REGISTRATION_OPEN=1` opens it outside production. `npm run check:launch` proves each condition blocks on its own.
 
 ### Pricing
 

@@ -79,7 +79,7 @@ export default async function PassPage({ params }: PageProps<'/pass/[passId]'>) 
         <p className="copy">Doors at {doorsLabel}. The pin above is the gate.</p>
         <p className="copy">Turn your screen brightness up before you reach the volunteer. Sunlight kills scanner reads.</p>
         <p className="copy">Lost this link? It is in your confirmation email.</p>
-        <p className="copy">Your sessions are fixed. If you need a change, write to {REPLY_TO} quoting your pass ID.</p>
+        <p className="copy">Sessions are subject to change; if yours does, we will email you. If you need a change, write to {REPLY_TO} quoting your pass ID.</p>
         <Link href="/code-of-conduct#report" className="btn btn-mono self-start">
           Something wrong with your pass? Report it
         </Link>
