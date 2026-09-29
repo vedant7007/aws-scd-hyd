@@ -51,6 +51,9 @@ const HANDOFF_FILES = [
   'src/lib/clouds.ts',
   // The v3 register screen, ported the same way as the landing.
   ...globSync('src/components/register/**/*.{ts,tsx}').map(normalise),
+  // Email HTML: mail clients cannot read CSS variables, so the brand colours
+  // and font stacks have to be literal, inline, in the one templates file.
+  'src/lib/email/templates.ts',
   // The v3 Speak, Sponsor and report forms, ported the same way.
   ...globSync('src/components/forms/**/*.{ts,tsx}').map(normalise),
   'src/app/(register)/register/page.tsx',

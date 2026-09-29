@@ -1,6 +1,5 @@
-import { payment, upiLink } from '@/content/payment'
+import { accountFor, upiLink } from '@/content/payment'
 import { programSession } from '@/content/program'
-import { currentCrew } from '@/lib/auth/admin'
 import { callerIp, withinRateLimit } from '@/lib/db/rate-limit'
 import { placeHold } from '@/lib/registration/flow'
 import { validateHold } from '@/lib/registration/validate'
@@ -13,8 +12,9 @@ import { launchStatus } from '@/lib/tickets/launch'
  * the hold this browser already made. Returns what the payment screen needs.
  * Nothing here verifies anyone.
  *
- * ?preview=1 is the admin preview: open to a signed-in admin while
- * registration is closed, and the record it makes is marked preview so no
+ * ?preview=1 is the test registration at /register/preview: open to anyone
+ * with the link, it pays the organiser's test UPI account, and the record it
+ * makes is marked preview so no
  * count reads it.
  *
  * Rate limits. The audience is students on college wifi, hundreds behind one
@@ -31,10 +31,7 @@ const json = (status: number, body: unknown) => Response.json(body, { status, he
 export async function POST(req: Request): Promise<Response> {
   const preview = new URL(req.url).searchParams.get('preview') === '1'
 
-  if (preview) {
-    const crew = await currentCrew()
-    if (crew.status !== 'ok' || crew.role !== 'admin') return json(403, { ok: false, message: 'The preview is for signed-in admins.' })
-  } else {
+  if (!preview) {
     // The switch, read from the table on this request. A direct POST while
     // closed is refused here and creates nothing; hiding the page is not
     // the enforcement.
@@ -50,17 +47,15 @@ export async function POST(req: Request): Promise<Response> {
   const v = validateHold(body)
   if ('error' in v) return json(400, { ok: false, ...v.error })
 
-  if (!preview) {
-    if (!(await withinRateLimit(`email:${v.input.email}`, 'HOLD', PER_EMAIL_PER_HOUR))) {
-      return json(429, {
-        ok: false,
-        field: 'email',
-        message: `${v.input.email} has been used for ${PER_EMAIL_PER_HOUR} registrations in the last hour, so this one was not started. Nothing was charged. Wait an hour and try again.`,
-      })
-    }
-    if (!(await withinRateLimit(callerIp(req), 'HOLD', PER_IP_PER_HOUR))) {
-      return json(429, { ok: false, message: 'Too many registrations from this network in the last hour. Nothing was charged. Try again a little later.' })
-    }
+  if (!(await withinRateLimit(`email:${v.input.email}`, 'HOLD', PER_EMAIL_PER_HOUR))) {
+    return json(429, {
+      ok: false,
+      field: 'email',
+      message: `${v.input.email} has been used for ${PER_EMAIL_PER_HOUR} registrations in the last hour, so this one was not started. Nothing was charged. Wait an hour and try again.`,
+    })
+  }
+  if (!(await withinRateLimit(callerIp(req), 'HOLD', PER_IP_PER_HOUR))) {
+    return json(429, { ok: false, message: 'Too many registrations from this network in the last hour. Nothing was charged. Try again a little later.' })
   }
 
   const out = await placeHold(v.input, v.submissionKey, v.passId, preview ? 'preview' : 'checkout')
@@ -77,6 +72,7 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   const a = out.attendee
+  const account = accountFor(a.source)
   console.info(`[hold] ${a.passId} ${out.moved ? 'moved' : 'held'}, ${a.amountPaise} paise, ${a.technicalSession}${a.workshop ? `+${a.workshop}` : ''}${preview ? ' (preview)' : ''}`)
   return json(200, {
     ok: true,
@@ -84,9 +80,10 @@ export async function POST(req: Request): Promise<Response> {
     amountPaise: a.amountPaise,
     holdUntil: a.holdUntil,
     upi: {
-      payee: payment.payeeName,
+      // Never shown: the page prints no payee or UPI id, only the QR.
+      payee: null,
       // Null while the UPI id is unset: the preview shows the gap instead of a QR that pays nobody.
-      link: payment.upiId ? upiLink(payment.upiId, a.amountPaise, a.passId) : null,
+      link: account ? upiLink(account, a.amountPaise, a.passId) : null,
     },
   })
 }

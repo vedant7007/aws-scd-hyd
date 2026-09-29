@@ -9,11 +9,13 @@ import type { Mail } from './send'
  * Every body the site sends, in one place, so wording changes here and
  * nowhere else. All transactional, none of them market anything.
  *
- * The HTML is deliberately unstyled: no colours, no fonts, no images and no
- * tracking. Mail clients render semantic HTML perfectly well on a phone, and
- * an email with nothing to load is the one that arrives fastest and lands in
- * the inbox rather than promotions. The ticket's QR lives on the pass page
- * the confirmation links to, not in the mail.
+ * The HTML wears the site's look: a dark header with the orange stripe,
+ * bordered cards, the pass id in large mono type, one real button. It is
+ * built the way mail must be: tables, inline styles, system fonts, no
+ * scripts, no tracking pixels, and a plain text part that says the same
+ * thing. The only image is the ticket QR in email 2, served as a PNG from
+ * /api/pass/<id>/qr for verified passes only; the pass id and the link
+ * beside it work without it.
  */
 
 /**
@@ -63,7 +65,80 @@ export const passLink = (passId: string) => link(`/pass/${passId}`)
 export const payLink = (passId: string) => link(`/register/pay/${passId}`)
 
 const footerText = `${event.host}\nReplies go to ${REPLY_TO}.\n${event.disclaimer}`
-const footerHtml = `<hr><p>${esc(event.host)}<br>Replies go to ${esc(REPLY_TO)}.<br>${esc(event.disclaimer)}</p>`
+
+/* ---- the HTML shell ------------------------------------------------------ */
+
+const INK = '#14161C'
+const ORANGE = '#FF9900'
+const CREAM = '#F5F2EE'
+const MUTED = '#5A6070'
+const MINT = '#1F6540'
+const SANS = "Arial,'Helvetica Neue',Helvetica,sans-serif"
+const MONO = "'Courier New',Courier,monospace"
+
+const eyebrow = (t: string, color = MINT) =>
+  `<p style="margin:0 0 8px;font-family:${MONO};font-size:11px;letter-spacing:2px;text-transform:uppercase;color:${color}">${t}</p>`
+const p = (html: string) => `<p style="margin:0 0 14px;font-family:${SANS};font-size:15px;line-height:1.6;color:${INK}">${html}</p>`
+const small = (html: string) => `<p style="margin:0 0 12px;font-family:${SANS};font-size:13px;line-height:1.55;color:${MUTED}">${html}</p>`
+
+/** A bordered card. Mail clients honour table borders where they ignore box-shadow. */
+const card = (inner: string, bg = '#FFFFFF', border = INK) =>
+  `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 18px;border:3px solid ${border};background:${bg}"><tr><td style="padding:16px 18px">${inner}</td></tr></table>`
+
+/** Label and value rows inside a card. */
+const rows = (list: [string, string][]) =>
+  `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${list
+    .map(
+      ([k, v], i) =>
+        `<tr><td style="padding:9px 0;${i ? 'border-top:1px solid #E3DDD4;' : ''}font-family:${MONO};font-size:11px;letter-spacing:1px;text-transform:uppercase;color:${MUTED};vertical-align:top;width:34%">${esc(k)}</td><td style="padding:9px 0 9px 12px;${i ? 'border-top:1px solid #E3DDD4;' : ''}font-family:${SANS};font-size:14px;line-height:1.45;color:${INK};text-align:right">${v}</td></tr>`,
+    )
+    .join('')}</table>`
+
+/** The pass id, large, the one thing to keep. */
+const passIdBlock = (passId: string, note: string) =>
+  card(`${eyebrow('Your pass ID', MUTED)}<p style="margin:0 0 8px;font-family:${MONO};font-size:28px;font-weight:bold;letter-spacing:2px;color:${INK}">${esc(passId)}</p>${small(note)}`)
+
+/** The pass's sessions as card rows. Titles contain colons, so they are not split out of sessionLines. */
+const sessionRows = (r: Person): [string, string][] => [
+  ['Technical', esc(programSession(r.technicalSession)?.title ?? r.technicalSession)],
+  ...(r.workshop ? ([['Workshop', esc(programSession(r.workshop)?.title ?? r.workshop)]] as [string, string][]) : []),
+]
+
+/** A bulletproof button: a table cell, so Outlook draws it too. */
+const button = (href: string, label: string) =>
+  `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:4px 0 20px"><tr><td style="background:${ORANGE};border:3px solid ${INK}"><a href="${href}" style="display:inline-block;padding:14px 24px;font-family:${SANS};font-size:16px;font-weight:bold;letter-spacing:1px;color:${INK};text-decoration:none">${label}</a></td></tr></table>`
+
+/**
+ * The frame every email sits in. `preheader` is the grey line inbox lists
+ * show after the subject; it is hidden in the message itself.
+ */
+function shell(o: { preheader: string; tag: string; title: string; body: string; tagColor?: string }): string {
+  return `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>${esc(o.title)}</title></head>
+<body style="margin:0;padding:0;background:${CREAM}">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0">${esc(o.preheader)}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${CREAM}"><tr><td align="center" style="padding:24px 12px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:580px;background:#FFFFFF;border:3px solid ${INK}">
+<tr><td style="background:${INK};padding:18px 22px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+<td style="font-family:${MONO};font-size:20px;font-weight:bold;letter-spacing:1px;color:#FFFFFF">SCD<span style="color:${ORANGE}">.</span>HYD<span style="color:#9FE3B6">26</span></td>
+<td align="right" style="font-family:${MONO};font-size:11px;letter-spacing:2px;color:#9FE3B6">30.10.2026</td>
+</tr></table></td></tr>
+<tr><td style="background:${ORANGE};height:6px;line-height:6px;font-size:0">&nbsp;</td></tr>
+<tr><td style="padding:26px 22px 8px">
+<p style="margin:0 0 14px"><span style="display:inline-block;padding:5px 10px;border:2px solid ${INK};background:${o.tagColor ?? '#E6F5EB'};font-family:${MONO};font-size:11px;letter-spacing:2px;text-transform:uppercase;color:${INK}">${esc(o.tag)}</span></p>
+<h1 style="margin:0 0 18px;font-family:${SANS};font-size:26px;line-height:1.15;font-weight:bold;letter-spacing:.5px;text-transform:uppercase;color:${INK}">${esc(o.title)}</h1>
+${o.body}
+</td></tr>
+<tr><td style="padding:16px 22px 22px;border-top:3px solid #E3DDD4;background:${CREAM}">
+<p style="margin:0 0 6px;font-family:${SANS};font-size:12.5px;line-height:1.55;color:${MUTED}">${esc(event.name)} &middot; ${esc(event.dateLabel)} &middot; ${esc(venue.name)}</p>
+<p style="margin:0 0 6px;font-family:${SANS};font-size:12.5px;line-height:1.55;color:${MUTED}">${esc(event.host)}. Questions? Just reply, it reaches ${esc(REPLY_TO)}.</p>
+<p style="margin:0;font-family:${SANS};font-size:11.5px;line-height:1.55;color:${MUTED}">${esc(event.disclaimer)}</p>
+</td></tr>
+</table>
+</td></tr></table>
+</body></html>`
+}
 
 type Person = Pick<Attendee, 'firstName' | 'passId' | 'tier' | 'technicalSession' | 'workshop' | 'amountPaise'>
 
@@ -101,16 +176,19 @@ ${lines.join('\n')}
 If you have a question, reply to this email. Replies go to ${REPLY_TO}.
 
 ${footerText}`,
-    html: `<p>Hi ${esc(r.firstName)},</p>
-<p>We have your details and your UTR for ${esc(event.name)}.</p>
-<p>We will check your payment against the college bank statement within ${VERIFICATION_WINDOW}. When we have, we email you your ticket. Until then there is nothing you need to do.</p>
-<h2>Your pass ID</h2>
-<p><strong>${esc(r.passId)}</strong></p>
-<p>Keep it safe. It is how we find your registration.</p>
-<h2>Your pass</h2>
-<p>${esc(tierLabel(r.tier))}, ${esc(formatInr(r.amountPaise))}<br>${lines.map(esc).join('<br>')}</p>
-<p>If you have a question, reply to this email. Replies go to ${esc(REPLY_TO)}.</p>
-${footerHtml}`,
+    html: shell({
+      preheader: `Pass ID ${r.passId}. We check your payment within ${VERIFICATION_WINDOW}.`,
+      tag: 'Received · being checked',
+      tagColor: '#FDF4E3',
+      title: `We have your details, ${r.firstName}`,
+      body: [
+        p(`We have your registration and your UTR for <strong>${esc(event.name)}</strong>.`),
+        p(`A person on our team matches every UTR against the college bank statement. We will do yours within <strong>${VERIFICATION_WINDOW}</strong>, then email you your ticket. Until then there is nothing you need to do.`),
+        passIdBlock(r.passId, 'Keep it safe. It is how we find your registration.'),
+        card(`${eyebrow('Your pass')}${rows([['Pass', esc(tierLabel(r.tier))], ['Amount', esc(formatInr(r.amountPaise))], ...sessionRows(r)])}`),
+        small('Sessions are subject to change. If yours does, we will email you.'),
+      ].join('\n'),
+    }),
   }
 }
 
@@ -144,21 +222,37 @@ REFUNDS
 ${REFUND_POLICY}
 
 ${footerText}`,
-    html: `<p>Hi ${esc(r.firstName)},</p>
-<p>Your payment is checked and your <strong>${esc(tierLabel(r.tier))} pass</strong> for ${esc(event.name)} is confirmed.</p>
-<h2>Your ticket</h2>
-<p><a href="${url}"><strong>${url}</strong></a></p>
-<p>Open it on the day and show the QR at the gate. It is the same for every session.</p>
-<h2>Your pass ID</h2>
-<p><strong>${esc(r.passId)}</strong></p>
-<h2>Your sessions</h2>
-<p>${lines.map(esc).join('<br>')}</p>
-<p>Sessions are subject to change. If yours does, we will email you.</p>
-<h2>When and where</h2>
-<p>${esc(event.dateLabel)}, doors ${doors} IST<br>${esc(venue.name)}<br><a href="${venue.directionsUrl}">Open in Google Maps</a></p>
-<h2>Refunds</h2>
-<p>${esc(REFUND_POLICY)}</p>
-${footerHtml}`,
+    html: shell({
+      preheader: `Your ${tierLabel(r.tier)} pass is ready. Show the QR at the gate on ${event.dateLabel}.`,
+      tag: 'Confirmed · you are in',
+      title: `See you there, ${r.firstName}`,
+      body: [
+        p(`Your payment is checked and your <strong>${esc(tierLabel(r.tier))} pass</strong> for ${esc(event.name)} is confirmed.`),
+        card(
+          `<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:6px 0 4px">
+<img src="${link(`/api/pass/${r.passId}/qr`)}" width="220" height="220" alt="Ticket QR code for ${esc(r.passId)}" style="display:block;width:220px;height:220px;border:0;image-rendering:pixelated">
+<p style="margin:12px 0 2px;font-family:${MONO};font-size:24px;font-weight:bold;letter-spacing:2px;color:${INK}">${esc(r.passId)}</p>
+<p style="margin:0;font-family:${SANS};font-size:13px;color:${MUTED}">Show this QR at the gate. Turn your brightness up.</p>
+</td></tr></table>`,
+          '#FFFFFF',
+        ),
+        button(url, 'OPEN MY TICKET &rarr;'),
+        small(`If the QR does not show, the button opens your ticket page with the same QR. Or tell the volunteer your pass ID.`),
+        card(`${eyebrow('Your pass')}${rows([['Pass', esc(tierLabel(r.tier))], ...sessionRows(r)])}`),
+        small('Sessions are subject to change. If yours does, we will email you.'),
+        card(
+          `${eyebrow('When and where')}${rows([
+            ['Date', esc(event.dateLabel)],
+            ['Doors', `${esc(doors)} IST`],
+            ['Venue', esc(venue.name)],
+            ['Map', `<a href="${venue.directionsUrl}" style="color:${MINT};font-weight:bold">Open in Google Maps</a>`],
+            ['Lunch', 'Included'],
+          ])}`,
+          '#E6F5EB',
+        ),
+        card(`${eyebrow('Refunds', MUTED)}${small(esc(REFUND_POLICY))}`, CREAM, '#E3DDD4'),
+      ].join('\n'),
+    }),
   }
 }
 
@@ -179,13 +273,19 @@ ${url}
 Or reply to this email with the correct UTR and a screenshot, quoting your pass ID ${r.passId}.
 
 ${footerText}`,
-    html: `<p>Hi ${esc(r.firstName)},</p>
-<p>We could not match a payment to your registration for ${esc(event.name)}.</p>
-<p>The UTR you submitted was <strong>${esc(utr)}</strong>.</p>
-${reason ? `<p>Note from the organisers: ${esc(reason)}</p>` : ''}
-<p>Your sessions are still held. Check the UTR in your UPI app and <a href="${url}">submit the correct one here</a>.</p>
-<p>Or reply to this email with the correct UTR and a screenshot, quoting your pass ID <strong>${esc(r.passId)}</strong>.</p>
-${footerHtml}`,
+    html: shell({
+      preheader: `The UTR ${utr} did not match. Your sessions are still held; send the right one.`,
+      tag: 'Action needed',
+      tagColor: '#FFE1DF',
+      title: `We could not match your payment`,
+      body: [
+        p(`Hi ${esc(r.firstName)}, we could not match a payment to your registration for ${esc(event.name)}.`),
+        card(`${eyebrow('What we checked', '#A3231F')}${rows([['UTR', `<span style="font-family:${MONO}">${esc(utr)}</span>`], ['Pass ID', `<span style="font-family:${MONO}">${esc(r.passId)}</span>`], ...(reason ? ([['Note', esc(reason)]] as [string, string][]) : [])])}`, '#FFFFFF', '#A3231F'),
+        p('Your sessions are still held. Check the UTR in your UPI app and send the correct one with a screenshot. If you have already paid, do not pay again.'),
+        button(url, 'SEND THE CORRECT UTR &rarr;'),
+        small(`Or reply to this email with the correct UTR and a screenshot, quoting your pass ID ${esc(r.passId)}.`),
+      ].join('\n'),
+    }),
   }
 }
 
@@ -210,16 +310,23 @@ Open it before you arrive so it is loaded, then show the QR at the gate.
 Lunch is included.
 
 ${footerText}`,
-    html: `<p>Hi ${esc(r.firstName)},</p>
-<p>See you tomorrow.</p>
-<h2>Timings</h2>
-<p>Doors <strong>${doors} IST</strong>. Come early, the gate queue is the slow part.</p>
-<h2>Getting there</h2>
-<p>${esc(venue.name)}${venue.address ? `<br>${esc(venue.address)}` : ''}<br><a href="${venue.directionsUrl}">Open in Google Maps</a></p>
-<h2>Your ticket</h2>
-<p><a href="${url}"><strong>${url}</strong></a></p>
-<p>Open it before you arrive so it is loaded, then show the QR at the gate.</p>
-<p>Lunch is included.</p>
-${footerHtml}`,
+    html: shell({
+      preheader: `Doors at ${doors} IST tomorrow. Bring your ticket QR.`,
+      tag: 'Tomorrow',
+      title: `See you tomorrow, ${r.firstName}`,
+      body: [
+        card(
+          `${eyebrow('The day')}${rows([
+            ['Doors', `${esc(doors)} IST`],
+            ['Venue', `${esc(venue.name)}${venue.address ? `<br>${esc(venue.address)}` : ''}`],
+            ['Map', `<a href="${venue.directionsUrl}" style="color:${MINT};font-weight:bold">Open in Google Maps</a>`],
+            ['Lunch', 'Included'],
+          ])}`,
+          '#E6F5EB',
+        ),
+        p('Come early, the gate queue is the slow part. Open your ticket before you arrive so it is loaded, then show the QR at the gate.'),
+        button(url, 'OPEN MY TICKET &rarr;'),
+      ].join('\n'),
+    }),
   }
 }

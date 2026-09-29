@@ -193,9 +193,9 @@ function validation(): void {
   assert.equal(normaliseUtr('axis1234567890ab'), 'AXIS1234567890AB')
   assert.equal(normaliseUtr('12345678901'), null, 'eleven characters is too short')
   assert.equal(normaliseUtr('1234-5678-9012'), null, 'punctuation is refused')
-  const link = upiLink('college@bank', 79900, 'SCD-ABCDEFGHJK')
+  const link = upiLink({ upiId: 'college@bank', payeeName: 'VJIT College', merchantCode: '8299' }, 79900, 'SCD-ABCDEFGHJK')
   assert.ok(link.startsWith('upi://pay?pa=college@bank&'), link)
-  assert.ok(link.includes('am=799.00') && link.includes('tn=SCD-ABCDEFGHJK') && link.includes('cu=INR') && !link.includes('+'), link)
+  assert.ok(link.includes('pn=VJIT%20College') && link.includes('mc=8299') && link.includes('am=799.00') && link.includes('tn=SCD-ABCDEFGHJK') && link.includes('cu=INR') && !link.includes('+'), link)
   ok('server validation: amount, workshop by tier, age on the event day, phone, UTR shape and the UPI link')
 }
 
@@ -384,8 +384,11 @@ async function http(): Promise<void> {
   ok('non-admin screenshot request: 403 with no address and no id')
 
   const preview = await fetch(`${BASE}/api/registrations/hold?preview=1`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...input(), submissionKey: submissionKey() }) })
-  assert.equal(preview.status, 403)
-  ok('the preview hold refuses anyone not signed in as an admin')
+  const pv = (await preview.json()) as { passId?: string; upi?: { link: string | null } }
+  assert.equal(preview.status, 200)
+  if (pv.passId) holding.push(pv.passId)
+  assert.equal((await getAttendee(pv.passId!))?.source, 'preview', 'a test registration is marked preview')
+  ok('the test registration at /register/preview is open to anyone and its record is marked preview')
 }
 
 /* ---- the switch ----------------------------------------------------------- */

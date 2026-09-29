@@ -364,7 +364,7 @@ While open, `/register` is the flow, section 8. In production the closed page st
 
 ### `/register/preview`
 
-The real flow for a signed-in admin while registration is closed to the public, under a PREVIEW banner, with a "Fill test data" button on the details step. Everything is live: seats are claimed, the screenshot uploads, email 1 is sent. The record is marked `source: preview`: it shows in the queue with a PREVIEW badge so it can be verified end to end, and no count, total or caterer export reads it. The hold route accepts `?preview=1` only from an admin session.
+The test registration (29 September 2026): the real flow exactly as students see it, open to anyone with the link, never linked, noindex and disallowed in robots.txt. The one difference is the money: these records pay the organiser's test UPI account (`SCD_UPI_TEST_ID`) while real registrations pay the college (`SCD_UPI_ID`, `SCD_UPI_PAYEE`, `SCD_UPI_MC`, read from the college's Canara merchant QR). Both live only in the server environment, never in this public repo. Test records are marked `source: preview`: verified, emailed and scanned like any other, never in a count or the caterer total.
 
 ### `/register/pay/[passId]`
 

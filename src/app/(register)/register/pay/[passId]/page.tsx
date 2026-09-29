@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound, redirect } from 'next/navigation'
 import { Flow, type Resume } from '@/components/register/Flow'
-import { payment, upiLink } from '@/content/payment'
+import { accountFor, upiLink } from '@/content/payment'
 import { normalisePassId } from '@/lib/db/keys'
 import { getAttendee } from '@/lib/db/queries'
 
@@ -37,8 +37,8 @@ export default async function PayPage({ params }: PageProps<'/register/pay/[pass
       passId: a.passId,
       holdEnds: a.state === 'AWAITING_PAYMENT' ? Date.parse(a.holdUntil!) : 0,
       amountPaise: a.amountPaise,
-      payee: payment.payeeName,
-      link: payment.upiId ? upiLink(payment.upiId, a.amountPaise, a.passId) : null,
+      payee: null,
+      link: accountFor(a.source) ? upiLink(accountFor(a.source)!, a.amountPaise, a.passId) : null,
     },
     tier: a.tier,
     tech: a.technicalSession,

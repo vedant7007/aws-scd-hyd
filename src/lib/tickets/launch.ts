@@ -49,7 +49,7 @@ export function launchBlockers(input: LaunchInput): LaunchBlocker[] {
     out.push({ code: 'unpriced-tier', detail: `${unpriced.length === 1 ? 'A tier has' : 'Tiers have'} no price in content/passes.ts: ${unpriced.join(', ')}.` })
   }
   if (!input.upiId) {
-    out.push({ code: 'upi-id-unset', detail: 'The college UPI id is not set in content/payment.ts, so the payment QR cannot be made. Nobody can pay without it.' })
+    out.push({ code: 'upi-id-unset', detail: 'The college UPI id (SCD_UPI_ID on the server) is not set, so the payment QR cannot be made. Nobody can pay without it.' })
   }
   if (!input.screenshots) {
     out.push({ code: 'screenshots-unset', detail: 'No screenshot bucket is configured, so nobody can upload a payment screenshot.' })
@@ -68,7 +68,7 @@ export const fromEnvironment = async (): Promise<LaunchInput> => {
   const fallback = (process.env.ADMIN_EMAILS ?? '').split(',').map((s) => s.trim()).filter(Boolean)
   return {
     tiers: passes.map((p) => ({ id: p.id, pricePaise: p.pricePaise })),
-    upiId: payment.upiId,
+    upiId: payment.live?.upiId ?? null,
     screenshots: screenshotsConfigured(),
     verificationWindow: VERIFICATION_WINDOW,
     adminEmails: admins > 0 ? Array.from({ length: admins }, (_, i) => `table admin ${i + 1}`) : fallback,

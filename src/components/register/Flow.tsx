@@ -23,7 +23,7 @@ import type { Tier } from '@/lib/db/types'
  * sends email 1. The pass id comes from the server.
  *
  * Departures: no em dashes in the copy; "not included" cells use an en dash
- * with a spoken label; "Fill test data" only appears in the admin preview.
+ * with a spoken label.
  */
 
 type TierLook = { id: Tier; name: string; metal: string; edge: string; dark: string; light: string; bg: string; holo?: boolean; from: string; adds: string[] }
@@ -447,13 +447,6 @@ export function Flow({ preview, resume }: { preview: boolean; resume?: Resume })
     setNotice('')
   }
 
-  const fillDemo = () => {
-    setFields({ first: 'Sneha', middle: '', last: 'Reddy', email: 'sneha.reddy@example.com', phone: '9876543210', college: 'VNR VJIET', branch: 'CSE', roll: '22071A0512', dob: '2004-06-14' })
-    setYear('3')
-    setErr({})
-    setFormKey((k) => k + 1)
-  }
-
   const copy = (text: string, what: 'id') => {
     navigator.clipboard?.writeText(text).catch(() => {})
     setCopied(what)
@@ -519,12 +512,6 @@ export function Flow({ preview, resume }: { preview: boolean; resume?: Resume })
           <Ticker />
         </div>
       </div>
-
-      {preview ? (
-        <div role="note" style={{ position: 'relative', zIndex: '15', background: 'var(--panel-gold)', borderBottom: '3px solid var(--line)', padding: '10px clamp(16px,5vw,40px)', fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '.08em', color: 'var(--ink)' }}>
-          ADMIN PREVIEW. Registration is closed to the public. What you submit here is a real record, marked PREVIEW on the dashboard and never counted.
-        </div>
-      ) : null}
 
       <main style={{ position: 'relative', zIndex: '10', flex: '1', width: '100%', maxWidth: '1120px', margin: '0 auto', padding: 'clamp(24px,6vh,56px) clamp(16px,5vw,48px) 150px', display: 'flex', flexDirection: 'column', gap: 'clamp(18px,4vh,26px)' }}>
         {inForm ? (
@@ -623,11 +610,6 @@ export function Flow({ preview, resume }: { preview: boolean; resume?: Resume })
               <div key={formKey} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
                   <p style={{ margin: '0', flex: '1 1 auto', fontSize: '13px', lineHeight: '1.55', color: 'var(--muted)' }}>Middle name is optional. Everything else is needed.</p>
-                  {preview ? (
-                    <button type="button" onClick={fillDemo} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', minHeight: '40px', padding: '0 12px', border: '3px dashed var(--line-dash)', background: 'transparent', color: 'var(--violet-ink)', fontFamily: 'var(--font-mono)', fontSize: '10.5px', letterSpacing: '.12em', textTransform: 'uppercase' }}>
-                      Fill test data
-                    </button>
-                  ) : null}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,170px),1fr))', gap: '12px' }}>
