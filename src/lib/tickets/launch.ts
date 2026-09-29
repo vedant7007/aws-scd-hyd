@@ -1,9 +1,8 @@
 import { REGISTRATION_OPEN, registrationOpen as contentDefault } from '../../content/event'
 import { passes } from '../../content/passes'
 import { payment } from '../../content/payment'
-import { programSessions } from '../../content/program'
 import { adminCount } from '../auth/crew'
-import { getConfig, getSessions } from '../db/queries'
+import { getConfig } from '../db/queries'
 import { VERIFICATION_WINDOW } from '../email/templates'
 import { screenshotsConfigured } from '../registration/screenshots'
 
@@ -22,12 +21,12 @@ import { screenshotsConfigured } from '../registration/screenshots'
  *
  * Every tier priced, the college UPI id set (the QR is built from it), a
  * screenshot bucket to upload to, the verification wording set, at least
- * one admin to verify, and every technical session and workshop sized, so
- * a hold can actually claim a seat.
+ * one admin to verify. Session seat counts are optional: an unsized
+ * session has no limit (lib/db/tx.ts).
  */
 
 export type LaunchBlocker = {
-  code: 'unpriced-tier' | 'upi-id-unset' | 'screenshots-unset' | 'verification-window-unset' | 'no-admin' | 'session-unsized'
+  code: 'unpriced-tier' | 'upi-id-unset' | 'screenshots-unset' | 'verification-window-unset' | 'no-admin'
   /** A sentence for the dashboard. Never includes a key or any secret. */
   detail: string
 }
@@ -39,8 +38,6 @@ export type LaunchInput = {
   verificationWindow: string
   /** Admins able to verify: the table's count, or the fallback list while that is zero. */
   adminEmails: string[]
-  /** Sessions no admin has sized yet. */
-  unsized: string[]
 }
 
 /** Pure, so each condition can be checked on its own. */
@@ -63,17 +60,11 @@ export function launchBlockers(input: LaunchInput): LaunchBlocker[] {
   if (input.adminEmails.length === 0) {
     out.push({ code: 'no-admin', detail: 'No admin in the table and ADMIN_EMAILS is empty, so nobody can verify a payment.' })
   }
-  if (input.unsized.length) {
-    out.push({
-      code: 'session-unsized',
-      detail: `${input.unsized.length} session${input.unsized.length === 1 ? ' has' : 's have'} no seat count yet: ${input.unsized.join(', ')}. Set them on the settings page; nothing sells into a room nobody has sized.`,
-    })
-  }
   return out
 }
 
 export const fromEnvironment = async (): Promise<LaunchInput> => {
-  const [admins, stored] = await Promise.all([adminCount(), getSessions()])
+  const admins = await adminCount()
   const fallback = (process.env.ADMIN_EMAILS ?? '').split(',').map((s) => s.trim()).filter(Boolean)
   return {
     tiers: passes.map((p) => ({ id: p.id, pricePaise: p.pricePaise })),
@@ -81,7 +72,6 @@ export const fromEnvironment = async (): Promise<LaunchInput> => {
     screenshots: screenshotsConfigured(),
     verificationWindow: VERIFICATION_WINDOW,
     adminEmails: admins > 0 ? Array.from({ length: admins }, (_, i) => `table admin ${i + 1}`) : fallback,
-    unsized: programSessions.filter((_, i) => stored[i]?.sellableCapacity == null).map((s) => s.code),
   }
 }
 

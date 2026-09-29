@@ -3,13 +3,13 @@ import { requireAdmin } from '@/lib/auth/admin'
 import { FORM_KINDS, fieldLabel, listForms, type FormKind } from '@/lib/forms'
 
 /**
- * Speaker applications, sponsor enquiries and code of conduct reports, as
+ * Speaker interest forms and code of conduct reports, as
  * they arrived, newest first. Each was also mailed to the organisers with
  * Reply-To set to the sender; this page is the record when a mail goes
  * astray. Admin only: reports can name people.
  */
 
-const TABS: Record<FormKind, string> = { speak: 'Speakers', sponsor: 'Sponsors', report: 'Reports' }
+const TABS: Record<FormKind, string> = { speak: 'Speakers', report: 'Reports' }
 
 const when = (iso: string) =>
   new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Kolkata' }).format(new Date(iso))
@@ -28,7 +28,7 @@ export default async function InboxPage({ searchParams }: PageProps<'/admin/inbo
       <div className="flex flex-col gap-2">
         <span className="eye">{'// INBOX'}</span>
         <h1 className="h1">FORMS</h1>
-        <p className="lede">Everything sent from the Speak, Sponsor and code of conduct pages, newest first. Each also went to the organisers&apos; mail; reply there. Times are Hyderabad time.</p>
+        <p className="lede">Everything sent from the Speak and code of conduct pages, newest first. Each also went to the organisers&apos; mail; reply there. Times are Hyderabad time.</p>
       </div>
 
       <nav aria-label="Form" className="flex flex-wrap gap-2">

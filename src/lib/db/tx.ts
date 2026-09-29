@@ -38,9 +38,11 @@ export function failedIndexes(err: unknown): number[] {
 
 /**
  * One seat in a session, as an item for the caller's transaction. The
- * increment is conditional on staying under sellableCapacity, and a session
- * whose capacity is unset (null, or never written) fails the comparison, so
- * nothing ever sells against a room nobody has sized.
+ * increment is conditional on staying under sellableCapacity. A session
+ * nobody has given a seat count (no counter item, or a null ceiling) has no
+ * limit: the seat is still counted, so a limit set later on the settings
+ * page starts from the true number. Organiser decision, 29 September 2026:
+ * registration opens before the room sizes are final.
  *
  * `#capacity` aliases sellableCapacity: `capacity` alone is a reserved word
  * and the bare name has bitten this repo once.
@@ -50,10 +52,10 @@ export function claimSeat(sessionId: string): TransactItem {
     Update: {
       TableName: tableName(),
       Key: keys.session(sessionId),
-      UpdateExpression: 'SET seatsTaken = seatsTaken + :one',
-      ConditionExpression: 'seatsTaken < #capacity',
+      UpdateExpression: 'SET seatsTaken = if_not_exists(seatsTaken, :zero) + :one, sessionId = :sid',
+      ConditionExpression: 'attribute_not_exists(#capacity) OR attribute_type(#capacity, :null) OR seatsTaken < #capacity',
       ExpressionAttributeNames: { '#capacity': 'sellableCapacity' },
-      ExpressionAttributeValues: { ':one': 1 },
+      ExpressionAttributeValues: { ':one': 1, ':zero': 0, ':sid': sessionId, ':null': 'NULL' },
     },
   }
 }

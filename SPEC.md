@@ -269,7 +269,7 @@ Below it, the `registrationOpen` switch on `/admin/settings` closes registration
 
 ### The launch guard
 
-`src/lib/tickets/launch.ts` refuses to take a hold, in production, while any of these holds: a tier without a price, the UPI id unset (`SCD_UPI_ID` in the server environment, never in the public repo; `SCD_UPI_PAYEE` optional), no screenshot bucket, `VERIFICATION_WINDOW` empty, no admin, or any of the seven sessions without a seat count. Every blocker is listed on the dashboard. Development is exempt so the flow can be exercised, and `SCD_DEV_REGISTRATION_OPEN=1` opens it outside production. `npm run check:launch` proves each condition blocks on its own.
+`src/lib/tickets/launch.ts` refuses to take a hold, in production, while any of these holds: a tier without a price, the UPI id unset (`SCD_UPI_ID` in the server environment, never in the public repo; `SCD_UPI_PAYEE` optional), no screenshot bucket, `VERIFICATION_WINDOW` empty, no admin. Every blocker is listed on the dashboard. Development is exempt so the flow can be exercised, and `SCD_DEV_REGISTRATION_OPEN=1` opens it outside production. `npm run check:launch` proves each condition blocks on its own.
 
 ### Pricing
 
@@ -281,7 +281,7 @@ Every tier in `content/passes.ts` is priced (Rs 499, 799, 999, 1,299, confirmed 
 
 Each registration holds **two seats at most**: its technical session, and its workshop on Premium and above. The keynote, Q&A, panel and expo are for everyone and are not counted.
 
-The ceiling per session is `sellableCapacity` on its `SESSION#` counter, set by an admin on `/admin/settings`; a session with none sells nothing, and the launch guard will not open registration until all seven have one. Lowering a ceiling below the seats already held is refused and names the count. The room sizes in `content/event.ts` are shown beside the field as a hint, with `ROOM_RESERVE` (15) the suggested hold-back for speakers, sponsors and organisers.
+The ceiling per session is `sellableCapacity` on its `SESSION#` counter, set by an admin on `/admin/settings`; a session with none has no limit but still counts every seat, so a limit set later starts from the true number (organiser decision, 29 September 2026, to open before room sizes are final). Lowering a ceiling below the seats already held is refused and names the count. The room sizes in `content/event.ts` are shown beside the field as a hint, with `ROOM_RESERVE` (15) the suggested hold-back for speakers, sponsors and organisers.
 
 **Seats are held from the payment step until verification or the sweep**, not from verification: a student who has just paid must never find their session gone. `AWAITING_PAYMENT`, `PENDING_VERIFICATION`, `REJECTED` and `VERIFIED` all hold; `ABANDONED` does not.
 
@@ -372,7 +372,11 @@ The payment step on its own, for the rejection email's link and for anyone who l
 
 ### `/speak`, `/sponsor` and the `/code-of-conduct` report
 
-The handoff's Speak and Sponsor screens (one component, `components/forms/ApplyForm.tsx`) and the code of conduct page's #report block (`ReportForm.tsx`) are real forms. `POST /api/forms` with `form: speak | sponsor | report` checks every field again on the server (`lib/forms.ts`, the handoff's rules and messages), stores one `FORM#` item with a reference (`SCD-SPK-`, `SCD-SPN-`, `SCD-RPT-`, or `SCD-URG-` for a report marked as happening right now, then five characters from the pass id alphabet), and mails the organisers' inbox with Reply-To set to the sender. Nothing is ever mailed to the sender, so the form cannot be used to send mail to an address someone typed. A failed organiser mail never loses a submission. `company` is a honeypot; twenty submissions per IP per hour. Departure: the speaker form's "Which track?" question is gone, since there are no tracks. `/admin/inbox`, admin only, lists all three newest first with urgent reports marked.
+`/speak` is the organisers' speaker interest form (29 September 2026), replacing the handoff's apply-to-speak form: speaker information, which of the seven finalised sessions they would take (grouped Cloud / AWS and AI / ML, one or more), preferred level, approach, experience, availability on 30 October, duration, setup needs, and a required acknowledgement that interest is not selection. The speaker participation note (voluntary, no travel or accommodation by default, details shared with selected speakers) sits at the top. The questions live once in `lib/forms-options.ts` (`SPEAKER_FORM`); the page renders from that list and `lib/forms.ts` checks every answer against the same list.
+
+`/sponsor` says coming soon with the contact address; the sponsor form is parked until packages are ready.
+
+The code of conduct page's #report block (`ReportForm.tsx`) is a real form. `POST /api/forms` with `form: speak | report` stores one `FORM#` item with a reference (`SCD-SPK-`, `SCD-RPT-`, or `SCD-URG-` for a report marked as happening right now, then five characters from the pass id alphabet), and mails the organisers' inbox with Reply-To set to the sender. Nothing is ever mailed to the sender. A failed organiser mail never loses a submission. `company` is a honeypot; twenty submissions per IP per hour. `/admin/inbox`, admin only, lists both, newest first, with urgent reports marked.
 
 ### `/admin`, `/admin/scan`, `/admin/users`, `/admin/settings`
 Cognito sign-in, then a role from the table (section 7). `/admin/scan` is the one screen a volunteer gets; everything else is admin only. `/admin/users` manages the crew; `/admin/settings` holds the registration switch and the seat count of each of the seven sessions.
@@ -450,7 +454,7 @@ Done since this was written: `awsscdhyd.in` is registered, attached to Hosting a
 |---|---|
 | Pass inclusions and swag levels (names and prices are confirmed) | Section 11 item 6 |
 | The college UPI id and the payee name, `content/payment.ts` | The launch guard: nothing sells without the id |
-| Seat count for each of the five technical sessions and two workshops, `/admin/settings` | The launch guard: nothing sells into an unsized session |
+| Seat count for each of the five technical sessions and two workshops, `/admin/settings` | Nothing blocks: an unsized session has no limit. Set limits before rooms can overflow |
 | Session times (none published until set) | Nothing yet; no time is shown anywhere |
 | Speaker list, sponsor tiers, FAQ, code of conduct copy | Content files |
 

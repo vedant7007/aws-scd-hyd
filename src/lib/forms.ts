@@ -4,18 +4,18 @@ import { ddb, tableName } from './db/client'
 import { PASS_ALPHABET, normaliseEmail, normalisePassId } from './db/keys'
 import { isReservedAddress, sendEmail } from './email/send'
 import { REPLY_TO } from './email/templates'
-import { REPORT_KINDS, SPEAK_FORMATS, SPONSOR_KINDS } from './forms-options'
+import { REPORT_KINDS, SPEAKER_FORM } from './forms-options'
 
 /**
- * The three forms the v3 handoff draws with no backend behind them: apply
- * to speak, sponsor enquiry, and the code of conduct report. Each is checked
+ * The speaker interest form and the code of conduct report. (The sponsor
+ * form is parked: /sponsor says coming soon.) Each is checked
  * here, stored as one item under FORM#<kind> (newest last by SK), and mailed
  * to the organisers' inbox with Reply-To set to the sender, so answering is
  * one click. Nothing is ever mailed to the sender: the form must not be a way
  * to send mail to an address someone typed.
  */
 
-export const FORM_KINDS = ['speak', 'sponsor', 'report'] as const
+export const FORM_KINDS = ['speak', 'report'] as const
 export type FormKind = (typeof FORM_KINDS)[number]
 
 export type Submission = {
@@ -37,7 +37,7 @@ const label = (list: readonly { id: string; label: string }[], id: string) => li
 
 /** A reference like SCD-SPK-7KQ2M, from the pass id alphabet: nothing to misread on a phone call. */
 function newRef(kind: FormKind, urgent: boolean): string {
-  const prefix = kind === 'speak' ? 'SPK' : kind === 'sponsor' ? 'SPN' : urgent ? 'URG' : 'RPT'
+  const prefix = kind === 'speak' ? 'SPK' : urgent ? 'URG' : 'RPT'
   let out = ''
   for (let i = 0; i < 5; i++) out += PASS_ALPHABET[randomInt(PASS_ALPHABET.length)]
   return `SCD-${prefix}-${out}`
@@ -45,12 +45,11 @@ function newRef(kind: FormKind, urgent: boolean): string {
 
 type Checked = { email: string; fields: Record<string, string>; urgent?: boolean }
 
-/** The handoff's rules and messages, enforced on the server. */
+/** Every rule the form shows, enforced again on the server. */
 export function validateForm(kind: FormKind, b: Record<string, unknown>): Checked | { error: Invalid } {
   const str = (k: string, max = 160) => (typeof b[k] === 'string' ? (b[k] as string).trim().replace(/[ \t]+/g, ' ').slice(0, max) : '')
   const long = (k: string) => (typeof b[k] === 'string' ? (b[k] as string).trim().slice(0, 4000) : '')
   const email = str('email', 254)
-  const phoneOk = () => str('phone', 20).replace(/\D/g, '').replace(/^(?:91|0)(?=\d{10}$)/, '')
 
   if (kind === 'report') {
     const about = str('about')
@@ -68,62 +67,50 @@ export function validateForm(kind: FormKind, b: Record<string, unknown>): Checke
     }
   }
 
-  const sponsor = kind === 'sponsor'
-  const org = str('org')
-  if (sponsor && !org) return { error: { field: 'org', message: 'Who is sponsoring?' } }
-  const name = str('name', 120)
-  if (!name) return { error: { field: 'name', message: 'We need a name.' } }
-  if (!email) return { error: { field: 'email', message: 'We need an email to reply to.' } }
-  if (!EMAIL.test(email)) return { error: { field: 'email', message: 'That does not look like a working email.' } }
-  const phone = phoneOk()
-  if (phone.length !== 10) return { error: { field: 'phone', message: 'Enter exactly 10 digits, no +91.' } }
-
-  const fields: Record<string, string> = { name, role: str('role', 120), phone: `+91${phone}` }
-
-  if (sponsor) {
-    const picked = Array.isArray(b.kinds) ? SPONSOR_KINDS.filter((k) => (b.kinds as unknown[]).includes(k.id)) : []
-    if (!picked.length) return { error: { field: 'kinds', message: 'Pick at least one.' } }
-    const other = str('other')
-    if (picked.some((k) => k.id === 'other') && !other) return { error: { field: 'kinds', message: 'Tell us what else you want to sponsor.' } }
-    const offer = long('offer')
-    if (!offer) return { error: { field: 'offer', message: 'Tell us what you can put in.' } }
-    if (offer.length < 25) return { error: { field: 'offer', message: 'A bit more detail, this is what we plan around.' } }
-    Object.assign(fields, {
-      org,
-      site: str('site', 300),
-      sponsoring: picked.map((k) => (k.id === 'other' ? other : k.label)).join(' · '),
-      offer,
-    })
-  } else {
-    const format = str('format')
-    if (!SPEAK_FORMATS.some((f) => f.id === format)) return { error: { field: 'format', message: 'Pick a format.' } }
-    fields.format = label(SPEAK_FORMATS, format)
+  // The speaker form: every question in SPEAKER_FORM, checked by its kind.
+  const fields: Record<string, string> = {}
+  for (const q of SPEAKER_FORM.flatMap((sec) => sec.questions)) {
+    const need = (message: string) => ({ error: { field: q.id, message } })
+    if (q.kind === 'check') {
+      if (q.required && b[q.id] !== true) return need('Tick this to send the form.')
+      fields[q.id] = b[q.id] === true ? 'Yes' : ''
+      continue
+    }
+    if (q.kind === 'multi') {
+      const picked = Array.isArray(b[q.id]) ? (q.options ?? []).filter((o) => (b[q.id] as unknown[]).includes(o.id)) : []
+      if (q.required && !picked.length) return need('Pick at least one.')
+      fields[q.id] = picked.map((o) => o.label).join('\n')
+      continue
+    }
+    if (q.kind === 'choice') {
+      const v = str(q.id)
+      const o = (q.options ?? []).find((x) => x.id === v)
+      if (q.required && !o) return need('Pick one.')
+      fields[q.id] = o?.label ?? ''
+      continue
+    }
+    const v = q.kind === 'textarea' ? long(q.id) : str(q.id, q.kind === 'url' ? 300 : 160)
+    if (q.required && !v) return need('This one is needed.')
+    if (q.kind === 'email' && !EMAIL.test(v)) return need('That does not look like a working email.')
+    if (q.kind === 'tel') {
+      const digits = v.replace(/\D/g, '').replace(/^(?:91|0)(?=\d{10}$)/, '')
+      if (digits.length !== 10) return need('Enter exactly 10 digits, no +91.')
+      fields[q.id] = `+91${digits}`
+      continue
+    }
+    fields[q.id] = q.kind === 'email' ? normaliseEmail(v) : v
   }
-
-  const topic = str('topic', 200)
-  if (!topic) return { error: { field: 'topic', message: sponsor ? 'Give it a working title.' : 'Your talk needs a title.' } }
-  const detail = long('detail')
-  if (!detail) return { error: { field: 'detail', message: 'Tell us a bit more.' } }
-  if (detail.length < 30) return { error: { field: 'detail', message: 'A few more lines, please, this is what we judge it on.' } }
-  Object.assign(fields, { topic, detail })
-
-  return { email: normaliseEmail(email), fields }
+  const { email: speakerEmail, ...rest } = fields
+  return { email: speakerEmail!, fields: rest }
 }
 
-const TITLES: Record<FormKind, string> = { speak: 'Speaker application', sponsor: 'Sponsor enquiry', report: 'Report' }
+const TITLES: Record<FormKind, string> = { speak: 'Speaker interest', report: 'Report' }
 const LABELS: Record<string, string> = {
-  org: 'Organisation',
-  site: 'Website',
-  name: 'Name',
-  role: 'Role',
-  phone: 'Phone',
-  format: 'Format',
-  sponsoring: 'Sponsoring',
-  offer: 'Can put in',
-  topic: 'Title',
-  detail: 'Detail',
+  ...Object.fromEntries(SPEAKER_FORM.flatMap((sec) => sec.questions).map((q) => [q.id, q.kind === 'check' ? 'Acknowledged' : q.label])),
   about: 'About',
+  name: 'Name',
   passId: 'Pass ID',
+  detail: 'Detail',
 }
 export const fieldLabel = (k: string) => LABELS[k] ?? k
 
@@ -134,7 +121,7 @@ export async function submitForm(kind: FormKind, checked: Checked): Promise<Subm
   const item: Submission = { PK: `FORM#${kind}`, SK: `${createdAt}#${ref}`, kind, ref, createdAt, email: checked.email, fields: checked.fields, ...(kind === 'report' ? { urgent: Boolean(checked.urgent) } : {}) }
   await ddb.send(new PutCommand({ TableName: tableName(), Item: item }))
 
-  const headline = kind === 'speak' ? checked.fields.topic : kind === 'sponsor' ? checked.fields.org : checked.fields.about
+  const headline = kind === 'speak' ? `${checked.fields.name}, ${checked.fields.org}` : checked.fields.about
   const subject = `${checked.urgent ? 'URGENT ' : ''}${TITLES[kind]} ${ref}: ${headline}`
   const lines = [`${TITLES[kind]} ${ref}${checked.urgent ? ', marked URGENT: happening right now' : ''}`, '', `Email: ${checked.email}`, ...Object.entries(checked.fields).filter(([, v]) => v).map(([k, v]) => `${fieldLabel(k)}: ${v}`), '', 'Reply to this email to answer them directly. Every submission is also on /admin/inbox.']
   const text = lines.join('\n')

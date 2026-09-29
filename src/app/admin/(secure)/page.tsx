@@ -89,7 +89,7 @@ export default async function AdminDashboardPage() {
           <Stat label="Registration switch" value={launch.registrationOpen ? 'OPEN' : 'CLOSED'} tone={launch.registrationOpen ? 'ok' : 'err'} />
           <Stat label="Checkout" value={launch.open ? 'ACCEPTING' : 'REFUSING'} tone={launch.open ? 'ok' : 'err'} note="UPI, verified by hand" />
           <Stat label="Launch blockers" value={launch.blockers.length} tone={launch.blockers.length ? 'warn' : 'ok'} />
-          <Stat label="Sessions sized" value={`${sized} / ${d.sessions.length}`} tone={sized === d.sessions.length ? 'ok' : 'warn'} note="seat counts set in settings" />
+          <Stat label="Sessions sized" value={`${sized} / ${d.sessions.length}`} tone={sized === d.sessions.length ? 'ok' : 'warn'} note="unsized means no limit; set in settings" />
         </div>
         {launch.blockers.length ? (
           <div className="notice-err" role="status">
@@ -232,7 +232,7 @@ export default async function AdminDashboardPage() {
         </div>
         <p className="row-body">
           Held counts every seat taken, by verified, pending and still-paying records alike, because each holds a real seat until it is
-          verified or its hold lapses. Coming counts the verified ones. A dash is a session nobody has sized yet: it sells nothing.
+          verified or its hold lapses. Coming counts the verified ones. A dash is a session nobody has sized yet: it has no seat limit, but every seat is still counted, so a limit set later starts from the true number.
         </p>
         <div className="tbl-wrap">
           <table className="tbl">

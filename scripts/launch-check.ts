@@ -17,7 +17,6 @@ const clean: LaunchInput = {
   screenshots: true,
   verificationWindow: '24 hours',
   adminEmails: ['a@example.test'],
-  unsized: [],
 }
 
 const codes = (input: LaunchInput) => launchBlockers(input).map((b) => b.code)
@@ -28,12 +27,11 @@ assert.deepEqual(codes({ ...clean, upiId: null }), ['upi-id-unset'], 'no UPI id 
 assert.deepEqual(codes({ ...clean, screenshots: false }), ['screenshots-unset'], 'no screenshot bucket blocks')
 assert.deepEqual(codes({ ...clean, verificationWindow: '  ' }), ['verification-window-unset'], 'empty wording blocks')
 assert.deepEqual(codes({ ...clean, adminEmails: [] }), ['no-admin'], 'no admin blocks')
-assert.deepEqual(codes({ ...clean, unsized: ['TECH 01'] }), ['session-unsized'], 'an unsized session blocks')
 assert.deepEqual(
-  codes({ tiers: [{ id: 'basic', pricePaise: null }], upiId: null, screenshots: false, verificationWindow: '', adminEmails: [], unsized: ['TECH 01'] }),
-  ['unpriced-tier', 'upi-id-unset', 'screenshots-unset', 'verification-window-unset', 'no-admin', 'session-unsized'],
+  codes({ tiers: [{ id: 'basic', pricePaise: null }], upiId: null, screenshots: false, verificationWindow: '', adminEmails: [] }),
+  ['unpriced-tier', 'upi-id-unset', 'screenshots-unset', 'verification-window-unset', 'no-admin'],
   'every blocker reports together',
 )
 
-console.log('launch guard: 8 assertions passed')
+console.log('launch guard: 7 assertions passed')
 fromEnvironment().then((here) => console.log(`this environment: ${codes(here).join(', ') || 'no blockers'}`))
