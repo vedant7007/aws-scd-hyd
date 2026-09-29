@@ -404,7 +404,7 @@ export function Landing({ registrationOpen, doors, prices }: Props) {
                     ))}
                   </ul>
                 </div>
-                <Link className="dh-h15 dh-a16" href="/register" style={{position:'relative',marginTop:'auto',display:'inline-flex',alignItems:'center',justifyContent:'center',minHeight:'52px',background:'#14161C',color:'#FFFFFF',fontFamily:'var(--font-display)',fontSize:'24px',boxShadow:'4px 4px 0 rgba(255,255,255,.7)',cursor:'pointer',transition:'transform .1s steps(2),box-shadow .1s steps(2)'}}>NOTIFY ME</Link>
+                <Link className="dh-h15 dh-a16" href="/register" style={{position:'relative',marginTop:'auto',display:'inline-flex',alignItems:'center',justifyContent:'center',minHeight:'52px',background:'#14161C',color:'#FFFFFF',fontFamily:'var(--font-display)',fontSize:'24px',boxShadow:'4px 4px 0 rgba(255,255,255,.7)',cursor:'pointer',transition:'transform .1s steps(2),box-shadow .1s steps(2)'}}>{registrationOpen ? 'REGISTER' : 'NOTIFY ME'}</Link>
               </article>
               <article className="dh-h17" data-rv="1" data-pass="1" data-spark="#FFF6C8|#E8C052|#FFFFFF" style={{position:'relative',overflow:'hidden',border:'4px solid #5E3F04',background:'linear-gradient(135deg,#FFF2BF 0%,#E8C052 26%,#FFF7D6 46%,#C5921A 70%,#F2D370 100%)',padding:'26px 24px',display:'flex',flexDirection:'column',gap:'14px',minHeight:'380px',color:'#14161C',boxShadow:'6px 6px 0 var(--sh)',transition:'transform .2s cubic-bezier(.2,.9,.3,1.2),box-shadow .2s ease',willChange:'transform'}}>
                 <span aria-hidden="true" style={{position:'absolute',inset:'0',zIndex:'1',pointerEvents:'none',opacity:'var(--glow,0)',transition:'opacity .25s ease',background:'radial-gradient(240px 220px at var(--px,50%) var(--py,50%),rgba(255,255,255,.7),rgba(255,255,255,0) 70%)',mixBlendMode:'soft-light'}}></span>
@@ -430,7 +430,7 @@ export function Landing({ registrationOpen, doors, prices }: Props) {
                     ))}
                   </ul>
                 </div>
-                <Link className="dh-h15 dh-a16" href="/register" style={{position:'relative',marginTop:'auto',display:'inline-flex',alignItems:'center',justifyContent:'center',minHeight:'52px',background:'#14161C',color:'#FFFFFF',fontFamily:'var(--font-display)',fontSize:'24px',boxShadow:'4px 4px 0 rgba(255,255,255,.7)',cursor:'pointer',transition:'transform .1s steps(2),box-shadow .1s steps(2)'}}>NOTIFY ME</Link>
+                <Link className="dh-h15 dh-a16" href="/register" style={{position:'relative',marginTop:'auto',display:'inline-flex',alignItems:'center',justifyContent:'center',minHeight:'52px',background:'#14161C',color:'#FFFFFF',fontFamily:'var(--font-display)',fontSize:'24px',boxShadow:'4px 4px 0 rgba(255,255,255,.7)',cursor:'pointer',transition:'transform .1s steps(2),box-shadow .1s steps(2)'}}>{registrationOpen ? 'REGISTER' : 'NOTIFY ME'}</Link>
               </article>
               <article className="dh-h18" data-rv="1" data-pass="1" data-spark="#FFFFFF|#A3AFC1|#E8F8FF" style={{position:'relative',overflow:'hidden',border:'4px solid #3E4758',background:'linear-gradient(135deg,#F8FAFD 0%,#CBD3DF 26%,#FFFFFF 46%,#A3AFC1 70%,#E4E9F1 100%)',padding:'26px 24px',display:'flex',flexDirection:'column',gap:'14px',minHeight:'380px',color:'#14161C',boxShadow:'6px 6px 0 var(--sh)',transition:'transform .2s cubic-bezier(.2,.9,.3,1.2),box-shadow .2s ease',willChange:'transform'}}>
                 <span aria-hidden="true" style={{position:'absolute',inset:'0',zIndex:'1',pointerEvents:'none',opacity:'var(--glow,0)',transition:'opacity .25s ease',background:'radial-gradient(240px 220px at var(--px,50%) var(--py,50%),rgba(255,255,255,.7),rgba(255,255,255,0) 70%)',mixBlendMode:'soft-light'}}></span>
@@ -456,7 +456,7 @@ export function Landing({ registrationOpen, doors, prices }: Props) {
                     ))}
                   </ul>
                 </div>
-                <Link className="dh-h15 dh-a16" href="/register" style={{position:'relative',marginTop:'auto',display:'inline-flex',alignItems:'center',justifyContent:'center',minHeight:'52px',background:'#14161C',color:'#FFFFFF',fontFamily:'var(--font-display)',fontSize:'24px',boxShadow:'4px 4px 0 rgba(255,255,255,.7)',cursor:'pointer',transition:'transform .1s steps(2),box-shadow .1s steps(2)'}}>NOTIFY ME</Link>
+                <Link className="dh-h15 dh-a16" href="/register" style={{position:'relative',marginTop:'auto',display:'inline-flex',alignItems:'center',justifyContent:'center',minHeight:'52px',background:'#14161C',color:'#FFFFFF',fontFamily:'var(--font-display)',fontSize:'24px',boxShadow:'4px 4px 0 rgba(255,255,255,.7)',cursor:'pointer',transition:'transform .1s steps(2),box-shadow .1s steps(2)'}}>{registrationOpen ? 'REGISTER' : 'NOTIFY ME'}</Link>
               </article>
               <article className="dh-h19" data-rv="1" data-pass="1" data-spark="#F5B5CF|#A9E3FF|#FFF0B8|#C9B6F5|#FFFFFF" style={{position:'relative',overflow:'hidden',border:'4px solid #14161C',background:'linear-gradient(115deg,#E8F8FF,#C9B6F5 16%,#F5B5CF 30%,#FFF0B8 44%,#A8EBC4 58%,#A9E3FF 72%,#D9C9FF 86%,#E8F8FF)',backgroundSize:'260% 260%',animation:'bm-holo 7s ease-in-out infinite alternate',padding:'26px 24px',display:'flex',flexDirection:'column',gap:'14px',minHeight:'380px',color:'#14161C',boxShadow:'6px 6px 0 var(--sh)',transition:'transform .2s cubic-bezier(.2,.9,.3,1.2),box-shadow .2s ease',willChange:'transform'}}>
                 <span aria-hidden="true" style={{position:'absolute',inset:'0',zIndex:'1',pointerEvents:'none',opacity:'var(--glow,0)',transition:'opacity .25s ease',background:'radial-gradient(240px 220px at var(--px,50%) var(--py,50%),rgba(255,255,255,.7),rgba(255,255,255,0) 70%)',mixBlendMode:'soft-light'}}></span>
@@ -493,7 +493,7 @@ export function Landing({ registrationOpen, doors, prices }: Props) {
                     ))}
                   </ul>
                 </div>
-                <Link className="dh-h15 dh-a16" href="/register" style={{position:'relative',marginTop:'auto',display:'inline-flex',alignItems:'center',justifyContent:'center',minHeight:'52px',background:'#14161C',color:'#FFFFFF',fontFamily:'var(--font-display)',fontSize:'24px',boxShadow:'4px 4px 0 rgba(255,255,255,.7)',cursor:'pointer',transition:'transform .1s steps(2),box-shadow .1s steps(2)'}}>NOTIFY ME</Link>
+                <Link className="dh-h15 dh-a16" href="/register" style={{position:'relative',marginTop:'auto',display:'inline-flex',alignItems:'center',justifyContent:'center',minHeight:'52px',background:'#14161C',color:'#FFFFFF',fontFamily:'var(--font-display)',fontSize:'24px',boxShadow:'4px 4px 0 rgba(255,255,255,.7)',cursor:'pointer',transition:'transform .1s steps(2),box-shadow .1s steps(2)'}}>{registrationOpen ? 'REGISTER' : 'NOTIFY ME'}</Link>
               </article>
             </div>
             <div data-rv="1" style={{display:'flex',alignItems:'center',gap:'12px',paddingTop:'20px'}}>

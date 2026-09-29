@@ -249,7 +249,7 @@ The draft lives in the tab's `sessionStorage` (not `localStorage`: a shared lab 
 
 ### The sweep, late payers and refunds
 
-**The sweep.** The hourly reconcile Lambda moves every `AWAITING_PAYMENT` record whose hold has lapsed to `ABANDONED` **and gives its seats back in the same transaction**, conditional on the hold still being lapsed, so a UTR submitted a moment earlier wins. No email: a student who never paid is not chased. `holdMinutes` is in `content/payment.ts`; with an hourly sweep the effective hold is 90 to 150 minutes.
+**The sweep.** The reconcile Lambda, every five minutes, moves every `AWAITING_PAYMENT` record whose hold has lapsed to `ABANDONED` **and gives its seats back in the same transaction**, conditional on the hold still being lapsed, so a UTR submitted a moment earlier wins. No email: a student who never paid is not chased. `holdMinutes` is in `content/payment.ts` (20); the sweep runs every five minutes, so the effective hold is 20 to 25 minutes.
 
 **Late payers.** The admin reinstate action takes an `ABANDONED` record to `PENDING_VERIFICATION` with a UTR the admin types, reclaiming its seats in the same transaction. If a session has filled since, it fails loudly naming it and nothing changes: raise that session's seat count or offer a refund.
 

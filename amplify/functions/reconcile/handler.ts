@@ -9,9 +9,9 @@ import { sweepAbandoned } from '../../../src/lib/registration/flow'
 import { markSent } from '../../../src/lib/registration/state'
 
 /**
- * Runs hourly.
+ * Runs every five minutes.
  *
- * 1. The sweep: every AWAITING_PAYMENT record whose ninety minute hold has
+ * 1. The sweep: every AWAITING_PAYMENT record whose twenty minute hold has
  *    lapsed goes to ABANDONED and gives its session seats back, each in one
  *    transaction.
  * 2. Anyone VERIFIED who has never been sent email 2, the ticket, gets it

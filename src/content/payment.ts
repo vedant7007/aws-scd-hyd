@@ -47,8 +47,9 @@ export function upiLink(account: UpiAccount, passId: string): string {
 
 /**
  * How long a record holds its seats once the student reaches the payment
- * step, before the sweep gives them back. Ninety minutes by the organiser's
- * decision. The sweep runs hourly, so the effective hold is this to this
- * plus sixty minutes; the page counts down the ninety.
+ * step, before the sweep gives them back. Twenty minutes by the organiser's
+ * decision (29 September 2026, was ninety). The sweep runs every five
+ * minutes, so the effective hold is this to this plus five; the page counts
+ * down the twenty.
  */
-export const holdMinutes = 90
+export const holdMinutes = 20

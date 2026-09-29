@@ -1,17 +1,16 @@
 import { defineFunction } from '@aws-amplify/backend'
 
 /**
- * SPEC.md section 8. Reconciliation is not optional: without it, one webhook
- * that failed silently means a student arrives on 30 October holding a valid
- * ticket we have no record of.
+ * SPEC.md section 8. The sweep that gives an unpaid hold's seats back, and
+ * the retry for any payment-verified mail that failed to send.
  *
- * Hourly, so the worst case gap between a lost webhook and a repaired record is
- * an hour rather than the whole run up to the event.
+ * Every five minutes: the hold is twenty, so an abandoned registration
+ * leaves the queue within five minutes of lapsing rather than up to an hour.
  */
 export const reconcile = defineFunction({
   name: 'reconcile',
   entry: './handler.ts',
-  schedule: 'every 1h',
+  schedule: 'every 5m',
   timeoutSeconds: 300,
   memoryMB: 512,
 })

@@ -6,6 +6,7 @@ import { QRCodeSVG } from 'qrcode.react'
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
 import { formatInr, passFor } from '@/content/passes'
+import { holdMinutes } from '@/content/payment'
 import { EVENT_DAY, MINIMUM_AGE, TIER_LEVEL, YEARS, ageOnEventDay, technicalSessions, workshops, type Level, type Year } from '@/content/program'
 import type { Tier } from '@/lib/db/types'
 
@@ -17,7 +18,7 @@ import type { Tier } from '@/lib/db/types'
  *
  * What the handoff faked, this does for real. The hold is made on the
  * server when the student reaches the payment step (it claims their session
- * seats for ninety minutes), the QR is a real UPI link for the exact amount
+ * seats for twenty minutes), the QR is a real UPI link for the exact amount
  * the server decided, the screenshot goes straight to the private bucket
  * through a one-shot URL, and SUBMIT moves the record to verification and
  * sends email 1. The pass id comes from the server.
@@ -51,7 +52,7 @@ const CMP: [string, number][] = [
 ]
 const NAMES = ['', 'Choose a pass', 'Your sessions', 'Your details', 'Check', 'Pay by UPI']
 const TITLES = ['', 'PICK YOUR PASS', 'PICK YOUR SESSIONS', 'WHO IS COMING?', 'CHECK IT OVER', 'PAY BY UPI']
-const HOLD_MS = 90 * 60_000
+const HOLD_MS = holdMinutes * 60_000
 const MAX_BYTES = 5 * 1024 * 1024
 const CONTACT = 'awssbgvjit@gmail.com'
 /** One tab's registration. sessionStorage, not localStorage: a shared lab computer forgets it when the tab closes. */
@@ -454,12 +455,12 @@ export function Flow({ preview, resume }: { preview: boolean; resume?: Resume })
 
   /* ---- derived for render ---- */
 
-  // Expiry is read off the clock, not stored: a refresh after the ninety minutes lands here too.
+  // Expiry is read off the clock, not stored: a refresh after the hold lapses lands here too.
   const expired = phase === 'form' && step === 5 && Boolean(hold?.holdEnds) && now >= hold!.holdEnds
   const inForm = phase === 'form' && !expired
   const left = hold ? Math.max(0, hold.holdEnds - now) : HOLD_MS
   const clocked = Boolean(hold?.holdEnds)
-  const urgent = clocked && left < 10 * 60_000
+  const urgent = clocked && left < 5 * 60_000
   const clock = `${Math.floor(left / 60_000)}:${String(Math.floor((left % 60_000) / 1000)).padStart(2, '0')}`
   const ready = u.ok && up.status === 'done'
   const techName = technicalSessions.find((o) => o.id === tech)?.title ?? ''
@@ -695,7 +696,7 @@ export function Flow({ preview, resume }: { preview: boolean; resume?: Resume })
                 <div style={{ border: '3px dashed var(--line-dash)', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <span style={{ ...S.rowL, letterSpacing: '.16em', color: 'var(--mint-ink)' }}>What happens next</span>
                   <p style={{ margin: '0', fontSize: '13.5px', lineHeight: '1.6', color: 'var(--body)' }}>
-                    You get a UPI QR for the college account. Pay in your own UPI app, then come back and enter the UTR number and a screenshot. <strong style={{ color: 'var(--ink)' }}>Your place is held for 90 minutes</strong> from the next screen.
+                    You get a UPI QR for the college account. Pay in your own UPI app, then come back and enter the UTR number and a screenshot. <strong style={{ color: 'var(--ink)' }}>Your place is held for {holdMinutes} minutes</strong> from the next screen.
                   </p>
                 </div>
                 <Notice text={notice} />
@@ -726,7 +727,7 @@ export function Flow({ preview, resume }: { preview: boolean; resume?: Resume })
                 ) : (
                   <div role="status" style={{ border: '3px solid var(--line)', background: '#FF9900', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '8px', boxShadow: '4px 4px 0 var(--line)' }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '14px', fontWeight: '500', color: '#14161C' }}>Under 10 minutes left on your hold</span>
+                      <span style={{ fontSize: '14px', fontWeight: '500', color: '#14161C' }}>Under 5 minutes left on your hold</span>
                       <span style={{ fontFamily: 'var(--font-mono)', fontSize: '22px', fontWeight: '600', color: '#14161C' }}>{clock}</span>
                     </div>
                     <span style={{ fontSize: '13px', lineHeight: '1.5', color: '#14161C' }}>Already paid? Enter the UTR and add the screenshot now and you are fine. Once you submit, the clock stops.</span>
@@ -922,7 +923,7 @@ export function Flow({ preview, resume }: { preview: boolean; resume?: Resume })
                   <span style={{ width: '9px', height: '9px', background: 'var(--bar)', border: '2px solid var(--line)' }} />
                   Hold released
                 </span>
-                <h1 style={{ margin: '0', fontWeight: '400', fontFamily: 'var(--font-display)', fontSize: 'clamp(35px,9.5vw,55px)', lineHeight: '1.02', color: 'var(--ink)' }}>YOUR 90 MINUTES RAN OUT</h1>
+                <h1 style={{ margin: '0', fontWeight: '400', fontFamily: 'var(--font-display)', fontSize: 'clamp(35px,9.5vw,55px)', lineHeight: '1.02', color: 'var(--ink)' }}>YOUR {holdMinutes} MINUTES RAN OUT</h1>
                 <p style={{ margin: '0', fontSize: '15.5px', lineHeight: '1.62', color: 'var(--body)', maxWidth: '46ch' }}>
                   We did not get a UTR in time, so your place went back to the pool. Your details are still filled in on this device. Starting again takes a minute.
                 </p>
