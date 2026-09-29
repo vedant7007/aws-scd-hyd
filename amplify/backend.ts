@@ -215,6 +215,18 @@ if (process.env.SCD_MANAGE_DNS === 'true') {
   })
 
   /**
+   * Google Search Console, domain property (29 September 2026). The token is
+   * public by design, it is what Google reads in DNS. Any later apex TXT
+   * value (another verification, an apex SPF) goes into this same list:
+   * Route 53 holds one TXT record set per name.
+   */
+  new TxtRecord(dns, 'ApexTxt', {
+    zone,
+    values: ['google-site-verification=g-7Cvw4hx8bm0XHeiQEGhdBDPV0KQopKOu8ituiNWFI'],
+    ttl: Duration.seconds(300),
+  })
+
+  /**
    * Custom MAIL FROM. SES needs an MX pointing at its feedback host for the
    * region and an SPF record authorising amazonses.com on that subdomain.
    * With these in place the envelope sender is @mail.awsscdhyd.in, which is
