@@ -1,6 +1,6 @@
 import { event, venue } from '../../content/event'
 import { programSession } from '../../content/program'
-import { REFUND_POLICY, formatInr, tierLabel } from '../../content/passes'
+import { REFUND_POLICY, formatInr, passes, tierLabel } from '../../content/passes'
 import type { Attendee } from '../db/types'
 import { siteUrl } from '../site'
 import type { Mail } from './send'
@@ -35,6 +35,7 @@ export const SUBJECTS = {
   confirmation: `Payment verified, ${event.shortName}`,
   rejection: `We could not match your payment, ${event.shortName}`,
   dayBefore: `Tomorrow: ${event.shortName}`,
+  registrationsOpen: `Registrations are open: ${event.shortName}`,
 } as const
 
 export const REPLY_TO = process.env.SES_REPLY_TO ?? event.contactEmail
@@ -315,6 +316,50 @@ ${footerText}`,
         ),
         p('Come early, the gate queue is the slow part. Open your ticket before you arrive so it is loaded, then show the QR at the gate.'),
         button(url, 'OPEN MY TICKET &rarr;'),
+      ].join('\n'),
+    }),
+  }
+}
+
+/** To the notify list, once, when registration opens. They asked for exactly this and nothing else. */
+export function registrationsOpen(): Body {
+  const url = link('/register')
+  return {
+    subject: SUBJECTS.registrationsOpen,
+    text: `Hi,
+
+You asked us to tell you when registrations open for ${event.name}. They are open now.
+
+Register here:
+${url}
+
+When:  ${event.dateLabel}, doors ${doors} IST
+Where: ${venue.name}
+
+Passes start at ${formatInr(Math.min(...passes.map((x) => x.pricePaise ?? Infinity)))}, and lunch is on every pass. Seats in each session are limited, so pick yours early.
+
+You are getting this one email because you left your address on our registration page. We will not add you to anything else.
+
+${footerText}`,
+    html: shell({
+      preheader: `Registrations for ${event.name} are open. Pick your pass and your sessions.`,
+      tag: 'Registrations open',
+      title: 'Registrations are open',
+      body: [
+        p(`You asked us to tell you when registrations open for <strong>${esc(event.name)}</strong>. They are open now.`),
+        button(url, 'REGISTER NOW &rarr;'),
+        card(
+          `${eyebrow('The day')}${rows([
+            ['Date', esc(event.dateLabel)],
+            ['Doors', `${esc(doors)} IST`],
+            ['Venue', esc(venue.name)],
+            ['Passes', passes.map((x) => `${esc(x.name)} ${x.pricePaise === null ? '' : esc(formatInr(x.pricePaise))}`).join('<br>')],
+            ['Lunch', 'On every pass'],
+          ])}`,
+          '#E6F5EB',
+        ),
+        p('Seats in each session are limited, so pick yours early.'),
+        small('You are getting this one email because you left your address on our registration page. We will not add you to anything else.'),
       ].join('\n'),
     }),
   }

@@ -73,11 +73,10 @@ export const ROOM_RESERVE = 15
  * the hold route refuses. Anyone with the link can still walk the real flow at
  * /register/preview.
  *
- * Locked again on 29 September 2026 at the organiser's request, until they
- * say otherwise. Testing runs through /register/preview, which does not
- * read this flag and pays the organiser's test UPI account.
+ * Opened for real on 29 September 2026 at the organiser's word, after the
+ * end-to-end test at /register/preview. Real registrations pay the college.
  */
-export const REGISTRATION_OPEN = false
+export const REGISTRATION_OPEN = true
 
 /**
  * The admin switch on the settings page, stored on the config item. It can

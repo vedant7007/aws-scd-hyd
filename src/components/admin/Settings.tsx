@@ -1,7 +1,8 @@
 'use client'
 
 import { useActionState, useState } from 'react'
-import { registrationSwitchAction, sessionCapacityAction, type ActionState } from '@/app/admin/(secure)/actions'
+import { notifyOpenAction,
+  registrationSwitchAction, sessionCapacityAction, type ActionState } from '@/app/admin/(secure)/actions'
 import { CONFIRM_CLOSE } from '@/lib/registration/reasons'
 
 /**
@@ -51,6 +52,28 @@ export function SessionCapacityForm({ sessionId, current }: { sessionId: string;
       </button>
       {state ? (
         <p role="status" className={state.ok ? 'copy w-full' : 'err-text w-full'}>
+          {state.message}
+        </p>
+      ) : null}
+    </form>
+  )
+}
+
+/** Mails the notify list that registration is open. Type SEND first: it goes to real people. */
+export function NotifyOpenForm({ waiting }: { waiting: number }) {
+  const [state, action, pending] = useActionState(notifyOpenAction, null as ActionState)
+  const [typed, setTyped] = useState('')
+  return (
+    <form action={action} className="flex flex-col gap-3">
+      <div className="fld">
+        <label htmlFor="confirm-send">Type SEND to email the {waiting} {waiting === 1 ? 'person' : 'people'} not yet told</label>
+        <input id="confirm-send" name="confirm" className="inp inp-num" autoComplete="off" value={typed} onChange={(e) => setTyped(e.target.value)} />
+      </div>
+      <button type="submit" className="btn btn-primary self-start" disabled={pending || waiting === 0 || typed.trim().toUpperCase() !== 'SEND'}>
+        {pending ? 'SENDING' : 'EMAIL: REGISTRATIONS ARE OPEN'}
+      </button>
+      {state ? (
+        <p role="status" className={state.ok ? 'copy' : 'err-text'}>
           {state.message}
         </p>
       ) : null}

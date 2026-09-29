@@ -163,6 +163,8 @@ export type Subscriber = Keyed & {
   interestedPasses?: string[]
   /** 'register-closed' from the notify page, absent from the older form. */
   source?: string
+  /** When the "registrations are open" mail went. Written right after each send, so a re-run skips them. */
+  openMailSentAt?: string
 }
 
 /** Summary of the most recent scheduled run, SPEC.md section 8. */

@@ -1,3 +1,4 @@
+import { NotifyOpenForm } from '@/components/admin/Settings'
 import { passes, tierLabel } from '@/content/passes'
 import { requireAdmin } from '@/lib/auth/admin'
 import { listSubscribers } from '@/lib/db/queries'
@@ -57,6 +58,14 @@ export default async function NotifyListPage() {
         </div>
       </div>
 
+      <section className="card flex flex-col gap-3 p-4" aria-labelledby="open-h">
+        <h2 id="open-h" className="card-title">
+          TELL THEM REGISTRATIONS ARE OPEN
+        </h2>
+        <p className="copy">One email to each address below, with the register link. Sent once per person: anyone already told is skipped, so pressing again only retries failures.</p>
+        <NotifyOpenForm waiting={subs.filter((s) => !s.openMailSentAt).length} />
+      </section>
+
       <section className="card flex flex-col" aria-labelledby="list-h">
         <div className="card-head">
           <span id="list-h" className="card-title">
@@ -73,6 +82,7 @@ export default async function NotifyListPage() {
                   <th scope="col">Email</th>
                   <th scope="col">Signed up</th>
                   <th scope="col">Eyeing</th>
+                  <th scope="col">Told open</th>
                 </tr>
               </thead>
               <tbody>
@@ -84,6 +94,7 @@ export default async function NotifyListPage() {
                     </th>
                     <td className="num whitespace-nowrap">{when(s.createdAt)}</td>
                     <td>{s.interestedPasses?.length ? s.interestedPasses.map((t) => tierLabel(t)).join(', ') : <span className="text-muted">-</span>}</td>
+                    <td className="num whitespace-nowrap">{s.openMailSentAt ? when(s.openMailSentAt) : <span className="text-muted">-</span>}</td>
                   </tr>
                 ))}
               </tbody>

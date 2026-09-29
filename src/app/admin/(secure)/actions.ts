@@ -9,6 +9,7 @@ import type { CrewRole } from '@/lib/db/types'
 import { adminReinstate, adminReject, adminVerify } from '@/lib/registration/flow'
 import { CONFIRM_CLOSE, rejectionText } from '@/lib/registration/reasons'
 import { setRegistrationOpen, setSessionCapacity } from '@/lib/registration/state'
+import { mailNotifyListOpen } from '@/lib/notify-open'
 import { normaliseUtr } from '@/lib/registration/validate'
 
 /**
@@ -94,6 +95,18 @@ export async function sessionCapacityAction(_prev: ActionState, formData: FormDa
     return { ok: false, message: `REFUSED: ${out.taken} seats in ${s.title} are already held, and ${capacity} would put them over the limit. Nothing changed.` }
   }
   return { ok: true, message: `${s.code} now sells ${capacity} seats.` }
+}
+
+export async function notifyOpenAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireAdmin()
+  if (String(formData.get('confirm') ?? '').trim().toUpperCase() !== 'SEND') return { ok: false, message: 'Type SEND to confirm. Nothing was sent.' }
+  const out = await mailNotifyListOpen()
+  revalidatePath('/admin/notify')
+  if (!out.ok) return { ok: false, message: out.message }
+  return {
+    ok: true,
+    message: `Sent to ${out.sent}. ${out.already} had it already, ${out.skipped} skipped (test addresses)${out.failed ? `, ${out.failed} FAILED: press again to retry just those` : ''}.`,
+  }
 }
 
 /* ---- crew --------------------------------------------------------------- */

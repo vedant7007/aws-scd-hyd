@@ -263,7 +263,7 @@ The admin dashboard's default view is the `PENDING_VERIFICATION` queue, oldest U
 
 ### The master switch and the registration switch
 
-`REGISTRATION_OPEN` in `content/event.ts` is **false** (briefly opened and locked again on 29 September 2026, at the organiser's request, until they say otherwise; testing runs through `/register/preview`). While it is false, nothing sells: `launchStatus()` ANDs it with the admin switch, the hold route refuses, every REGISTER control reads NOTIFY ME and `/register` is the notify page. Opening is a code change on purpose: it should be a deploy someone reviewed, not a click.
+`REGISTRATION_OPEN` in `content/event.ts` is **true**: registration opened for real on 29 September 2026, after an end-to-end test at `/register/preview`. The notify list is told once, from a SEND-confirmed button on `/admin/notify` that marks each address (`openMailSentAt`) right after its send, so re-pressing only retries failures. While the flag is false, nothing sells: `launchStatus()` ANDs it with the admin switch, the hold route refuses, every REGISTER control reads NOTIFY ME and `/register` is the notify page. Opening is a code change on purpose: it should be a deploy someone reviewed, not a click.
 
 Below it, the `registrationOpen` switch on `/admin/settings` closes registration without a deploy (type CLOSE to confirm). It is enforced in the hold route, not by hiding a button. Closing stops new holds and nothing else: a student already paying can still submit, and verification keeps working.
 
