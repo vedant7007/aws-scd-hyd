@@ -327,7 +327,7 @@ async function holds(): Promise<void> {
 
 function emails(): void {
   console.log('\nemails')
-  const person = { firstName: 'Test', passId: 'SCD-TESTTESTTE', tier: 'premium', technicalSession: 't1', workshop: 'w1', amountPaise: 79900 } as const
+  const person = { name: 'Test Person', passId: 'SCD-TESTTESTTE', tier: 'premium', technicalSession: 't1', workshop: 'w1', amountPaise: 79900 } as const
   const r = receipt(person)
   for (const w of RECEIPT_FORBIDDEN_WORDS) assert.ok(!new RegExp(`\\b${w}\\b`, 'i').test(`${r.subject}\n${r.text}`), `email 1 says "${w}"`)
   ok(`email 1 contains none of: ${RECEIPT_FORBIDDEN_WORDS.join(', ')}`)
@@ -335,9 +335,9 @@ function emails(): void {
   assert.ok(rej.text.includes('UTR123456789012') && !rej.text.includes('/pass/'))
   ok('rejection email quotes the UTR and contains no pass link')
   const c = confirmation(person)
-  assert.ok(c.text.includes(REFUND_POLICY) && c.text.includes('/pass/SCD-TESTTESTTE'))
+  assert.ok(c.text.includes(REFUND_POLICY) && c.text.includes('SCD-TESTTESTTE') && !c.text.includes('/pass/') && !c.html.includes('/pass/'), 'payment verified mail, no ticket')
   for (const t of [r.text, rej.text, c.text]) assert.ok(!t.includes('—'), 'an email carries an em dash')
-  ok('email 2 carries the pass link and the refund wording; no email carries an em dash')
+  ok('email 2 says payment verified with the pass id and refund wording, and carries no ticket; no email carries an em dash')
 }
 
 /* ---- http ----------------------------------------------------------------- */

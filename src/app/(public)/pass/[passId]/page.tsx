@@ -51,7 +51,7 @@ export default async function PassPage({ params }: PageProps<'/pass/[passId]'>) 
       <div className="flex flex-col gap-2">
         <span className="eye">{'// THIS LINK IS YOUR TICKET'}</span>
         <h1 className="h1">
-          SEE YOU ON THE {DAY_ORDINAL}, {attendee.firstName.toUpperCase()}
+          SEE YOU ON THE {DAY_ORDINAL}, {attendee.name.toUpperCase()}
         </h1>
         <p className="lede">Screenshot this page. It works with no signal at the gate, and you do not need to log in anywhere.</p>
       </div>

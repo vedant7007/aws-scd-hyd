@@ -613,9 +613,9 @@ export function Flow({ preview, resume }: { preview: boolean; resume?: Resume })
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,170px),1fr))', gap: '12px' }}>
-                    <Field id="first" label="First name" value={fields.first} onChange={onField} err={err.first} autoComplete="given-name" placeholder="Sneha" />
-                    <Field id="middle" label="Middle name · optional" value={fields.middle} onChange={onField} err={err.middle} autoComplete="additional-name" />
-                    <Field id="last" label="Last name" value={fields.last} onChange={onField} err={err.last} autoComplete="family-name" placeholder="Reddy" />
+                    <Field id="first" label="First name" value={fields.first} onChange={onField} err={err.first} autoComplete="given-name" />
+                    <Field id="middle" label="Middle name · optional" value={fields.middle} onChange={onField} err={err.middle} autoComplete="off" />
+                    <Field id="last" label="Last name" value={fields.last} onChange={onField} err={err.last} autoComplete="family-name" />
                   </div>
                   <span style={S.hint}>As on your college ID. Printed on your ticket.</span>
                 </div>
@@ -871,7 +871,7 @@ export function Flow({ preview, resume }: { preview: boolean; resume?: Resume })
                   <span style={{ width: '9px', height: '9px', background: '#FF9900', border: '2px solid var(--line)' }} />
                   Received · being checked
                 </span>
-                <h1 style={{ margin: '0', fontWeight: '400', fontFamily: 'var(--font-display)', fontSize: 'clamp(35px,9.5vw,55px)', lineHeight: '1.02', color: 'var(--ink)' }}>WE HAVE YOUR DETAILS, {fields.first.trim().toUpperCase()}</h1>
+                <h1 style={{ margin: '0', fontWeight: '400', fontFamily: 'var(--font-display)', fontSize: 'clamp(35px,9.5vw,55px)', lineHeight: '1.02', color: 'var(--ink)' }}>WE HAVE YOUR DETAILS, {fullName.toUpperCase()}</h1>
                 <p style={{ margin: '0', fontSize: '15.5px', lineHeight: '1.62', color: 'var(--body)', maxWidth: '46ch' }}>
                   A person on our team matches every UTR against the college bank statement, once a day. You will hear from us at <strong style={{ color: 'var(--ink)', wordBreak: 'break-all' }}>{fields.email}</strong> within 24 hours.
                 </p>

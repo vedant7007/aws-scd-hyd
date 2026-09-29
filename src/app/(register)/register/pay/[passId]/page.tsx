@@ -43,7 +43,8 @@ export default async function PayPage({ params }: PageProps<'/register/pay/[pass
     tier: a.tier,
     tech: a.technicalSession,
     workshop: a.workshop ?? '',
-    first: a.firstName,
+    // The whole name, so the received screen greets them by it.
+    first: a.name,
     email: a.email,
     rejection: a.state === 'REJECTED' ? (a.rejectionReason ?? 'The UTR did not match a payment in the college statement.') : null,
   }

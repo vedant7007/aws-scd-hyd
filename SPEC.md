@@ -398,7 +398,7 @@ SES, `ap-south-1`. Every body lives in `src/lib/email/templates.ts` as named exp
 | Email | Trigger | Idempotency mark |
 |---|---|---|
 | 1, receipt | entering `PENDING_VERIFICATION`: pass id, pass, sessions, amount | `receiptSentAt` |
-| 2, confirmation | entering `VERIFIED`: the ticket link, sessions, refund wording | `confirmationSentAt`; the hourly run resends anything owed |
+| 2, payment verified | entering `VERIFIED`: payment verified, pass id, sessions, date and venue, refund wording. **No ticket, no QR, no pass link** (organiser decision, 29 September 2026); a gate email comes separately before the event | `confirmationSentAt`; the hourly run resends anything owed |
 | rejection | entering `REJECTED`, quotes the UTR and the reason, links `/register/pay/<passId>`, **contains no pass link** | none |
 | day before | timings and directions | not yet scheduled |
 

@@ -13,9 +13,7 @@ import type { Mail } from './send'
  * bordered cards, the pass id in large mono type, one real button. It is
  * built the way mail must be: tables, inline styles, system fonts, no
  * scripts, no tracking pixels, and a plain text part that says the same
- * thing. The only image is the ticket QR in email 2, served as a PNG from
- * /api/pass/<id>/qr for verified passes only; the pass id and the link
- * beside it work without it.
+ * thing. No images at all.
  */
 
 /**
@@ -34,7 +32,7 @@ export const RECEIPT_FORBIDDEN_WORDS = ['successful', 'success', 'confirmed', 'c
 
 export const SUBJECTS = {
   receipt: `We have your details, ${event.shortName}`,
-  confirmation: `Your ${event.shortName} ticket`,
+  confirmation: `Payment verified, ${event.shortName}`,
   rejection: `We could not match your payment, ${event.shortName}`,
   dayBefore: `Tomorrow: ${event.shortName}`,
 } as const
@@ -140,7 +138,7 @@ ${o.body}
 </body></html>`
 }
 
-type Person = Pick<Attendee, 'firstName' | 'passId' | 'tier' | 'technicalSession' | 'workshop' | 'amountPaise'>
+type Person = Pick<Attendee, 'name' | 'passId' | 'tier' | 'technicalSession' | 'workshop' | 'amountPaise'>
 
 /** The sessions a pass holds, as lines: "Technical: Cloud 101: ..." */
 function sessionLines(r: Person): string[] {
@@ -158,7 +156,7 @@ export function receipt(r: Person): Body {
   const lines = sessionLines(r)
   return {
     subject: SUBJECTS.receipt,
-    text: `Hi ${r.firstName},
+    text: `Hi ${r.name},
 
 We have your details and your UTR for ${event.name}.
 
@@ -180,7 +178,7 @@ ${footerText}`,
       preheader: `Pass ID ${r.passId}. We check your payment within ${VERIFICATION_WINDOW}.`,
       tag: 'Received · being checked',
       tagColor: '#FDF4E3',
-      title: `We have your details, ${r.firstName}`,
+      title: `We have your details, ${r.name}`,
       body: [
         p(`We have your registration and your UTR for <strong>${esc(event.name)}</strong>.`),
         p(`A person on our team matches every UTR against the college bank statement. We will do yours within <strong>${VERIFICATION_WINDOW}</strong>, then email you your ticket. Until then there is nothing you need to do.`),
@@ -192,25 +190,22 @@ ${footerText}`,
   }
 }
 
-/** EMAIL 2, the ticket, on entering VERIFIED. */
+/** EMAIL 2, on entering VERIFIED: the payment is verified. No ticket yet, by the organiser's decision (29 September 2026). */
 export function confirmation(r: Person): Body {
-  const url = passLink(r.passId)
   const lines = sessionLines(r)
   return {
     subject: SUBJECTS.confirmation,
-    text: `Hi ${r.firstName},
+    text: `Hi ${r.name},
 
-Your payment is checked and your ${tierLabel(r.tier)} pass for ${event.name} is confirmed.
-
-YOUR TICKET
-${url}
-
-Open it on the day and show the QR at the gate. It is the same for every session.
+Your payment for ${event.name} is verified. Your ${tierLabel(r.tier)} registration is complete.
 
 YOUR PASS ID
 ${r.passId}
 
-YOUR SESSIONS
+Keep it safe. It is how we find your registration.
+
+YOUR PASS
+${tierLabel(r.tier)}, ${formatInr(r.amountPaise)}
 ${lines.join('\n')}
 Sessions are subject to change. If yours does, we will email you.
 
@@ -218,27 +213,20 @@ When:  ${event.dateLabel}, doors ${doors} IST
 Where: ${venue.name}
 Map:   ${venue.directionsUrl}
 
+We will email you again before the event with everything you need at the gate.
+
 REFUNDS
 ${REFUND_POLICY}
 
 ${footerText}`,
     html: shell({
-      preheader: `Your ${tierLabel(r.tier)} pass is ready. Show the QR at the gate on ${event.dateLabel}.`,
-      tag: 'Confirmed · you are in',
-      title: `See you there, ${r.firstName}`,
+      preheader: `Your payment is verified. Pass ID ${r.passId}.`,
+      tag: 'Payment verified',
+      title: `Payment verified, ${r.name}`,
       body: [
-        p(`Your payment is checked and your <strong>${esc(tierLabel(r.tier))} pass</strong> for ${esc(event.name)} is confirmed.`),
-        card(
-          `<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:6px 0 4px">
-<img src="${link(`/api/pass/${r.passId}/qr`)}" width="220" height="220" alt="Ticket QR code for ${esc(r.passId)}" style="display:block;width:220px;height:220px;border:0;image-rendering:pixelated">
-<p style="margin:12px 0 2px;font-family:${MONO};font-size:24px;font-weight:bold;letter-spacing:2px;color:${INK}">${esc(r.passId)}</p>
-<p style="margin:0;font-family:${SANS};font-size:13px;color:${MUTED}">Show this QR at the gate. Turn your brightness up.</p>
-</td></tr></table>`,
-          '#FFFFFF',
-        ),
-        button(url, 'OPEN MY TICKET &rarr;'),
-        small(`If the QR does not show, the button opens your ticket page with the same QR. Or tell the volunteer your pass ID.`),
-        card(`${eyebrow('Your pass')}${rows([['Pass', esc(tierLabel(r.tier))], ...sessionRows(r)])}`),
+        p(`Your payment for <strong>${esc(event.name)}</strong> is verified. Your <strong>${esc(tierLabel(r.tier))}</strong> registration is complete.`),
+        passIdBlock(r.passId, 'Keep it safe. It is how we find your registration.'),
+        card(`${eyebrow('Your pass')}${rows([['Pass', esc(tierLabel(r.tier))], ['Amount', esc(formatInr(r.amountPaise))], ...sessionRows(r)])}`),
         small('Sessions are subject to change. If yours does, we will email you.'),
         card(
           `${eyebrow('When and where')}${rows([
@@ -250,6 +238,7 @@ ${footerText}`,
           ])}`,
           '#E6F5EB',
         ),
+        p('We will email you again before the event with everything you need at the gate.'),
         card(`${eyebrow('Refunds', MUTED)}${small(esc(REFUND_POLICY))}`, CREAM, '#E3DDD4'),
       ].join('\n'),
     }),
@@ -261,7 +250,7 @@ export function rejection(r: Person, utr: string, reason: string): Body {
   const url = payLink(r.passId)
   return {
     subject: SUBJECTS.rejection,
-    text: `Hi ${r.firstName},
+    text: `Hi ${r.name},
 
 We could not match a payment to your registration for ${event.name}.
 
@@ -279,7 +268,7 @@ ${footerText}`,
       tagColor: '#FFE1DF',
       title: `We could not match your payment`,
       body: [
-        p(`Hi ${esc(r.firstName)}, we could not match a payment to your registration for ${esc(event.name)}.`),
+        p(`Hi ${esc(r.name)}, we could not match a payment to your registration for ${esc(event.name)}.`),
         card(`${eyebrow('What we checked', '#A3231F')}${rows([['UTR', `<span style="font-family:${MONO}">${esc(utr)}</span>`], ['Pass ID', `<span style="font-family:${MONO}">${esc(r.passId)}</span>`], ...(reason ? ([['Note', esc(reason)]] as [string, string][]) : [])])}`, '#FFFFFF', '#A3231F'),
         p('Your sessions are still held. Check the UTR in your UPI app and send the correct one with a screenshot. If you have already paid, do not pay again.'),
         button(url, 'SEND THE CORRECT UTR &rarr;'),
@@ -294,7 +283,7 @@ export function dayBefore(r: Person): Body {
   const url = passLink(r.passId)
   return {
     subject: SUBJECTS.dayBefore,
-    text: `Hi ${r.firstName},
+    text: `Hi ${r.name},
 
 See you tomorrow.
 
@@ -313,7 +302,7 @@ ${footerText}`,
     html: shell({
       preheader: `Doors at ${doors} IST tomorrow. Bring your ticket QR.`,
       tag: 'Tomorrow',
-      title: `See you tomorrow, ${r.firstName}`,
+      title: `See you tomorrow, ${r.name}`,
       body: [
         card(
           `${eyebrow('The day')}${rows([
