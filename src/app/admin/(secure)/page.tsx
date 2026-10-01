@@ -265,17 +265,13 @@ export default async function AdminDashboardPage() {
             <span id="recon-h" className="card-title">
               RECONCILIATION
             </span>
-            <span className="lbl">hourly</span>
+            <span className="lbl">every 5 minutes</span>
           </div>
           {d.reconcile ? (
             <>
               <div className="row">
                 <span className="copy">Last run</span>
                 <span className="num text-[12px] text-ink">{when(d.reconcile.ranAt)}</span>
-              </div>
-              <div className="row">
-                <span className="copy">Abandoned on that run</span>
-                <span className="stat-val stat-val-sm">{d.reconcile.abandoned ?? 0}</span>
               </div>
               <div className="row">
                 <span className="copy">Emails sent</span>

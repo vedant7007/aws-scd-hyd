@@ -36,7 +36,7 @@ const TIERS: TierLook[] = [
   { id: 'vip', name: 'VIP', metal: 'DIAMOND', edge: '#14161C', dark: '#14161C', light: '#F5B5CF', holo: true, bg: 'linear-gradient(115deg,#E8F8FF,#C9B6F5 16%,#F5B5CF 30%,#FFF0B8 44%,#A8EBC4 58%,#A9E3FF 72%,#D9C9FF 86%,#E8F8FF)', from: 'PLATINUM', adds: ['Front-row seating', 'Speaker networking', 'Dedicated assistance', 'Swag kit · tier 4'] },
 ]
 
-const LEVEL_BG: Record<Level, string> = { Beginner: '#9FE3B6', Intermediate: '#FFB84D', Advanced: '#F2A7C3', 'Beginner–Intermediate': '#A9E3FF' }
+const LEVEL_BG: Record<Level, string> = { Beginner: '#9FE3B6', Intermediate: '#FFB84D', 'Beginner–Intermediate': '#A9E3FF' }
 const CMP: [string, number][] = [
   ['Lunch', 1],
   ['Opening keynote', 1],

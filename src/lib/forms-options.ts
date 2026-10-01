@@ -31,7 +31,6 @@ const SESSION_OPTIONS = (
   [
     ['t1', 'Beginner', 'CLOUD / AWS'],
     ['t2', 'Intermediate', 'CLOUD / AWS'],
-    ['t3', 'Advanced', 'CLOUD / AWS'],
     ['w1', 'Hands-on', 'CLOUD / AWS'],
     ['t4', 'Beginner', 'AI / ML'],
     ['t5', 'Intermediate', 'AI / ML'],

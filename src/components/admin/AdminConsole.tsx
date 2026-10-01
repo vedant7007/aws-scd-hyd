@@ -33,7 +33,12 @@ export type Row = {
 
 type View = 'queue' | 'verified' | 'all'
 
-const STATES: RegistrationState[] = ['AWAITING_PAYMENT', 'PENDING_VERIFICATION', 'VERIFIED', 'REJECTED', 'ABANDONED']
+/**
+ * Abandoned holds (the student left before paying, seats already given
+ * back) are not counted or listed: they only pile up. A search still finds
+ * one, so a late payer can be reinstated.
+ */
+const STATES: RegistrationState[] = ['AWAITING_PAYMENT', 'PENDING_VERIFICATION', 'VERIFIED', 'REJECTED']
 
 /** How a state reads: the word is the signal, the colour only repeats it. */
 const STATE_LABEL: Record<RegistrationState, string> = {
@@ -69,11 +74,12 @@ export function AdminConsole({ rows }: { rows: Row[] }) {
   const [view, setView] = useState<View>('queue')
   const [query, setQuery] = useState('')
 
+  const live = useMemo(() => rows.filter((r) => r.state !== 'ABANDONED'), [rows])
   const counts = useMemo(() => Object.fromEntries(STATES.map((s) => [s, rows.filter((r) => r.state === s).length])), [rows])
 
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase().replace(/[\s-]+/g, '')
-    let list = rows
+    let list = live
     if (q) {
       list = rows.filter(
         (r) =>
@@ -88,12 +94,12 @@ export function AdminConsole({ rows }: { rows: Row[] }) {
       list = rows.filter((r) => r.state === 'VERIFIED').sort((a, b) => a.createdAt.localeCompare(b.createdAt))
     }
     return list
-  }, [rows, view, query])
+  }, [rows, live, view, query])
 
   const viewLabel: Record<View, string> = {
     queue: `Queue (${counts.PENDING_VERIFICATION})`,
     verified: `Verified (${counts.VERIFIED})`,
-    all: `All (${rows.length})`,
+    all: `All (${live.length})`,
   }
 
   return (
@@ -113,7 +119,7 @@ export function AdminConsole({ rows }: { rows: Row[] }) {
         <div className="card-head">
           <span className="card-title">ATTENDEES</span>
           <span className="lbl">
-            {shown.length} of {rows.length}
+            {shown.length} of {live.length}
           </span>
         </div>
         <div className="flex flex-wrap gap-2.5 border-b border-line-soft p-4">

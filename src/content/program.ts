@@ -12,7 +12,7 @@ import type { Tier } from '../lib/db/types'
  * admin on the settings page.
  */
 
-export type Level = 'Beginner' | 'Intermediate' | 'Advanced' | 'Beginner–Intermediate'
+export type Level = 'Beginner' | 'Intermediate' | 'Beginner–Intermediate'
 
 export type ProgramSession = {
   /** The stored key: in records, counters and CSV exports. Never renamed once anyone has registered. */
@@ -24,12 +24,13 @@ export type ProgramSession = {
   level: Level
 }
 
+// t3, Architecting for Scale, was dropped on 1 October 2026. Ids are never
+// reused, so t4 and t5 keep theirs; only the printed codes moved up.
 export const technicalSessions: ProgramSession[] = [
   { id: 't1', kind: 'technical', code: 'TECH 01', title: 'Cloud 101: Your Journey into AWS', level: 'Beginner' },
   { id: 't2', kind: 'technical', code: 'TECH 02', title: 'Building on AWS: From Architecture to Deployment', level: 'Intermediate' },
-  { id: 't3', kind: 'technical', code: 'TECH 03', title: 'Architecting for Scale: Building Resilient AWS Solutions', level: 'Advanced' },
-  { id: 't4', kind: 'technical', code: 'TECH 04', title: 'AI Unleashed: From Machine Learning to Generative AI', level: 'Beginner' },
-  { id: 't5', kind: 'technical', code: 'TECH 05', title: 'From LLMs to AI Agents: Building the Next Generation of AI', level: 'Intermediate' },
+  { id: 't4', kind: 'technical', code: 'TECH 03', title: 'AI Unleashed: From Machine Learning to Generative AI', level: 'Beginner' },
+  { id: 't5', kind: 'technical', code: 'TECH 04', title: 'From LLMs to AI Agents: Building the Next Generation of AI', level: 'Intermediate' },
 ]
 
 export const workshops: ProgramSession[] = [
