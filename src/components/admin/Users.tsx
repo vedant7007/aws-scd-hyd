@@ -34,7 +34,7 @@ export function AddUserForm() {
   )
 }
 
-export function UserRow({ user, self, lastAdmin }: { user: { email: string; role: CrewRole; addedAt: string; addedBy: string }; self: boolean; lastAdmin: boolean }) {
+export function UserRow({ user, self, lastAdmin, owner }: { user: { email: string; role: CrewRole; addedAt: string; addedBy: string }; self: boolean; lastAdmin: boolean; owner: boolean }) {
   const [roleState, roleAction, changing] = useActionState(setRoleAction, null as ActionState)
   const [removeState, removeAction, removing] = useActionState(removeUserAction, null as ActionState)
   const other: CrewRole = user.role === 'admin' ? 'volunteer' : 'admin'
@@ -46,6 +46,7 @@ export function UserRow({ user, self, lastAdmin }: { user: { email: string; role
           <span className="num text-[14px] text-ink">
             {user.email}
             {self ? <span className="lbl"> · you</span> : null}
+            {owner ? <span className="lbl"> · owner</span> : null}
           </span>
           <span className="hint">
             added {new Date(user.addedAt).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium' })} by {user.addedBy}
@@ -53,6 +54,7 @@ export function UserRow({ user, self, lastAdmin }: { user: { email: string; role
         </span>
         <span className={user.role === 'admin' ? 'pill pill-orange pill-sm' : 'pill pill-violet pill-sm'}>{user.role}</span>
       </div>
+      {owner ? null : (
       <div className="flex flex-wrap gap-2.5">
         <form action={roleAction}>
           <input type="hidden" name="email" value={user.email} />
@@ -68,6 +70,7 @@ export function UserRow({ user, self, lastAdmin }: { user: { email: string; role
           </button>
         </form>
       </div>
+      )}
       <Status state={roleState ?? removeState} />
     </div>
   )

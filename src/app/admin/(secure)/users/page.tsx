@@ -1,4 +1,5 @@
 import { requireAdmin } from '@/lib/auth/admin'
+import { BOOTSTRAP_ADMIN } from '@/lib/auth/crew'
 import { listCrewAudit, listUsers } from '@/lib/auth/crew'
 import { AddUserForm, UserRow } from '@/components/admin/Users'
 
@@ -52,7 +53,7 @@ export default async function UsersPage() {
           </p>
         ) : null}
         {users.map((u) => (
-          <UserRow key={u.email} user={{ email: u.email, role: u.role, addedAt: u.addedAt, addedBy: u.addedBy }} self={u.email === email} lastAdmin={u.role === 'admin' && admins <= 1} />
+          <UserRow key={u.email} user={{ email: u.email, role: u.role, addedAt: u.addedAt, addedBy: u.addedBy }} self={u.email === email} lastAdmin={u.role === 'admin' && admins <= 1} owner={u.email === BOOTSTRAP_ADMIN} />
         ))}
       </section>
 

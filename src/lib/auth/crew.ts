@@ -16,6 +16,10 @@ import { auditItem } from '../registration/state'
  */
 
 /** The first admin. Seeded once, by bootstrapFirstAdmin, and never again. */
+/**
+ * The owner. Always an admin, whatever the table says, and no other admin
+ * can demote or remove them (organiser's decision, 1 October 2026).
+ */
 export const BOOTSTRAP_ADMIN = 'vedantidlgave16@gmail.com'
 
 const table = () => tableName()
@@ -85,7 +89,7 @@ function metaItem(delta: number, floor: number): TransactItem {
 
 export type UserChange =
   | { ok: true; user: CrewUser }
-  | { ok: false; reason: 'exists' | 'missing' | 'last-admin' | 'invalid-email' | 'self' }
+  | { ok: false; reason: 'exists' | 'missing' | 'last-admin' | 'invalid-email' | 'self' | 'owner' }
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
@@ -116,6 +120,7 @@ export async function addUser(email: string, role: CrewRole, by: string): Promis
  */
 export async function setRole(email: string, role: CrewRole, by: string): Promise<UserChange> {
   const clean = normaliseEmail(email)
+  if (clean === BOOTSTRAP_ADMIN) return { ok: false, reason: 'owner' }
   const user = await getUser(clean)
   if (!user) return { ok: false, reason: 'missing' }
   if (user.role === role) return { ok: true, user }
@@ -148,6 +153,7 @@ export async function setRole(email: string, role: CrewRole, by: string): Promis
 /** Removes a user. Removing an admin is conditional on at least one other admin remaining. */
 export async function removeUser(email: string, by: string): Promise<UserChange> {
   const clean = normaliseEmail(email)
+  if (clean === BOOTSTRAP_ADMIN) return { ok: false, reason: 'owner' }
   const user = await getUser(clean)
   if (!user) return { ok: false, reason: 'missing' }
   const at = now()

@@ -128,6 +128,7 @@ export async function setRoleAction(_prev: ActionState, formData: FormData): Pro
   forgetSessions()
   revalidatePath('/admin/users')
   if (!out.ok) {
+    if (out.reason === 'owner') return { ok: false, message: `REFUSED: ${target} is the owner and always stays an admin.` }
     if (out.reason === 'last-admin') return { ok: false, message: `REFUSED: ${target} is the last admin. Make someone else an admin first. An event with no admin cannot be run.` }
     return { ok: false, message: `${target} is not on the crew list.` }
   }
@@ -141,6 +142,7 @@ export async function removeUserAction(_prev: ActionState, formData: FormData): 
   forgetSessions()
   revalidatePath('/admin/users')
   if (!out.ok) {
+    if (out.reason === 'owner') return { ok: false, message: `REFUSED: ${target} is the owner and always stays an admin.` }
     if (out.reason === 'last-admin') return { ok: false, message: `REFUSED: ${target} is the last admin. Make someone else an admin first.` }
     return { ok: false, message: `${target} is not on the crew list.` }
   }

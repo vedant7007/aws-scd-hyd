@@ -60,11 +60,12 @@ export function adminEmails(): string[] {
 }
 
 /**
- * The one place a role is decided. The table first; the environment only
- * when the table has no admin at all. Cognito membership alone grants
+ * The one place a role is decided. The owner is always an admin; then the
+ * table; the environment only when the table has no admin at all. Cognito membership alone grants
  * nothing: an account can exist and still be nobody here.
  */
 export async function resolveRole(email: string): Promise<CrewRole | null> {
+  if (email.trim().toLowerCase() === BOOTSTRAP_ADMIN) return 'admin'
   const user = await getUser(email)
   if (user) return user.role
   if ((await adminCount()) === 0 && adminEmails().includes(email.trim().toLowerCase())) return 'admin'
