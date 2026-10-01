@@ -1,4 +1,4 @@
-import { GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
+import { DeleteCommand, GetCommand, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import { ddb, tableName } from '../db/client'
 import { gsi1, keys, normaliseEmail } from '../db/keys'
 import { getAttendee } from '../db/queries'
@@ -301,6 +301,40 @@ export async function abandon(passId: string, at = now()): Promise<{ abandoned: 
     if (failedIndexes(err).length) return { abandoned: false }
     throw err
   }
+}
+
+/**
+ * Deletes a registration outright, by an admin's hand: the record, its UTR
+ * claim and the seats it holds go in one transaction, conditional on the
+ * state not having moved since it was read. Its log goes after; a failure
+ * there only leaves history behind. No email.
+ */
+export async function deleteRegistration(passId: string): Promise<{ ok: true; attendee: Attendee } | { ok: false }> {
+  const before = await getAttendee(passId)
+  if (!before) return { ok: false }
+  const items: TransactItem[] = [
+    {
+      Delete: {
+        TableName: table(),
+        Key: keys.attendee(passId),
+        ConditionExpression: '#state = :was',
+        ExpressionAttributeNames: { '#state': 'state' },
+        ExpressionAttributeValues: { ':was': before.state },
+      },
+    },
+    ...(before.utr ? [{ Delete: { TableName: table(), Key: keys.utr(before.utr) } }] : []),
+    // An abandoned record already gave its seats back.
+    ...(before.state === 'ABANDONED' ? [] : seatsOf(before).map(releaseSeat)),
+  ]
+  try {
+    await transactWithRetry(items)
+  } catch (err) {
+    if (failedIndexes(err).length) return { ok: false }
+    throw err
+  }
+  const rest = await ddb.send(new QueryCommand({ TableName: table(), KeyConditionExpression: 'PK = :pk', ExpressionAttributeValues: { ':pk': keys.attendee(passId).PK } }))
+  for (const i of rest.Items ?? []) await ddb.send(new DeleteCommand({ TableName: table(), Key: { PK: i.PK, SK: i.SK } }))
+  return { ok: true, attendee: before }
 }
 
 /** Records that an email was accepted. First write wins, so a retried send never double counts. */

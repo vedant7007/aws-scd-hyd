@@ -1,7 +1,7 @@
 'use client'
 
 import { useActionState, useMemo, useState } from 'react'
-import { rejectAction, verifyAction, type ActionState } from '@/app/admin/(secure)/actions'
+import { deleteAction, rejectAction, verifyAction, type ActionState } from '@/app/admin/(secure)/actions'
 import type { RegistrationState, Tier } from '@/lib/db/types'
 import { REJECTION_REASONS, rejectionCodes } from '@/lib/registration/reasons'
 
@@ -145,8 +145,9 @@ export function AdminConsole({ rows }: { rows: Row[] }) {
 function RowCard({ row }: { row: Row }) {
   const [verifyState, verify, verifying] = useActionState(verifyAction, null)
   const [rejectState, reject, rejecting] = useActionState(rejectAction, null)
-  const result = verifyState ?? rejectState
-  const busy = verifying || rejecting
+  const [deleteState, del, deleting] = useActionState(deleteAction, null)
+  const result = verifyState ?? rejectState ?? deleteState
+  const busy = verifying || rejecting || deleting
 
   return (
     <article className="flex flex-col gap-3 border-t border-line-soft p-4" aria-label={`${row.name}, ${row.passId}`}>
@@ -240,6 +241,20 @@ function RowCard({ row }: { row: Row }) {
           </form>
         </div>
       ) : null}
+
+      <details>
+        <summary className="lbl-sm cursor-pointer">Delete this registration</summary>
+        <form action={del} className="card-dash mt-2 flex flex-wrap items-end gap-3 p-3">
+          <input type="hidden" name="passId" value={row.passId} />
+          <div className="fld min-w-0 flex-[1_1_220px]">
+            <label htmlFor={`del-${row.passId}`}>Type DELETE. Record, UTR, screenshot and seats all go, for good.</label>
+            <input id={`del-${row.passId}`} name="confirm" className="inp" autoComplete="off" required />
+          </div>
+          <button type="submit" className="btn btn-warn" disabled={busy}>
+            DELETE
+          </button>
+        </form>
+      </details>
 
       <Status state={result} />
     </article>

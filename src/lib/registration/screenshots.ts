@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
+import { DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { REGION } from '../db/client'
 import { outputs, required } from '../outputs'
@@ -62,6 +62,13 @@ export async function screenshotExists(passId: string, key: string): Promise<boo
   } catch {
     return false
   }
+}
+
+/** Every screenshot a pass ever uploaded, for a deleted registration. Only ever called after requireAdmin. Returns how many went. */
+export async function deleteScreenshots(passId: string): Promise<number> {
+  const listed = await s3().send(new ListObjectsV2Command({ Bucket: screenshotBucket(), Prefix: `screenshots/${passId}/` }))
+  for (const o of listed.Contents ?? []) await s3().send(new DeleteObjectCommand({ Bucket: screenshotBucket(), Key: o.Key! }))
+  return listed.Contents?.length ?? 0
 }
 
 /** Only ever called after requireAdmin. */

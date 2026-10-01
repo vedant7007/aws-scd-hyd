@@ -8,7 +8,8 @@ import { normalisePassId } from '@/lib/db/keys'
 import type { CrewRole } from '@/lib/db/types'
 import { adminReject, adminVerify } from '@/lib/registration/flow'
 import { CONFIRM_CLOSE, rejectionText } from '@/lib/registration/reasons'
-import { setRegistrationOpen, setSessionCapacity } from '@/lib/registration/state'
+import { deleteScreenshots } from '@/lib/registration/screenshots'
+import { deleteRegistration, setRegistrationOpen, setSessionCapacity } from '@/lib/registration/state'
 import { mailNotifyListOpen } from '@/lib/notify-open'
 
 /**
@@ -42,6 +43,24 @@ export async function rejectAction(_prev: ActionState, formData: FormData): Prom
   revalidatePath('/admin')
   if (!out.ok) return { ok: false, message: `${passId} is not waiting for verification.` }
   return { ok: true, message: `${passId} rejected: ${reason}. The student was ${out.emailed ? 'emailed' : 'not emailed (reserved address or send failure)'}.` }
+}
+
+/** Deletes a registration for good. Typing DELETE is the confirmation; nothing about it can be undone. */
+export async function deleteAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const { email } = await requireAdmin()
+  const passId = id(formData)
+  if (String(formData.get('confirm') ?? '').trim().toUpperCase() !== 'DELETE') return { ok: false, message: 'Type DELETE to confirm. Nothing was deleted.' }
+  const out = await deleteRegistration(passId)
+  if (!out.ok) return { ok: false, message: `${passId} changed or is already gone. Nothing was deleted; refresh and look again.` }
+  let shots = 0
+  try {
+    shots = await deleteScreenshots(passId)
+  } catch (err) {
+    console.error(`[admin] screenshots for ${passId} not deleted`, err)
+  }
+  console.info(`[admin] ${email} deleted ${passId} (${out.attendee.state}), ${shots} screenshot(s)`)
+  revalidatePath('/admin')
+  return { ok: true, message: `${passId} deleted, its seats given back.` }
 }
 
 /* ---- settings ------------------------------------------------------------- */
