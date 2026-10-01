@@ -271,63 +271,29 @@ export async function reject(passId: string, by: string, reason: string): Promis
   return attendee ? { ok: true, attendee } : { ok: false, reason: 'wrong-state' }
 }
 
-export type ReinstateOutcome =
-  | { ok: true; attendee: Attendee }
-  | { ok: false; reason: 'wrong-state' | 'utr-used' }
-  /** A session filled while the record was abandoned. Nothing changed; offer a refund or another session. */
-  | { ok: false; reason: 'full'; sessionId: string }
-
 /**
- * ABANDONED back to PENDING_VERIFICATION with a UTR the admin typed in, for
- * someone who paid after their hold ran out. The seats it gave back are
- * claimed again in the same transaction, and it fails loudly if a session
- * has filled since, so a room is never quietly oversold.
- */
-export async function reinstate(passId: string, by: string, utr: string): Promise<ReinstateOutcome> {
-  const at = now()
-  const before = await getAttendee(passId)
-  if (!before || before.state !== 'ABANDONED') return { ok: false, reason: 'wrong-state' }
-  const seats = seatsOf(before)
-  const items: TransactItem[] = [
-    transitionItem(passId, 'ABANDONED', 'PENDING_VERIFICATION', { set: { utr, utrSubmittedAt: at, verifiedBy: by, verifiedAt: at } }),
-    {
-      Put: {
-        TableName: table(),
-        Item: { ...keys.utr(utr), utr, passId, submittedAt: at },
-        ConditionExpression: 'attribute_not_exists(PK) OR passId = :me',
-        ExpressionAttributeValues: { ':me': passId },
-      },
-    },
-    logItem({ passId, action: 'reinstate', utr, by, at }),
-    ...seats.map(claimSeat),
-  ]
-  try {
-    await transactWithRetry(items)
-  } catch (err) {
-    const failed = failedIndexes(err)
-    const full = failed.find((i) => i >= 3)
-    if (full !== undefined) return { ok: false, reason: 'full', sessionId: seats[full - 3]! }
-    if (failed.includes(1)) return { ok: false, reason: 'utr-used' }
-    if (failed.includes(0)) return { ok: false, reason: 'wrong-state' }
-    throw err
-  }
-  const attendee = await getAttendee(passId)
-  return attendee ? { ok: true, attendee } : { ok: false, reason: 'wrong-state' }
-}
-
-/**
- * AWAITING_PAYMENT whose hold has lapsed to ABANDONED, and its seats given
- * back, in ONE transaction. A crash between the two would leak seats for
- * good; bound together, either both happen or neither. Conditional on the
- * state and the lapsed hold, so a student who submitted a UTR a moment ago
- * is untouched and a sweep racing itself does nothing twice.
+ * An AWAITING_PAYMENT record whose hold has lapsed is deleted, details and
+ * all, and its seats given back, in ONE transaction. The student starts again
+ * from the beginning (organiser's decision, 1 October 2026). A crash between
+ * the two would leak seats for good; bound together, either both happen or
+ * neither. Conditional on the state and the lapsed hold, so a student who
+ * submitted a UTR a moment ago is untouched and a sweep racing itself does
+ * nothing twice.
  */
 export async function abandon(passId: string, at = now()): Promise<{ abandoned: boolean }> {
   const before = await getAttendee(passId)
   if (!before || before.state !== 'AWAITING_PAYMENT') return { abandoned: false }
   try {
     await transactWithRetry([
-      transitionItem(passId, 'AWAITING_PAYMENT', 'ABANDONED', { remove: ['holdUntil'], condition: 'holdUntil <= :now', values: { ':now': at } }),
+      {
+        Delete: {
+          TableName: table(),
+          Key: keys.attendee(passId),
+          ConditionExpression: '#state = :awaiting AND holdUntil <= :now',
+          ExpressionAttributeNames: { '#state': 'state' },
+          ExpressionAttributeValues: { ':awaiting': 'AWAITING_PAYMENT', ':now': at },
+        },
+      },
       ...seatsOf(before).map(releaseSeat),
     ])
     return { abandoned: true }

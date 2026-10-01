@@ -436,16 +436,16 @@ export function Flow({ resume }: { resume?: Resume }) {
     void submit()
   }
 
+  // The lapsed hold's record is deleted on the server, so this tab forgets
+  // everything too and the student fills the form again from step one.
   const restart = () => {
-    // A resumed payment has no earlier steps here; the full flow starts over.
+    try {
+      sessionStorage.removeItem(STORE)
+    } catch {
+      // Storage blocked: nothing was saved to forget.
+    }
     if (resume) return router.push('/register')
-    top()
-    setPhase('form')
-    setStep(4)
-    setUtr('')
-    setUtrTouched(false)
-    setUp(NO_UPLOAD)
-    setNotice('')
+    window.location.reload()
   }
 
   const copy = (text: string, what: 'id') => {
@@ -925,7 +925,7 @@ export function Flow({ resume }: { resume?: Resume }) {
                 </span>
                 <h1 style={{ margin: '0', fontWeight: '400', fontFamily: 'var(--font-display)', fontSize: 'clamp(35px,9.5vw,55px)', lineHeight: '1.02', color: 'var(--ink)' }}>YOUR {holdMinutes} MINUTES RAN OUT</h1>
                 <p style={{ margin: '0', fontSize: '15.5px', lineHeight: '1.62', color: 'var(--body)', maxWidth: '46ch' }}>
-                  We did not get a UTR in time, so your place went back to the pool. Your details are still filled in on this device. Starting again takes a minute.
+                  We did not get a UTR in time, so your place went back to the pool and the details you entered were cleared. To register, start again from the beginning.
                 </p>
                 <div style={{ border: '3px solid var(--line)', background: 'var(--panel-gold)', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <span style={{ ...S.rowL, letterSpacing: '.16em', color: 'var(--amber-ink)' }}>Already sent the money?</span>

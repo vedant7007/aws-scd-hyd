@@ -12,7 +12,7 @@ import { markSent } from '../../../src/lib/registration/state'
  * Runs every five minutes.
  *
  * 1. The sweep: every AWAITING_PAYMENT record whose twenty minute hold has
- *    lapsed goes to ABANDONED and gives its session seats back, each in one
+ *    lapsed is deleted and gives its session seats back, each in one
  *    transaction.
  * 2. Owed mail: a pending registration whose receipt never went, and a
  *    verified one whose payment-verified mail never went, get it now.

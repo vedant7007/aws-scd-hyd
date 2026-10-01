@@ -30,7 +30,7 @@ import { addUser, adminCount, getUser, removeUser, setRole } from '../src/lib/au
 import { REFUND_POLICY } from '../src/content/passes'
 import { upiLink } from '../src/content/payment'
 import { programSessions } from '../src/content/program'
-import { adminReinstate, adminReject, adminVerify, placeHold, submitPayment, sweepAbandoned } from '../src/lib/registration/flow'
+import { adminReject, adminVerify, placeHold, submitPayment, sweepAbandoned } from '../src/lib/registration/flow'
 import { normalisePhone, normaliseUtr, validateHold, type HoldInput } from '../src/lib/registration/validate'
 import { outputs } from '../src/lib/outputs'
 import { TRANSITIONS, abandon, reject, seatsOf, setRegistrationOpen, submitUtr, verify } from '../src/lib/registration/state'
@@ -295,29 +295,18 @@ async function holds(): Promise<void> {
   assert.equal((await getAttendee(a.passId))?.state, 'VERIFIED')
   ok('reject keeps the seats, the student resubmits, verify moves it to VERIFIED')
 
-  // The sweep: a lapsed hold goes to ABANDONED and gives its seats back.
+  // The sweep: a lapsed hold is deleted and gives its seats back.
   const t5 = await taken('t5')
   const w1Now = await taken('w1')
   // Lapse only this record's hold, so the sweep touches nothing else in the table.
   await ddb.send(new UpdateCommand({ TableName: table(), Key: keys.attendee(other.attendee.passId), UpdateExpression: 'SET holdUntil = :past', ExpressionAttributeValues: { ':past': new Date(Date.now() - 60_000).toISOString() } }))
   const swept = await sweepAbandoned()
   assert.ok(swept.abandoned >= 1)
-  assert.equal((await getAttendee(other.attendee.passId))?.state, 'ABANDONED')
+  assert.equal(await getAttendee(other.attendee.passId), null, 'the record is gone')
   assert.deepEqual([await taken('t5'), await taken('w1')], [t5 - 1, w1Now - 1])
-  ok('sweep: a lapsed hold is abandoned and both its seats given back')
+  ok('sweep: a lapsed hold is deleted and both its seats given back')
 
-  // Reinstate into a session that has since filled: refused, nothing changed.
-  await setFree('t5', 0)
-  const refused = await adminReinstate(other.attendee.passId, 'test@admin', nextUtr())
-  assert.ok(!refused.ok && refused.reason === 'full' && refused.sessionId === 't5')
-  assert.equal((await getAttendee(other.attendee.passId))?.state, 'ABANDONED')
-  await setFree('t5', 2)
-  const back = await adminReinstate(other.attendee.passId, 'test@admin', nextUtr())
-  assert.ok(back.ok)
-  assert.equal(await taken('t5'), t5, 'seat claimed again')
-  ok('reinstate: refused into a full session, then claims the seats again once there is room')
-
-  // Restarting after the hold lapsed: a fresh record, not the abandoned one.
+  // Restarting after the hold lapsed: a fresh record.
   const again = await hold(input({ email: a.email }), key, other.attendee.passId)
   assert.ok(again.ok && again.attendee.passId !== other.attendee.passId && !again.moved)
   ok('a pass id that is no longer a live hold is never revived; a fresh hold is made')

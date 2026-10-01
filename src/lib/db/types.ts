@@ -18,7 +18,7 @@ export type CrewRole = 'admin' | 'volunteer'
  *   PENDING_VERIFICATION  UTR and screenshot submitted, nobody has checked
  *   VERIFIED              an admin matched the UTR against the bank statement: the ticket
  *   REJECTED              admin could not find the payment
- *   ABANDONED             AWAITING_PAYMENT whose hold lapsed without a UTR; seats given back
+ *   ABANDONED             no longer written: since 1 October 2026 a lapsed hold is deleted
  *
  * Sessions are chosen before payment in the v3 flow, so VERIFIED is final.
  */

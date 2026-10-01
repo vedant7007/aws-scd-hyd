@@ -6,11 +6,10 @@ import { createCrewAccount, deleteCrewAccount, forgetSessions, requireAdmin } fr
 import { addUser, removeUser, setRole } from '@/lib/auth/crew'
 import { normalisePassId } from '@/lib/db/keys'
 import type { CrewRole } from '@/lib/db/types'
-import { adminReinstate, adminReject, adminVerify } from '@/lib/registration/flow'
+import { adminReject, adminVerify } from '@/lib/registration/flow'
 import { CONFIRM_CLOSE, rejectionText } from '@/lib/registration/reasons'
 import { setRegistrationOpen, setSessionCapacity } from '@/lib/registration/state'
 import { mailNotifyListOpen } from '@/lib/notify-open'
-import { normaliseUtr } from '@/lib/registration/validate'
 
 /**
  * Amendment 1 section 6. Every action resolves the admin first, so the
@@ -43,23 +42,6 @@ export async function rejectAction(_prev: ActionState, formData: FormData): Prom
   revalidatePath('/admin')
   if (!out.ok) return { ok: false, message: `${passId} is not waiting for verification.` }
   return { ok: true, message: `${passId} rejected: ${reason}. The student was ${out.emailed ? 'emailed' : 'not emailed (reserved address or send failure)'}.` }
-}
-
-export async function reinstateAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const { email } = await requireAdmin()
-  const passId = id(formData)
-  const utr = normaliseUtr(String(formData.get('utr') ?? ''))
-  if (!utr) return { ok: false, message: 'A UTR is letters and numbers, 12 to 40 characters. Nothing changed.' }
-  const out = await adminReinstate(passId, email, utr)
-  revalidatePath('/admin')
-  if (!out.ok) {
-    if (out.reason === 'full') {
-      return { ok: false, message: `${passId} NOT reinstated: ${programSession(out.sessionId)?.title ?? out.sessionId} is now full. Offer a refund, or raise its seat count in settings.` }
-    }
-    if (out.reason === 'utr-used') return { ok: false, message: 'That UTR is already used by another registration. Nothing changed.' }
-    return { ok: false, message: `${passId} is not abandoned. Nothing changed.` }
-  }
-  return { ok: true, message: `${passId} reinstated, its seats claimed again, and back in the queue. Receipt ${out.emailed ? 'sent' : 'not sent'}.` }
 }
 
 /* ---- settings ------------------------------------------------------------- */

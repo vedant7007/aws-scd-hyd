@@ -1,7 +1,7 @@
 'use client'
 
 import { useActionState, useMemo, useState } from 'react'
-import { reinstateAction, rejectAction, verifyAction, type ActionState } from '@/app/admin/(secure)/actions'
+import { rejectAction, verifyAction, type ActionState } from '@/app/admin/(secure)/actions'
 import type { RegistrationState, Tier } from '@/lib/db/types'
 import { REJECTION_REASONS, rejectionCodes } from '@/lib/registration/reasons'
 
@@ -33,11 +33,6 @@ export type Row = {
 
 type View = 'queue' | 'verified' | 'all'
 
-/**
- * Abandoned holds (the student left before paying, seats already given
- * back) are not counted or listed: they only pile up. A search still finds
- * one, so a late payer can be reinstated.
- */
 const STATES: RegistrationState[] = ['AWAITING_PAYMENT', 'PENDING_VERIFICATION', 'VERIFIED', 'REJECTED']
 
 /** How a state reads: the word is the signal, the colour only repeats it. */
@@ -74,12 +69,11 @@ export function AdminConsole({ rows }: { rows: Row[] }) {
   const [view, setView] = useState<View>('queue')
   const [query, setQuery] = useState('')
 
-  const live = useMemo(() => rows.filter((r) => r.state !== 'ABANDONED'), [rows])
   const counts = useMemo(() => Object.fromEntries(STATES.map((s) => [s, rows.filter((r) => r.state === s).length])), [rows])
 
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase().replace(/[\s-]+/g, '')
-    let list = live
+    let list = rows
     if (q) {
       list = rows.filter(
         (r) =>
@@ -94,12 +88,12 @@ export function AdminConsole({ rows }: { rows: Row[] }) {
       list = rows.filter((r) => r.state === 'VERIFIED').sort((a, b) => a.createdAt.localeCompare(b.createdAt))
     }
     return list
-  }, [rows, live, view, query])
+  }, [rows, view, query])
 
   const viewLabel: Record<View, string> = {
     queue: `Queue (${counts.PENDING_VERIFICATION})`,
     verified: `Verified (${counts.VERIFIED})`,
-    all: `All (${live.length})`,
+    all: `All (${rows.length})`,
   }
 
   return (
@@ -119,7 +113,7 @@ export function AdminConsole({ rows }: { rows: Row[] }) {
         <div className="card-head">
           <span className="card-title">ATTENDEES</span>
           <span className="lbl">
-            {shown.length} of {live.length}
+            {shown.length} of {rows.length}
           </span>
         </div>
         <div className="flex flex-wrap gap-2.5 border-b border-line-soft p-4">
@@ -151,9 +145,8 @@ export function AdminConsole({ rows }: { rows: Row[] }) {
 function RowCard({ row }: { row: Row }) {
   const [verifyState, verify, verifying] = useActionState(verifyAction, null)
   const [rejectState, reject, rejecting] = useActionState(rejectAction, null)
-  const [reinstateState, reinstate, reinstating] = useActionState(reinstateAction, null)
-  const result = verifyState ?? rejectState ?? reinstateState
-  const busy = verifying || rejecting || reinstating
+  const result = verifyState ?? rejectState
+  const busy = verifying || rejecting
 
   return (
     <article className="flex flex-col gap-3 border-t border-line-soft p-4" aria-label={`${row.name}, ${row.passId}`}>
@@ -246,19 +239,6 @@ function RowCard({ row }: { row: Row }) {
             </button>
           </form>
         </div>
-      ) : null}
-
-      {row.state === 'ABANDONED' ? (
-        <form action={reinstate} className="card-dash flex flex-wrap items-end gap-3 p-3">
-          <input type="hidden" name="passId" value={row.passId} />
-          <div className="fld min-w-0 flex-[1_1_220px]">
-            <label htmlFor={`utr-${row.passId}`}>UTR the student sent</label>
-            <input id={`utr-${row.passId}`} name="utr" className="inp inp-num" autoCapitalize="characters" pattern="[0-9A-Za-z ]{12,48}" maxLength={48} required />
-          </div>
-          <button type="submit" className="btn" disabled={busy}>
-            REINSTATE INTO THE QUEUE
-          </button>
-        </form>
       ) : null}
 
       <Status state={result} />

@@ -6,7 +6,7 @@ import type { Attendee, AttendeeSource } from '../db/types'
 import { isReservedAddress, sendEmail } from '../email/send'
 import { confirmation, receipt, rejection } from '../email/templates'
 import { amountFor } from '../tickets/pricing'
-import { abandon, createHold, markSent, moveHold, reinstate, reject, submitUtr, verify, type HoldOutcome, type ReinstateOutcome } from './state'
+import { abandon, createHold, markSent, moveHold, reject, submitUtr, verify, type HoldOutcome } from './state'
 import type { HoldInput } from './validate'
 
 /**
@@ -102,19 +102,11 @@ export async function adminReject(passId: string, by: string, reason: string): P
   return { ok: true, emailed }
 }
 
-export async function adminReinstate(passId: string, by: string, utr: string): Promise<ReinstateOutcome & { emailed?: boolean }> {
-  const out = await reinstate(passId, by, utr)
-  if (!out.ok) return out
-  // The receipt goes out again: they are back in the queue.
-  const emailed = await mail(out.attendee, receipt(out.attendee), 'receiptSentAt')
-  return { ...out, emailed }
-}
-
 /* ---- the sweep --------------------------------------------------------- */
 
 /**
- * Every AWAITING_PAYMENT record whose hold has lapsed goes to ABANDONED and
- * gives its seats back, each in its own transaction. No email: a student who
+ * Every AWAITING_PAYMENT record whose hold has lapsed is deleted and gives
+ * its seats back, each in its own transaction. No email: a student who
  * never paid should not be chased.
  */
 export async function sweepAbandoned(at = new Date().toISOString()): Promise<{ abandoned: number; checked: number }> {
