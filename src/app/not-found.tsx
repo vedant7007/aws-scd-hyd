@@ -31,7 +31,7 @@ export default function NotFound() {
               SESSIONS
             </Link>
             <Link href="/register" className="btn">
-              GET NOTIFIED
+              REGISTER
             </Link>
           </nav>
         </div>

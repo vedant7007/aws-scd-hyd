@@ -162,7 +162,7 @@ export function Landing({ registrationOpen, doors, prices }: Props) {
           </div>
           <p data-in="1" style={{margin:'0',maxWidth:'50ch',fontSize:'clamp(15px,4vw,18.5px)',lineHeight:'1.6',color:'var(--body)'}}>Keynote, technical sessions, hands-on workshops, a panel and open Q&A, one Friday. Open to students from any college in Hyderabad, lunch included on every pass.</p>
           <div data-in="1" style={{display:'flex',flexWrap:'wrap',gap:'16px',alignItems:'stretch'}}>
-            <Link className="dh-h7 dh-a8" href="/register" style={{boxSizing:'border-box',display:'inline-flex',alignItems:'center',justifyContent:'center',height:'56px',padding:'0 24px',fontFamily:'var(--font-display)',fontSize:'clamp(21.3px,5.5vw,26.3px)',lineHeight:'1',boxShadow:'6px 6px 0 var(--line)',cursor:'pointer',transition:'transform .1s steps(2),box-shadow .1s steps(2),background .1s steps(2),color .1s steps(2)',border:'3px solid #FF9900',background:'#FF9900',color:'var(--on-fill)'}}>{'> GET NOTIFIED'}</Link>
+            <Link className="dh-h7 dh-a8" href="/register" style={{boxSizing:'border-box',display:'inline-flex',alignItems:'center',justifyContent:'center',height:'56px',padding:'0 24px',fontFamily:'var(--font-display)',fontSize:'clamp(21.3px,5.5vw,26.3px)',lineHeight:'1',boxShadow:'6px 6px 0 var(--line)',cursor:'pointer',transition:'transform .1s steps(2),box-shadow .1s steps(2),background .1s steps(2),color .1s steps(2)',border:'3px solid #FF9900',background:'#FF9900',color:'var(--on-fill)'}}>{registrationOpen ? '> REGISTER' : '> GET NOTIFIED'}</Link>
             <a className="dh-h9 dh-a8" href="#prog" style={{boxSizing:'border-box',display:'inline-flex',alignItems:'center',justifyContent:'center',height:'56px',padding:'0 24px',fontFamily:'var(--font-display)',fontSize:'clamp(21.3px,5.5vw,26.3px)',lineHeight:'1',boxShadow:'6px 6px 0 var(--line)',cursor:'pointer',transition:'transform .1s steps(2),box-shadow .1s steps(2),background .1s steps(2),color .1s steps(2)',border:'3px solid #9FE3B6',background:'var(--surface)',color:'var(--ink)'}}>VIEW PROGRAMME</a>
           </div>
           <div data-in="1" style={{display:'flex',alignItems:'center',gap:'10px',fontFamily:'var(--font-mono)',fontSize:'clamp(9.5px,2.6vw,11px)',letterSpacing:'.18em',textTransform:'uppercase',color:'var(--muted)'}}>
@@ -581,7 +581,6 @@ export function Landing({ registrationOpen, doors, prices }: Props) {
                 <span style={{display:'inline-flex'}}>W<span data-exp="1" style={{display:'inline-block',maxWidth:'0',overflow:'hidden',color:'var(--gold2)'}}>eb</span></span>
                 <span style={{display:'inline-flex'}}>S<span data-exp="1" style={{display:'inline-block',maxWidth:'0',overflow:'hidden',color:'var(--gold2)'}}>ervices</span></span>
               </h2>
-              <p style={{position:'relative',margin:'0',maxWidth:'52ch',fontSize:'clamp(15px,3.8vw,18px)',lineHeight:'1.62',color:'var(--body)'}}>This day exists because AWS funds community events run by students. The programme, the halls, the swag and the lunch are all paid for out of that support.</p>
             </div>
             <div data-rv="1" style={{position:'relative',border:'3px solid var(--line)',background:'var(--surface)',display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,280px),1fr))',boxShadow:'6px 6px 0 var(--sh)',overflow:'hidden'}}>
               <div style={{position:'relative',background:'#14161C',color:'#FFFFFF',padding:'clamp(20px,3.4vw,30px)',display:'flex',flexDirection:'column',justifyContent:'center',gap:'10px',overflow:'hidden'}}>
@@ -597,7 +596,6 @@ export function Landing({ registrationOpen, doors, prices }: Props) {
               </div>
               <div style={{padding:'clamp(20px,3.4vw,30px)',display:'flex',flexDirection:'column',justifyContent:'center',gap:'12px'}}>
                 <span style={{fontFamily:'var(--font-display)',fontSize:'clamp(26px,5vw,34px)',lineHeight:'1',color:'var(--ink)'}}>BY STUDENTS, FOR STUDENTS</span>
-                <p style={{margin:'0',fontSize:'15px',lineHeight:'1.62',color:'var(--body)',maxWidth:'52ch'}}>Planned, built and run by the students of the AWS Student Builders Group at Vidya Jyothi Institute of Technology, Hyderabad. Every hall, badge and lunch plate is handled by student volunteers.</p>
                 <div style={{display:'flex',flexWrap:'wrap',gap:'8px',fontFamily:'var(--font-mono)',fontSize:'10.5px',letterSpacing:'.14em',textTransform:'uppercase'}}>
                   <span style={{border:'2px solid var(--line)',padding:'6px 9px',color:'var(--ink)'}}>Student-run</span>
                   <span style={{border:'2px solid var(--line)',padding:'6px 9px',color:'var(--ink)'}}>VJIT · Hyderabad</span>
@@ -629,7 +627,7 @@ export function Landing({ registrationOpen, doors, prices }: Props) {
                 <span style={{fontSize:'13.5px',lineHeight:'1.55',color:'var(--body)'}}>Engage. Learn. Build. Level up.</span>
                 <span style={{marginTop:'auto',fontFamily:'var(--font-mono)',fontSize:'10px',letterSpacing:'.16em',textTransform:'uppercase',color:'var(--mint-ink)'}}>View on LinkedIn →</span>
               </a>
-              <div style={{border:'3px solid var(--line)',background:'var(--surface)',padding:'24px 22px',display:'flex',flexDirection:'column',gap:'14px',color:'var(--ink)'}}>
+              <a className="dh-h21" href="https://awsughyd.com/" style={{border:'3px solid var(--line)',background:'var(--surface)',padding:'24px 22px',display:'flex',flexDirection:'column',gap:'14px',color:'var(--ink)',transition:'transform .14s steps(3),border-color .14s steps(2),box-shadow .14s steps(3)'}}>
                 <span style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:'10px'}}>
                   <span style={{fontFamily:'var(--font-mono)',fontSize:'9.5px',letterSpacing:'.2em',textTransform:'uppercase',color:'var(--mint-ink)'}}>Community partner</span>
                   <span style={{display:'flex',gap:'3px'}} aria-hidden="true">
@@ -643,7 +641,8 @@ export function Landing({ registrationOpen, doors, prices }: Props) {
                 </span>
                 <span style={{fontFamily:'var(--font-display)',fontSize:'32.5px',color:'var(--ink)'}}>USER GROUPS HYDERABAD</span>
                 <span style={{fontSize:'13.5px',lineHeight:'1.55',color:'var(--body)'}}>The AWS community in Hyderabad.</span>
-              </div>
+                <span style={{marginTop:'auto',fontFamily:'var(--font-mono)',fontSize:'10px',letterSpacing:'.16em',textTransform:'uppercase',color:'var(--mint-ink)'}}>Visit awsughyd.com →</span>
+              </a>
               <div className="dh-h22" style={{border:'3px dashed var(--line-dash)',background:'var(--surface)',padding:'24px 22px',display:'flex',flexDirection:'column',gap:'12px',transition:'transform .14s steps(3),border-color .14s steps(2)'}}>
                 <span style={{fontFamily:'var(--font-mono)',fontSize:'9.5px',letterSpacing:'.2em',textTransform:'uppercase',color:'var(--muted)'}}>Slot open</span>
                 <span style={{background:'var(--panel)',border:'2px solid var(--line-soft)',display:'flex',alignItems:'center',justifyContent:'center',minHeight:'200px',fontFamily:'var(--font-display)',fontSize:'70px',color:'#D6CFC5'}}>?</span>

@@ -17,11 +17,11 @@ import type { Mail } from './send'
  */
 
 /**
- * How long a student is told verification takes. The v3 flow promises
- * "within 24h"; when the organiser says otherwise, only this changes. Never
- * promise instant.
+ * How long a student is told verification takes, read into a sentence: "We
+ * will check your payment ...". No fixed hours since 3 October 2026, by the
+ * organiser's decision. Never promise instant.
  */
-export const VERIFICATION_WINDOW = '24 hours'
+export const VERIFICATION_WINDOW = 'as soon as we can'
 
 /**
  * Words email 1 must never contain. Nobody has checked the money when it is
@@ -36,6 +36,7 @@ export const SUBJECTS = {
   rejection: `We could not match your payment, ${event.shortName}`,
   dayBefore: `Tomorrow: ${event.shortName}`,
   registrationsOpen: `Registrations are open: ${event.shortName}`,
+  stillVerifying: `We are still checking your payment, ${event.shortName}`,
 } as const
 
 export const REPLY_TO = process.env.SES_REPLY_TO ?? event.contactEmail
@@ -161,7 +162,7 @@ export function receipt(r: Person): Body {
 
 We have your details and your UTR for ${event.name}.
 
-We will check your payment against the college bank statement within ${VERIFICATION_WINDOW}. When we have, we email you your ticket. Until then there is nothing you need to do.
+We will check your payment against the college bank statement ${VERIFICATION_WINDOW}, and email you when it is verified. Until then there is nothing you need to do.
 
 YOUR PASS ID
 ${r.passId}
@@ -176,13 +177,13 @@ If you have a question, reply to this email. Replies go to ${REPLY_TO}.
 
 ${footerText}`,
     html: shell({
-      preheader: `Pass ID ${r.passId}. We check your payment within ${VERIFICATION_WINDOW}.`,
+      preheader: `Pass ID ${r.passId}. We will check your payment ${VERIFICATION_WINDOW}.`,
       tag: 'Received · being checked',
       tagColor: '#FDF4E3',
       title: `We have your details, ${r.name}`,
       body: [
         p(`We have your registration and your UTR for <strong>${esc(event.name)}</strong>.`),
-        p(`A person on our team matches every UTR against the college bank statement. We will do yours within <strong>${VERIFICATION_WINDOW}</strong>, then email you your ticket. Until then there is nothing you need to do.`),
+        p(`A person on our team matches every UTR against the college bank statement. We will do yours <strong>${VERIFICATION_WINDOW}</strong>, then email you when it is verified. Until then there is nothing you need to do.`),
         passIdBlock(r.passId, 'Keep it safe. It is how we find your registration.'),
         card(`${eyebrow('Your pass')}${rows([['Pass', esc(tierLabel(r.tier))], ['Amount', esc(formatInr(r.amountPaise))], ...sessionRows(r)])}`),
         small('Sessions are subject to change. If yours does, we will email you.'),
@@ -241,6 +242,43 @@ ${footerText}`,
         ),
         p('We will email you again before the event with everything you need at the gate.'),
         card(`${eyebrow('Refunds', MUTED)}${small(esc(REFUND_POLICY))}`, CREAM, '#E3DDD4'),
+      ].join('\n'),
+    }),
+  }
+}
+
+/**
+ * A one-off note to registrations waiting on verification, sent by hand when
+ * checking runs late (3 October 2026): we have it, sorry for the wait, nothing
+ * to do.
+ */
+export function stillVerifying(r: Person): Body {
+  return {
+    subject: SUBJECTS.stillVerifying,
+    text: `Hi ${r.name},
+
+Thank you for registering for ${event.name}, and sorry for the wait.
+
+Your registration and payment details reached us safely. We are checking every payment against the college bank statement by hand, and it is taking us a little longer than we hoped. Yours is in the queue and we will email you as soon as it is verified.
+
+There is nothing you need to do. Please do not pay again. Sit back and relax; your seat is held while we check.
+
+YOUR PASS ID
+${r.passId}
+
+If you have a question, reply to this email. Replies go to ${REPLY_TO}.
+
+${footerText}`,
+    html: shell({
+      preheader: `Pass ID ${r.passId}. Your payment is in the queue, nothing for you to do.`,
+      tag: 'Still checking',
+      tagColor: '#FDF4E3',
+      title: `Sorry for the wait, ${r.name}`,
+      body: [
+        p(`Thank you for registering for <strong>${esc(event.name)}</strong>, and sorry for the wait.`),
+        p('Your registration and payment details reached us safely. We are checking every payment against the college bank statement by hand, and it is taking us a little longer than we hoped. Yours is in the queue and we will email you as soon as it is verified.'),
+        p('There is <strong>nothing you need to do</strong>. Please do not pay again. Sit back and relax; your seat is held while we check.'),
+        passIdBlock(r.passId, 'Keep it safe. It is how we find your registration.'),
       ].join('\n'),
     }),
   }

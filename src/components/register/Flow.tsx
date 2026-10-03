@@ -874,7 +874,7 @@ export function Flow({ resume }: { resume?: Resume }) {
                 </span>
                 <h1 style={{ margin: '0', fontWeight: '400', fontFamily: 'var(--font-display)', fontSize: 'clamp(35px,9.5vw,55px)', lineHeight: '1.02', color: 'var(--ink)' }}>WE HAVE YOUR DETAILS, {fullName.toUpperCase()}</h1>
                 <p style={{ margin: '0', fontSize: '15.5px', lineHeight: '1.62', color: 'var(--body)', maxWidth: '46ch' }}>
-                  A person on our team matches every UTR against the college bank statement, once a day. You will hear from us at <strong style={{ color: 'var(--ink)', wordBreak: 'break-all' }}>{fields.email}</strong> within 24 hours.
+                  A person on our team matches every UTR against the college bank statement. You will hear from us at <strong style={{ color: 'var(--ink)', wordBreak: 'break-all' }}>{fields.email}</strong> as soon as yours is verified.
                 </p>
                 <div style={{ border: '4px solid var(--line)', background: '#FFFFFF', color: '#14161C', padding: '18px', display: 'flex', flexDirection: 'column', gap: '10px', boxShadow: '6px 6px 0 var(--sh)' }}>
                   <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', letterSpacing: '.2em', textTransform: 'uppercase', color: '#464C5C' }}>Your Pass ID · save it</span>
@@ -889,7 +889,7 @@ export function Flow({ resume }: { resume?: Resume }) {
                   <Stage n="✓" done>
                     UTR <span style={{ fontFamily: 'var(--font-mono)' }}>{utrCompact}</span> and screenshot received
                   </Stage>
-                  <Stage n="3" now note="Within 24 hours. Nothing for you to do.">
+                  <Stage n="3" now note="Soon. Nothing for you to do.">
                     We check your payment
                   </Stage>
                   <Stage n="4">Confirmation email with your ticket</Stage>
@@ -912,7 +912,7 @@ export function Flow({ resume }: { resume?: Resume }) {
                   ))}
                 </div>
                 <p style={{ margin: '0', fontSize: '12.5px', lineHeight: '1.6', color: 'var(--muted)' }}>
-                  Refreshing will not change this page. The next thing you hear from us is an email. No email in 24 hours? Check spam, then write to <a href={`mailto:${CONTACT}`}>{CONTACT}</a> with your Pass ID.
+                  Refreshing will not change this page. The next thing you hear from us is an email. Waiting a while? Check spam, then write to <a href={`mailto:${CONTACT}`}>{CONTACT}</a> with your Pass ID.
                 </p>
               </div>
             ) : null}
