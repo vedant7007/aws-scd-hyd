@@ -34,7 +34,7 @@ const perksOf = (tier: Tier) => passes.find((p) => p.id === tier)?.perks ?? []
 
 type Props = {
   registrationOpen: boolean
-  /** Doors, "09:30", from content/event.ts. */
+  /** Doors, "08:30", from content/event.ts. */
   doors: string
   /** Formatted price per tier, null while a tier is unpriced. */
   prices: Record<Tier, string | null>

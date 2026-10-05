@@ -332,7 +332,7 @@ Layout is minimal. Whitespace and type size carry the hierarchy. No card grids, 
 
 The v3 handoff's `Landing Bitmap.dc.html`, converted to JSX from its own markup rather than restyled by hand, so every inline value is the design's; behaviour is `mount.ts`, a port of the design's script. Departures are listed at the top of `Landing.tsx`. Typing `admin` anywhere outside a text field opens crew sign-in and typing `register` opens `/register`, as the design's `cloud-transition.js` does. In order:
 
-1. **Hero.** Name, Hyderabad, date, venue, CTA to passes, countdown to `event.startsAt` (2026-10-30T09:30:00+05:30, doors confirmed 09:30), and a pointer-reactive canvas background that animates gently on its own on mobile. Keep the background in one swappable component, the visual is `TODO(vedant)`.
+1. **Hero.** Name, Hyderabad, date, venue, CTA to passes, countdown to `event.startsAt` (2026-10-30T08:30:00+05:30, doors 08:30 since 5 October 2026), and a pointer-reactive canvas background that animates gently on its own on mobile. Keep the background in one swappable component, the visual is `TODO(vedant)`.
 2. **Ticker.** Marquee band in accent colour.
 3. **About.** Three or four sentences. Not a wall.
 4. **Sessions.** The five session formats: keynote, technical sessions, hands-on workshops, panel discussion, Q&A. A pinned horizontal stage, one card each, five progress bars and a `SESSION 0N / 05` counter. There are no tracks anywhere.
@@ -345,7 +345,7 @@ The v3 handoff's `Landing Bitmap.dc.html`, converted to JSX from its own markup 
 
 ### Session times
 
-Times are not decided and must not appear on the public site. The only public time is doors at 09:30 on Friday 30 October 2026.
+Times are not decided and must not appear on the public site. The only public time is doors at 08:30 on Friday 30 October 2026.
 
 ### `/schedule`, `/speakers`, `/sponsors` (removed)
 The v3 handoff folds all three into the home page. Each is a permanent redirect (308, `next.config.ts`) to its home section: `/#prog`, `/#speakers`, `/#sponsors`.

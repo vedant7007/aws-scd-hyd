@@ -2,8 +2,8 @@ export const event = {
   name: 'AWS Student Community Day Hyderabad',
   shortName: 'AWS SCD Hyderabad',
   city: 'Hyderabad',
-  /** Doors, confirmed 09:30 IST. What the landing page counts down to. */
-  startsAt: '2026-10-30T09:30:00+05:30',
+  /** Doors, 08:30 IST (moved from 09:30 on 5 October 2026). What the landing page counts down to. */
+  startsAt: '2026-10-30T08:30:00+05:30',
   dateLabel: 'Friday 30 October 2026',
   host: 'AWS Student Builders Group, VJIT',
   // Public contact. Deliberately the Gmail address, not the domain: awsscdhyd.in
@@ -13,7 +13,7 @@ export const event = {
   disclaimer: 'AWS User Groups are run by independent volunteers and are not organized by AWS.',
 } as const
 
-/** Doors as the landing page prints it, "09:30". Derived from startsAt, never typed twice. */
+/** Doors as the landing page prints it, "08:30". Derived from startsAt, never typed twice. */
 export const doorsLabel = new Intl.DateTimeFormat('en-GB', {
   hour: '2-digit',
   minute: '2-digit',
