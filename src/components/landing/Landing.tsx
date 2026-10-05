@@ -582,6 +582,17 @@ export function Landing({ registrationOpen, doors, prices }: Props) {
                 <span style={{display:'inline-flex'}}>S<span data-exp="1" style={{display:'inline-block',maxWidth:'0',overflow:'hidden',color:'var(--gold2)'}}>ervices</span></span>
               </h2>
             </div>
+            <a data-rv="1" className="dh-h21" href="https://vjit.ac.in/" style={{position:'relative',border:'3px solid var(--line)',background:'var(--surface)',display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,280px),1fr))',boxShadow:'6px 6px 0 var(--sh)',overflow:'hidden',color:'var(--ink)',transition:'transform .14s steps(3),border-color .14s steps(2),box-shadow .14s steps(3)'}}>
+              <span style={{background:'#FFFFFF',borderRight:'2px solid var(--line-soft)',display:'flex',alignItems:'center',justifyContent:'center',padding:'clamp(22px,4vw,36px)',minHeight:'150px'}}>
+                <Image src="/assets/vjit-logo.png" alt="Vidya Jyothi Institute of Technology" width={320} height={90} sizes="320px" style={{width:'100%',maxWidth:'320px',height:'auto',display:'block',imageRendering:'auto'}} />
+              </span>
+              <span style={{padding:'clamp(20px,3.4vw,30px)',display:'flex',flexDirection:'column',justifyContent:'center',gap:'10px'}}>
+                <span style={{alignSelf:'flex-start',fontFamily:'var(--font-mono)',fontSize:'10.5px',letterSpacing:'.24em',textTransform:'uppercase',background:'#9FE3B6',color:'var(--on-fill)',padding:'6px 11px'}}>Venue sponsor</span>
+                <span style={{fontFamily:'var(--font-display)',fontSize:'clamp(26px,5vw,34px)',lineHeight:'1',color:'var(--ink)'}}>VIDYA JYOTHI INSTITUTE OF TECHNOLOGY</span>
+                <span style={{fontSize:'13.5px',lineHeight:'1.55',color:'var(--body)'}}>Aziznagar, Hyderabad. Our host for the day.</span>
+                <span style={{fontFamily:'var(--font-mono)',fontSize:'10px',letterSpacing:'.16em',textTransform:'uppercase',color:'var(--mint-ink)'}}>Visit vjit.ac.in →</span>
+              </span>
+            </a>
             <div data-rv="1" style={{position:'relative',border:'3px solid var(--line)',background:'var(--surface)',display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,280px),1fr))',boxShadow:'6px 6px 0 var(--sh)',overflow:'hidden'}}>
               <div style={{position:'relative',background:'#14161C',color:'#FFFFFF',padding:'clamp(20px,3.4vw,30px)',display:'flex',flexDirection:'column',justifyContent:'center',gap:'10px',overflow:'hidden'}}>
                 <span aria-hidden="true" style={{position:'absolute',inset:'0',backgroundImage:'linear-gradient(rgba(159,227,182,.12) 1px,transparent 1px),linear-gradient(90deg,rgba(159,227,182,.12) 1px,transparent 1px)',backgroundSize:'16px 16px'}}></span>

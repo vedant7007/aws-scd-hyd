@@ -34,6 +34,10 @@ export function eventJsonLd(): string {
         inLanguage: 'en-IN',
         isAccessibleForFree: false,
         organizer: { '@id': absolute('/#organizer') },
+        sponsor: [
+          { '@type': 'Organization', name: 'Amazon Web Services', url: 'https://aws.amazon.com/' },
+          { '@type': 'CollegeOrUniversity', name: venue.name, url: 'https://vjit.ac.in/' },
+        ],
         location: {
           '@type': 'Place',
           name: venue.name,
