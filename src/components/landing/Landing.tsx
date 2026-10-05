@@ -681,7 +681,7 @@ export function Landing({ registrationOpen, doors, prices }: Props) {
               <span style={{fontFamily:'var(--font-mono)',fontSize:'10.5px',letterSpacing:'.22em',textTransform:'uppercase',color:'var(--mint-ink)'}}>{'// THE PLACE'}</span>
               <div style={{display:'flex',alignItems:'flex-start',gap:'12px'}}>
                 <span style={{fontFamily:'var(--font-display)',fontSize:'clamp(95px,25vw,225px)',lineHeight:'.78',color:'var(--ink)',textShadow:'5px 5px 0 #F6C899'}}>30</span>
-                <span style={{fontFamily:'var(--font-mono)',fontSize:'clamp(11px,2.6vw,13px)',letterSpacing:'.18em',textTransform:'uppercase',paddingTop:'10px',color:'var(--body)'}}>OCT<br />2026<br />09:30</span>
+                <span style={{fontFamily:'var(--font-mono)',fontSize:'clamp(11px,2.6vw,13px)',letterSpacing:'.18em',textTransform:'uppercase',paddingTop:'10px',color:'var(--body)'}}>OCT<br />2026<br />{doors}</span>
               </div>
               <p style={{margin:'0',maxWidth:'40ch',fontSize:'clamp(15px,3.8vw,17px)',lineHeight:'1.65',color:'var(--body)'}}>Vidya Jyothi Institute of Technology, Aziznagar Village Road, Aziznagar, Hyderabad, Telangana 500075.</p>
               <a className="dh-h24" href="https://maps.app.goo.gl/PAPnu2YHVdWE2pvQ6" style={{display:'inline-flex',alignSelf:'flex-start',alignItems:'center',minHeight:'52px',padding:'0 22px',background:'var(--ink-fill)',color:'var(--bg)',fontFamily:'var(--font-display)',fontSize:'22.5px',boxShadow:'5px 5px 0 #9FE3B6',transition:'transform .1s steps(2),box-shadow .1s steps(2)'}}>OPEN THE GATE PIN</a>
