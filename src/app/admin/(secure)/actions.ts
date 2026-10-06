@@ -53,14 +53,17 @@ export async function deleteAction(_prev: ActionState, formData: FormData): Prom
   const out = await deleteRegistration(passId)
   if (!out.ok) return { ok: false, message: `${passId} changed or is already gone. Nothing was deleted; refresh and look again.` }
   let shots = 0
-  try {
-    shots = await deleteScreenshots(passId)
-  } catch (err) {
-    console.error(`[admin] screenshots for ${passId} not deleted`, err)
+  for (const gone of out.deleted) {
+    try {
+      shots += await deleteScreenshots(gone)
+    } catch (err) {
+      console.error(`[admin] screenshots for ${gone} not deleted`, err)
+    }
   }
   console.info(`[admin] ${email} deleted ${passId} (${out.attendee.state}), ${shots} screenshot(s)`)
   revalidatePath('/admin')
-  return { ok: true, message: `${passId} deleted, its seats given back.` }
+  const n = out.deleted.length
+  return { ok: true, message: n > 1 ? `The whole group of ${n} (${out.deleted.join(', ')}) deleted, their seats given back.` : `${passId} deleted, its seats given back.` }
 }
 
 /* ---- settings ------------------------------------------------------------- */

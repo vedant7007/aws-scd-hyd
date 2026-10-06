@@ -142,6 +142,25 @@ ${o.body}
 
 type Person = Pick<Attendee, 'name' | 'passId' | 'tier' | 'technicalSession' | 'workshop' | 'amountPaise'>
 
+/** Who else is in a group, for its mails. Absent outside a group. */
+export type GroupNote = { leaderName: string; size: number; isLeader: boolean; totalPaise: number; members: { name: string; passId: string }[] }
+
+function groupText(g: GroupNote): string {
+  const list = g.members.map((m) => `- ${m.name}: ${m.passId}`).join('\n')
+  return g.isLeader
+    ? `YOUR GROUP OF ${g.size}\nYou registered everyone and sent one payment for the group, ${formatInr(g.totalPaise)} in all. Each person has their own pass ID and gets their own emails:\n${list}\n\n`
+    : `YOUR GROUP\n${g.leaderName} registered you in a group of ${g.size} and covers the payment for everyone. There is nothing for you to pay.\n\n`
+}
+
+function groupHtml(g: GroupNote): string {
+  return g.isLeader
+    ? card(
+        `${eyebrow(`Your group of ${g.size}`)}${small(`You registered everyone and sent one payment for the group, <strong>${esc(formatInr(g.totalPaise))}</strong> in all. Each person has their own pass ID and gets their own emails.`)}${rows(g.members.map((m) => [m.name, `<span style="font-family:${MONO}">${esc(m.passId)}</span>`]))}`,
+        '#E6F5EB',
+      )
+    : card(`${eyebrow('Your group')}${small(`<strong>${esc(g.leaderName)}</strong> registered you in a group of ${g.size} and covers the payment for everyone. There is nothing for you to pay.`)}`, '#E6F5EB')
+}
+
 /** The sessions a pass holds, as lines: "Technical: Cloud 101: ..." */
 function sessionLines(r: Person): string[] {
   return [
@@ -154,7 +173,7 @@ function sessionLines(r: Person): string[] {
  * EMAIL 1, on entering PENDING_VERIFICATION. Nothing here may read as a
  * confirmation. See RECEIPT_FORBIDDEN_WORDS.
  */
-export function receipt(r: Person): Body {
+export function receipt(r: Person, g?: GroupNote): Body {
   const lines = sessionLines(r)
   return {
     subject: SUBJECTS.receipt,
@@ -162,14 +181,14 @@ export function receipt(r: Person): Body {
 
 We have your details and your UTR for ${event.name}.
 
-We will check your payment against the college bank statement ${VERIFICATION_WINDOW}, and email you when it is verified. Until then there is nothing you need to do.
+We will check your payment against the college bank statement ${VERIFICATION_WINDOW}, and email you once we have checked it. Until then there is nothing you need to do.
 
 YOUR PASS ID
 ${r.passId}
 
 Keep it safe. It is how we find your registration.
 
-YOUR PASS
+${g ? groupText(g) : ''}YOUR PASS
 ${tierLabel(r.tier)}, ${formatInr(r.amountPaise)}
 ${lines.join('\n')}
 
@@ -183,8 +202,9 @@ ${footerText}`,
       title: `We have your details, ${r.name}`,
       body: [
         p(`We have your registration and your UTR for <strong>${esc(event.name)}</strong>.`),
-        p(`A person on our team matches every UTR against the college bank statement. We will do yours <strong>${VERIFICATION_WINDOW}</strong>, then email you when it is verified. Until then there is nothing you need to do.`),
+        p(`A person on our team matches every UTR against the college bank statement. We will do yours <strong>${VERIFICATION_WINDOW}</strong>, then email you once we have checked it. Until then there is nothing you need to do.`),
         passIdBlock(r.passId, 'Keep it safe. It is how we find your registration.'),
+        ...(g ? [groupHtml(g)] : []),
         card(`${eyebrow('Your pass')}${rows([['Pass', esc(tierLabel(r.tier))], ['Amount', esc(formatInr(r.amountPaise))], ...sessionRows(r)])}`),
         small('Sessions are subject to change. If yours does, we will email you.'),
       ].join('\n'),
@@ -193,7 +213,7 @@ ${footerText}`,
 }
 
 /** EMAIL 2, on entering VERIFIED: the payment is verified. No ticket yet, by the organiser's decision (29 September 2026). */
-export function confirmation(r: Person): Body {
+export function confirmation(r: Person, g?: GroupNote): Body {
   const lines = sessionLines(r)
   return {
     subject: SUBJECTS.confirmation,
@@ -206,7 +226,7 @@ ${r.passId}
 
 Keep it safe. It is how we find your registration.
 
-YOUR PASS
+${g ? groupText(g) : ''}YOUR PASS
 ${tierLabel(r.tier)}, ${formatInr(r.amountPaise)}
 ${lines.join('\n')}
 Sessions are subject to change. If yours does, we will email you.
@@ -228,6 +248,7 @@ ${footerText}`,
       body: [
         p(`Your payment for <strong>${esc(event.name)}</strong> is verified. Your <strong>${esc(tierLabel(r.tier))}</strong> registration is complete.`),
         passIdBlock(r.passId, 'Keep it safe. It is how we find your registration.'),
+        ...(g ? [groupHtml(g)] : []),
         card(`${eyebrow('Your pass')}${rows([['Pass', esc(tierLabel(r.tier))], ['Amount', esc(formatInr(r.amountPaise))], ...sessionRows(r)])}`),
         small('Sessions are subject to change. If yours does, we will email you.'),
         card(

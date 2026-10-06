@@ -33,6 +33,7 @@ export default async function AdminDashboardPage() {
   await requireAdmin()
   const [d, launch] = await Promise.all([loadDashboard(), launchStatus()])
 
+  const byId = new Map(d.attendees.map((a) => [a.passId, a]))
   const rows: Row[] = d.attendees.map((a) => ({
     passId: a.passId,
     name: a.name,
@@ -48,7 +49,15 @@ export default async function AdminDashboardPage() {
     technical: programSession(a.technicalSession)?.title ?? a.technicalSession,
     workshop: a.workshop ? (programSession(a.workshop)?.title ?? a.workshop) : null,
     state: a.state,
-    amountLabel: formatInr(a.amountPaise),
+    amountLabel: formatInr(a.groupId === a.passId ? (a.groupTotalPaise ?? a.amountPaise) : a.amountPaise),
+    group: a.groupId
+      ? {
+          size: a.groupSize ?? 0,
+          leader: a.groupId,
+          isLeader: a.groupId === a.passId,
+          members: (a.groupId === a.passId ? (a.groupMembers ?? []) : []).map((id) => ({ passId: id, name: byId.get(id)?.name ?? id })),
+        }
+      : null,
     utr: a.utr ?? null,
     utrSubmittedAt: a.utrSubmittedAt ?? null,
     screenshot: Boolean(a.screenshotKey),

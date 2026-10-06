@@ -160,6 +160,7 @@ async function cleanup(): Promise<void> {
   }
   for (const [id, was] of savedCeilings) {
     if (!was) await ddb.send(new DeleteCommand({ TableName: table(), Key: keys.session(id) }))
+    else if (was.sellableCapacity === undefined || was.sellableCapacity === null) await ddb.send(new UpdateCommand({ TableName: table(), Key: keys.session(id), UpdateExpression: 'REMOVE sellableCapacity' }))
     else await ddb.send(new UpdateCommand({ TableName: table(), Key: keys.session(id), UpdateExpression: 'SET sellableCapacity = :c', ExpressionAttributeValues: { ':c': was.sellableCapacity } }))
   }
 }

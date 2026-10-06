@@ -1,3 +1,4 @@
+import { groupOffPaise } from '../../content/groups'
 import { passFor } from '../../content/passes'
 import type { Tier } from '../db/types'
 
@@ -9,9 +10,10 @@ import type { Tier } from '../db/types'
  */
 export type Amount = { amountPaise: number }
 
-export function amountFor(tier: Tier): Amount {
+/** One person's amount. In a group of `groupSize`, the group discount comes off each person. */
+export function amountFor(tier: Tier, groupSize = 1): Amount {
   const pass = passFor(tier)
   if (!pass) throw new Error(`amountFor: no such tier "${tier}"`)
   if (pass.pricePaise === null) throw new Error(`amountFor: tier "${tier}" has no price in content/passes.ts`)
-  return { amountPaise: pass.pricePaise }
+  return { amountPaise: pass.pricePaise - groupOffPaise(groupSize) }
 }

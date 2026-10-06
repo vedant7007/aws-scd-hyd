@@ -1,8 +1,8 @@
 import { payment, upiLink } from '@/content/payment'
 import { programSession } from '@/content/program'
 import { callerIp, withinRateLimit } from '@/lib/db/rate-limit'
-import { placeHold } from '@/lib/registration/flow'
-import { validateHold } from '@/lib/registration/validate'
+import { placeGroupHold, placeHold } from '@/lib/registration/flow'
+import { validateGroupHold, validateHold } from '@/lib/registration/validate'
 import { launchStatus } from '@/lib/tickets/launch'
 
 /**
@@ -35,6 +35,7 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   const body: unknown = await req.json().catch(() => null)
+  if (typeof body === 'object' && body !== null && 'members' in body) return groupHold(req, body)
   const v = validateHold(body)
   if ('error' in v) return json(400, { ok: false, ...v.error })
 
@@ -76,5 +77,50 @@ export async function POST(req: Request): Promise<Response> {
       // Null while the UPI id is unset: the page shows the gap instead of a QR that pays nobody.
       link: account ? upiLink(account, a.passId) : null,
     },
+  })
+}
+
+/** A session full for the group, in the flow's words. */
+function fullResponse(sessionId: string): Response {
+  const s = programSession(sessionId)
+  const isWorkshop = s?.kind === 'workshop'
+  return json(409, {
+    ok: false,
+    reason: 'full',
+    field: isWorkshop ? 'workshop' : 'tech',
+    sessionId,
+    message: `${s?.title ?? 'That session'} does not have enough seats left for everyone. Pick another ${isWorkshop ? 'workshop' : 'technical session'}; nothing was charged.`,
+  })
+}
+
+/**
+ * A group pass: one person registers everyone, on one pass, and pays once.
+ * Same checks as one registration, per person; the rate limit counts against
+ * the person paying. The response carries the total and every pass id.
+ */
+async function groupHold(req: Request, body: object): Promise<Response> {
+  const v = validateGroupHold(body)
+  if ('error' in v) return json(400, { ok: false, ...v.error })
+  const payer = v.group.members[0]!.email
+  if (!(await withinRateLimit(`email:${payer}`, 'HOLD', PER_EMAIL_PER_HOUR))) {
+    return json(429, { ok: false, field: 'email', message: `${payer} has been used for ${PER_EMAIL_PER_HOUR} registrations in the last hour, so this one was not started. Nothing was charged. Wait an hour and try again.` })
+  }
+  if (!(await withinRateLimit(callerIp(req), 'HOLD', PER_IP_PER_HOUR))) {
+    return json(429, { ok: false, message: 'Too many registrations from this network in the last hour. Nothing was charged. Try again a little later.' })
+  }
+
+  const out = await placeGroupHold(v.group, v.submissionKey, v.passId, 'checkout')
+  if (!out.ok) return fullResponse(out.sessionId)
+
+  const { leader, members } = out
+  const account = payment.live
+  console.info(`[hold] group ${leader.passId} of ${leader.groupSize}, ${leader.groupTotalPaise} paise`)
+  return json(200, {
+    ok: true,
+    passId: leader.passId,
+    amountPaise: leader.groupTotalPaise,
+    holdUntil: leader.holdUntil,
+    members: [leader, ...members].map((m) => ({ passId: m.passId, name: m.name })),
+    upi: { payee: null, link: account ? upiLink(account, leader.passId) : null },
   })
 }

@@ -69,6 +69,18 @@ export type Attendee = Keyed & {
    * the admin verifies against this number and no other.
    */
   amountPaise: number
+  /**
+   * Group passes. groupId is the pass id of the person who registered and
+   * pays for the group, on every record in it, theirs included. Only that
+   * leader's record carries the UTR, the screenshot, the member list and the
+   * group total; members move through the states with it.
+   */
+  groupId?: string
+  groupSize?: number
+  /** Leader only: the members' pass ids, not the leader's. */
+  groupMembers?: string[]
+  /** Leader only: what the whole group pays, the sum of every amountPaise. */
+  groupTotalPaise?: number
   /** SHA-256 of the browser's submission key. Only the browser that made the hold may change it. */
   submissionKeyHash: string
   /** UTR:<utr>, written by the verify transition. */

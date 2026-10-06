@@ -4,10 +4,10 @@ import { newPassId } from '../db/keys'
 import { getAttendee, listAttendees } from '../db/queries'
 import type { Attendee, AttendeeSource } from '../db/types'
 import { isReservedAddress, sendEmail } from '../email/send'
-import { confirmation, receipt, rejection } from '../email/templates'
+import { confirmation, receipt, rejection, type GroupNote } from '../email/templates'
 import { amountFor } from '../tickets/pricing'
-import { abandon, createHold, markSent, moveHold, reject, submitUtr, verify, type HoldOutcome } from './state'
-import type { HoldInput } from './validate'
+import { abandon, createGroupHold, createHold, dropGroupHold, groupOf, markSent, moveHold, reject, submitUtr, verify, type HoldOutcome } from './state'
+import type { GroupInput, HoldInput } from './validate'
 
 /**
  * One email, then the mark that says it went. A reserved (seeded) address is
@@ -50,7 +50,10 @@ export async function placeHold(input: HoldInput, submissionKey: string, previou
     const before = await getAttendee(previousPassId)
     // Only a live hold this browser made is moved. Anything else (swept,
     // paid, someone else's) is left alone and a fresh hold is made.
-    if (before && before.state === 'AWAITING_PAYMENT' && before.submissionKeyHash === keyHash) {
+    // Switched from a group to one person: the group's hold goes, then a fresh one is made.
+    if (before && before.state === 'AWAITING_PAYMENT' && before.submissionKeyHash === keyHash && before.groupId) {
+      await dropGroupHold(before, keyHash)
+    } else if (before && before.state === 'AWAITING_PAYMENT' && before.submissionKeyHash === keyHash) {
       const out = await moveHold(before, rec)
       if (out.ok) return { ok: true, attendee: out.attendee, moved: true }
       if (out.reason === 'full') return out
@@ -65,6 +68,70 @@ export async function placeHold(input: HoldInput, submissionKey: string, previou
   throw new Error('placeHold: four pass id collisions in a row, which should not be possible')
 }
 
+/* ---- group passes ------------------------------------------------------ */
+
+export type GroupHeld = { ok: true; leader: Attendee; members: Attendee[] } | { ok: false; reason: 'full'; sessionId: string }
+
+/**
+ * A group's payment step: one record per person, all on the leader's
+ * pass id as groupId, all seats claimed together. Each person's amount is
+ * the pass price less the group discount, decided here and locked in; the
+ * leader's record carries the total, which is what the leader pays. Going
+ * back to edit drops the group's earlier hold and makes a fresh one, keeping
+ * the old clock so editing never buys more time.
+ */
+export async function placeGroupHold(group: GroupInput, submissionKey: string, previousPassId: string | undefined, source: AttendeeSource): Promise<GroupHeld> {
+  const size = group.members.length
+  const amountPaise = amountFor(group.tier, size).amountPaise
+  const keyHash = hashKey(submissionKey)
+  const at = new Date().toISOString()
+  let holdUntil = new Date(Date.now() + holdMinutes * 60_000).toISOString()
+
+  if (previousPassId) {
+    const before = await getAttendee(previousPassId)
+    if (before && before.state === 'AWAITING_PAYMENT' && before.submissionKeyHash === keyHash) {
+      if ((await dropGroupHold(before, keyHash)) && before.holdUntil && before.holdUntil > at) holdUntil = before.holdUntil
+    }
+  }
+
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const ids = group.members.map(() => newPassId())
+    const leaderId = ids[0]!
+    const recs = group.members.map((m, i) => ({
+      passId: ids[i]!,
+      rec: {
+        ...m,
+        tier: group.tier,
+        name: [m.firstName, m.middleName, m.lastName].filter(Boolean).join(' '),
+        amountPaise,
+        submissionKeyHash: keyHash,
+        holdUntil,
+        source,
+        groupId: leaderId,
+        groupSize: size,
+        ...(i === 0 ? { groupMembers: ids.slice(1), groupTotalPaise: amountPaise * size } : {}),
+      },
+    }))
+    const out = await createGroupHold(recs)
+    if (out.ok) return { ok: true, leader: out.attendees[0]!, members: out.attendees.slice(1) }
+    if (out.reason === 'full') return out
+  }
+  throw new Error('placeGroupHold: four pass id collisions in a row, which should not be possible')
+}
+
+/** What each person's mail says about the group, or nothing outside one. */
+function noteFor(a: Attendee, all: Attendee[]): GroupNote | undefined {
+  if (!a.groupId || all.length < 2) return undefined
+  const leader = all[0]!
+  return {
+    leaderName: leader.name,
+    size: a.groupSize ?? all.length,
+    isLeader: a.passId === leader.passId,
+    totalPaise: leader.groupTotalPaise ?? all.reduce((n, x) => n + x.amountPaise, 0),
+    members: all.map((x) => ({ name: x.name, passId: x.passId })),
+  }
+}
+
 /* ---- the UTR ----------------------------------------------------------- */
 
 export type Submitted = { ok: true; attendee: Attendee; emailed: boolean } | { ok: false; reason: 'wrong-state' | 'utr-used' }
@@ -73,7 +140,13 @@ export type Submitted = { ok: true; attendee: Attendee; emailed: boolean } | { o
 export async function submitPayment(passId: string, utr: string, screenshotKey: string): Promise<Submitted> {
   const out = await submitUtr(passId, utr, screenshotKey)
   if (!out.ok) return out
-  const emailed = await mail(out.attendee, receipt(out.attendee), 'receiptSentAt')
+  // In a group everyone gets their own receipt with their own pass id.
+  const all = await groupOf(out.attendee)
+  let emailed = false
+  for (const a of all) {
+    const sent = await mail(a, receipt(a, noteFor(a, all)), 'receiptSentAt')
+    if (a.passId === passId) emailed = sent
+  }
   return { ok: true, attendee: out.attendee, emailed }
 }
 
@@ -83,7 +156,12 @@ export async function adminVerify(passId: string, by: string): Promise<{ ok: tru
   const out = await verify(passId, by)
   if (!out.ok) return out
   // Only the call that moved the record sends. A second click never gets here.
-  const emailed = await mail(out.attendee, confirmation(out.attendee), 'confirmationSentAt')
+  const all = [out.attendee, ...out.members]
+  let emailed = false
+  for (const a of all) {
+    const sent = await mail(a, confirmation(a, noteFor(a, all)), 'confirmationSentAt')
+    if (a.passId === passId) emailed = sent
+  }
   return { ok: true, emailed }
 }
 

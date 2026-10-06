@@ -26,6 +26,8 @@ export type Row = {
   screenshot: boolean
   rejectionReason: string | null
   createdAt: string
+  /** A group pass: the leader pays and is verified for everyone; members follow. */
+  group: { size: number; leader: string; isLeader: boolean; members: { passId: string; name: string }[] } | null
   /** Made through the old test link: real, verifiable, never counted. */
   preview: boolean
   checkedIn: boolean
@@ -83,7 +85,7 @@ export function AdminConsole({ rows }: { rows: Row[] }) {
           r.rollNumber.toLowerCase().includes(q),
       )
     } else if (view === 'queue') {
-      list = rows.filter((r) => r.state === 'PENDING_VERIFICATION').sort((a, b) => (a.utrSubmittedAt ?? '').localeCompare(b.utrSubmittedAt ?? ''))
+      list = rows.filter((r) => r.state === 'PENDING_VERIFICATION' && !(r.group && !r.group.isLeader)).sort((a, b) => (a.utrSubmittedAt ?? '').localeCompare(b.utrSubmittedAt ?? ''))
     } else if (view === 'verified') {
       list = rows.filter((r) => r.state === 'VERIFIED').sort((a, b) => a.createdAt.localeCompare(b.createdAt))
     }
@@ -91,7 +93,7 @@ export function AdminConsole({ rows }: { rows: Row[] }) {
   }, [rows, view, query])
 
   const viewLabel: Record<View, string> = {
-    queue: `Queue (${counts.PENDING_VERIFICATION})`,
+    queue: `Queue (${rows.filter((r) => r.state === 'PENDING_VERIFICATION' && !(r.group && !r.group.isLeader)).length})`,
     verified: `Verified (${counts.VERIFIED})`,
     all: `All (${rows.length})`,
   }
@@ -163,6 +165,7 @@ function RowCard({ row }: { row: Row }) {
         </div>
         <span className="flex flex-wrap items-center gap-2">
           {row.preview ? <span className="pill pill-warn">Preview</span> : null}
+          {row.group ? <span className="pill pill-orange">{row.group.isLeader ? `Group of ${row.group.size} · pays` : `In group ${row.group.leader}`}</span> : null}
           <span className={STATE_PILL[row.state]}>{STATE_LABEL[row.state]}</span>
         </span>
       </div>
@@ -176,7 +179,7 @@ function RowCard({ row }: { row: Row }) {
           </dd>
         </div>
         <div className="flex flex-col gap-0.5">
-          <dt className="lbl-sm">Amount expected</dt>
+          <dt className="lbl-sm">{row.group?.isLeader ? `Amount expected, all ${row.group.size}` : row.group ? 'Their share' : 'Amount expected'}</dt>
           <dd className="num text-[15px] font-semibold text-ink">{row.amountLabel}</dd>
         </div>
         <div className="flex flex-col gap-0.5 sm:col-span-2">
@@ -203,6 +206,18 @@ function RowCard({ row }: { row: Row }) {
             </dd>
           </div>
         ) : null}
+        {row.group?.isLeader ? (
+          <div className="flex flex-col gap-0.5 sm:col-span-2">
+            <dt className="lbl-sm">Also in this group</dt>
+            <dd className="copy text-ink">
+              {row.group.members.map((m) => (
+                <span key={m.passId} className="block">
+                  {m.name} <span className="num text-[12px] text-muted">{m.passId}</span>
+                </span>
+              ))}
+            </dd>
+          </div>
+        ) : null}
         {row.rejectionReason ? (
           <div className="flex flex-col gap-0.5 sm:col-span-2">
             <dt className="lbl-sm">Rejected because</dt>
@@ -211,7 +226,11 @@ function RowCard({ row }: { row: Row }) {
         ) : null}
       </dl>
 
-      {row.state === 'PENDING_VERIFICATION' ? (
+      {row.group && !row.group.isLeader ? (
+        <p className="hint">Paid for by {row.group.leader}. Verify or reject that registration and this one moves with it.</p>
+      ) : null}
+
+      {row.state === 'PENDING_VERIFICATION' && !(row.group && !row.group.isLeader) ? (
         <div className="flex flex-col gap-3">
           <form action={verify}>
             <input type="hidden" name="passId" value={row.passId} />
@@ -243,7 +262,7 @@ function RowCard({ row }: { row: Row }) {
       ) : null}
 
       <details>
-        <summary className="lbl-sm cursor-pointer">Delete this registration</summary>
+        <summary className="lbl-sm cursor-pointer">{row.group ? `Delete this whole group of ${row.group.size}` : 'Delete this registration'}</summary>
         <form action={del} className="card-dash mt-2 flex flex-wrap items-end gap-3 p-3">
           <input type="hidden" name="passId" value={row.passId} />
           <div className="fld min-w-0 flex-[1_1_220px]">

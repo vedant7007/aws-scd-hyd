@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { QRCodeSVG } from 'qrcode.react'
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
+import { GROUP_SIZES, groupOffPaise } from '@/content/groups'
 import { formatInr, passFor } from '@/content/passes'
 import { holdMinutes } from '@/content/payment'
 import { EVENT_DAY, MINIMUM_AGE, TIER_LEVEL, YEARS, ageOnEventDay, technicalSessions, workshops, type Level, type Year } from '@/content/program'
@@ -67,8 +68,10 @@ type FieldKey = keyof Fields
 const EMPTY: Fields = { first: '', middle: '', last: '', email: '', phone: '', college: '', branch: '', roll: '', dob: '' }
 type Upload = { status: 'none' | 'uploading' | 'done' | 'failed'; name: string; url: string; pct: number; err: string; key: string }
 const NO_UPLOAD: Upload = { status: 'none', name: '', url: '', pct: 0, err: '', key: '' }
+/** Someone else in a group: the leader fills in everything for them. */
+type Person = { fields: Fields; year: Year | ''; tech: string; workshop: string }
 /** holdEnds 0 means no clock: a rejected record being resubmitted keeps its seats with no deadline. */
-export type Hold = { passId: string; holdEnds: number; amountPaise: number; payee: string | null; link: string | null }
+export type Hold = { passId: string; holdEnds: number; amountPaise: number; payee: string | null; link: string | null; members?: { passId: string; name: string }[] }
 
 /**
  * The payment step on its own, for the link in the rejection email and for
@@ -96,7 +99,54 @@ type Saved = {
   hold: Hold | null
   utr: string
   submissionKey: string
+  size?: number
+  others?: Person[]
 }
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+
+/**
+ * One person's step three errors, keyed as the flow keys its boxes:
+ * `first` for the person registering, `m2.first` for the third person in a
+ * group. The server checks all of it again.
+ */
+function personErrors(f: Fields, year: Year | '', prefix: string): Record<string, string> {
+  const e: Record<string, string> = {}
+  const you = !prefix
+  const age = f.dob ? ageOnEventDay(f.dob) : null
+  if (!f.first.trim()) e[prefix + 'first'] = you ? 'We need your first name.' : 'We need a first name.'
+  if (!f.last.trim()) e[prefix + 'last'] = you ? 'We need your last name.' : 'We need a last name.'
+  if (!f.branch.trim()) e[prefix + 'branch'] = 'Which branch?'
+  if (!f.roll.trim()) e[prefix + 'roll'] = 'We need a roll number.'
+  else if (f.roll.trim().length < 4) e[prefix + 'roll'] = 'That roll number looks too short.'
+  if (!f.dob) e[prefix + 'dob'] = 'We need a date of birth.'
+  else if (age === null) e[prefix + 'dob'] = 'That date does not look right.'
+  else if (age < MINIMUM_AGE) e[prefix + 'dob'] = 'Under 18 on the event day.'
+  if (!f.email.trim()) e[prefix + 'email'] = 'We need an email for the pass.'
+  else if (!EMAIL_RE.test(f.email.trim())) e[prefix + 'email'] = 'That does not look like a working email.'
+  const d = f.phone.replace(/\D/g, '')
+  if (!d) e[prefix + 'phone'] = 'We need a phone number.'
+  else if (d.length !== 10) e[prefix + 'phone'] = 'Enter exactly 10 digits, without +91.'
+  if (!f.college.trim()) e[prefix + 'college'] = 'Which college?'
+  if (!year) e[prefix + 'year'] = 'Pick the year of study.'
+  return e
+}
+
+/** What the hold API takes for one person. */
+const personBody = (f: Fields, year: Year | '', tech: string, workshop: string, withWorkshop: boolean) => ({
+  technicalSession: tech,
+  ...(withWorkshop ? { workshop } : {}),
+  firstName: f.first,
+  middleName: f.middle,
+  lastName: f.last,
+  email: f.email,
+  phone: f.phone,
+  college: f.college,
+  branch: f.branch,
+  rollNumber: f.roll.toUpperCase(),
+  yearOfStudy: year,
+  dateOfBirth: f.dob,
+})
 
 const newKey = () => {
   const b = new Uint8Array(18)
@@ -143,6 +193,9 @@ export function Flow({ resume }: { resume?: Resume }) {
   const [fields, setFields] = useState<Fields>(resume ? { ...EMPTY, first: resume.first, email: resume.email } : EMPTY)
   const [err, setErr] = useState<Record<string, string>>({})
   const [hold, setHold] = useState<Hold | null>(resume?.hold ?? null)
+  /** 1 for one person; GROUP_MIN to GROUP_MAX for a group pass. */
+  const [size, setSize] = useState(1)
+  const [others, setOthers] = useState<Person[]>([])
   const [now, setNow] = useState(() => Date.now())
   const [utr, setUtr] = useState('')
   const [utrTouched, setUtrTouched] = useState(false)
@@ -175,6 +228,8 @@ export function Flow({ resume }: { resume?: Resume }) {
         setFields({ ...EMPTY, ...s.fields })
         setHold(s.hold)
         setUtr(s.utr)
+        setSize(s.size ?? 1)
+        setOthers(s.others ?? [])
         key.current = s.submissionKey
         setFormKey((k) => k + 1)
       }
@@ -187,13 +242,13 @@ export function Flow({ resume }: { resume?: Resume }) {
 
   useEffect(() => {
     if (!loaded) return
-    const s: Saved = { step, phase, tier, tech, workshop, year, fields, hold, utr, submissionKey: key.current }
+    const s: Saved = { step, phase, tier, tech, workshop, year, fields, hold, utr, submissionKey: key.current, size, others }
     try {
       sessionStorage.setItem(STORE, JSON.stringify(s))
     } catch {
       // Private window with storage off: the flow still works, it just forgets on refresh.
     }
-  }, [loaded, step, phase, tier, tech, workshop, year, fields, hold, utr])
+  }, [loaded, step, phase, tier, tech, workshop, year, fields, hold, utr, size, others])
 
   // The hold clock. Only the payment step counts down.
   useEffect(() => {
@@ -203,30 +258,29 @@ export function Flow({ resume }: { resume?: Resume }) {
 
   const lvl = tier ? TIER_LEVEL[tier] : 1
   const t = TIERS.find((x) => x.id === tier) ?? null
-  const amount = hold?.amountPaise ?? (tier ? price(tier) : 0)
+  const group = size > 1
+  const off = groupOffPaise(size)
+  /** Each person's price: the pass, less the group discount. */
+  const each = tier ? price(tier) - off : 0
+  const amount = hold?.amountPaise ?? each * size
   const age = fields.dob ? ageOnEventDay(fields.dob) : null
   const underage = age !== null && age < MINIMUM_AGE
   const top = () => window.scrollTo(0, 0)
 
   /* ---- step 3 validation, the handoff's messages ---- */
   const validate = (): Record<string, string> => {
-    const f = fields
-    const e: Record<string, string> = {}
-    if (!f.first.trim()) e.first = 'We need your first name.'
-    if (!f.last.trim()) e.last = 'We need your last name.'
-    if (!f.branch.trim()) e.branch = 'Which branch are you in?'
-    if (!f.roll.trim()) e.roll = 'We need your roll number.'
-    else if (f.roll.trim().length < 4) e.roll = 'That roll number looks too short.'
-    if (!f.dob) e.dob = 'We need your date of birth.'
-    else if (age === null) e.dob = 'That date does not look right.'
-    else if (age < MINIMUM_AGE) e.dob = 'Under 18 on the event day.'
-    if (!f.email.trim()) e.email = 'We need an email for your pass.'
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(f.email.trim())) e.email = 'That does not look like a working email.'
-    const d = f.phone.replace(/\D/g, '')
-    if (!d) e.phone = 'We need a phone number.'
-    else if (d.length !== 10) e.phone = 'Enter exactly 10 digits, without +91.'
-    if (!f.college.trim()) e.college = 'Which college are you from?'
-    if (!year) e.year = 'Pick your year.'
+    const e = personErrors(fields, year, '')
+    if (!group) return e
+    const seen = [fields.email.trim().toLowerCase()]
+    others.forEach((o, j) => {
+      const pre = `m${j + 1}.`
+      Object.assign(e, personErrors(o.fields, o.year, pre))
+      if (!o.tech) e[pre + 'tech'] = 'Pick a technical session.'
+      if (lvl >= 2 && !o.workshop) e[pre + 'workshop'] = 'Pick a workshop.'
+      const mail = o.fields.email.trim().toLowerCase()
+      if (mail && seen.includes(mail) && !e[pre + 'email']) e[pre + 'email'] = `Person ${seen.indexOf(mail) + 1} already uses this email. Everyone needs their own.`
+      seen.push(mail)
+    })
     return e
   }
 
@@ -248,7 +302,21 @@ export function Flow({ resume }: { resume?: Resume }) {
   const pickTier = (id: Tier) => {
     setTier(id)
     setErr({})
-    if (TIER_LEVEL[id] < 2) setWorkshop('')
+    if (TIER_LEVEL[id] < 2) {
+      setWorkshop('')
+      setOthers((o) => o.map((p) => ({ ...p, workshop: '' })))
+    }
+  }
+  /** 1 for just me, or a group size. Anyone already filled in is kept. */
+  const pickSize = (n: number) => {
+    setSize(n)
+    setOthers((o) => Array.from({ length: n - 1 }, (_, i) => o[i] ?? { fields: EMPTY, year: '', tech: '', workshop: '' }))
+  }
+  const onOther = (j: number, change: Partial<Person> | { field: FieldKey; value: string }) => {
+    setOthers((o) => o.map((p, i) => (i !== j ? p : 'field' in change ? { ...p, fields: { ...p.fields, [change.field]: change.value } } : { ...p, ...change })))
+    const pre = `m${j + 1}.`
+    if ('field' in change) clearErr(pre + change.field)
+    else for (const k of Object.keys(change)) clearErr(pre + k)
   }
   const clearErr = (k: string) =>
     setErr((e) => {
@@ -263,7 +331,13 @@ export function Flow({ resume }: { resume?: Resume }) {
   }
 
   /** Server field names to the flow's steps, for a refusal the browser did not catch. */
-  const STEP_OF: Record<string, number> = { tier: 1, tech: 2, workshop: 2, first: 3, middle: 3, last: 3, email: 3, phone: 3, college: 3, branch: 3, roll: 3, year: 3, dob: 3 }
+  const STEP_OF: Record<string, number> = { tier: 1, group: 1, tech: 2, workshop: 2, first: 3, middle: 3, last: 3, email: 3, phone: 3, college: 3, branch: 3, roll: 3, year: 3, dob: 3 }
+  /** The step a server field belongs to. Anyone after the first person, and a full session in a group, is step three. */
+  const stepOf = (field: string): number | undefined => {
+    if (/^m\d+\./.test(field)) return 3
+    if (group && (field === 'tech' || field === 'workshop')) return 3
+    return STEP_OF[field]
+  }
 
   async function placeHold(): Promise<void> {
     if (!tier) return
@@ -273,23 +347,21 @@ export function Flow({ resume }: { resume?: Resume }) {
       const res = await fetch('/api/registrations/hold', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          tier,
-          technicalSession: tech,
-          ...(lvl >= 2 ? { workshop } : {}),
-          firstName: fields.first,
-          middleName: fields.middle,
-          lastName: fields.last,
-          email: fields.email,
-          phone: fields.phone,
-          college: fields.college,
-          branch: fields.branch,
-          rollNumber: fields.roll.toUpperCase(),
-          yearOfStudy: year,
-          dateOfBirth: fields.dob,
-          submissionKey: key.current,
-          ...(hold ? { passId: hold.passId } : {}),
-        }),
+        body: JSON.stringify(
+          group
+            ? {
+                tier,
+                members: [personBody(fields, year, tech, workshop, lvl >= 2), ...others.map((o) => personBody(o.fields, o.year, o.tech, o.workshop, lvl >= 2))],
+                submissionKey: key.current,
+                ...(hold ? { passId: hold.passId } : {}),
+              }
+            : {
+                tier,
+                ...personBody(fields, year, tech, workshop, lvl >= 2),
+                submissionKey: key.current,
+                ...(hold ? { passId: hold.passId } : {}),
+              },
+        ),
       })
       const body = (await res.json().catch(() => ({}))) as {
         ok?: boolean
@@ -299,20 +371,26 @@ export function Flow({ resume }: { resume?: Resume }) {
         amountPaise?: number
         holdUntil?: string
         upi?: { payee: string | null; link: string | null }
+        members?: { passId: string; name: string }[]
       }
       if (res.ok && body.ok && body.passId && body.holdUntil && body.upi) {
-        setHold({ passId: body.passId, holdEnds: Date.parse(body.holdUntil), amountPaise: body.amountPaise ?? amount, payee: body.upi.payee, link: body.upi.link })
+        setHold({ passId: body.passId, holdEnds: Date.parse(body.holdUntil), amountPaise: body.amountPaise ?? amount, payee: body.upi.payee, link: body.upi.link, ...(body.members ? { members: body.members } : {}) })
         setNow(Date.now())
         setErr({})
         setStep(5)
         top()
         return
       }
-      const field = body.field && STEP_OF[body.field] ? body.field : ''
+      const field = body.field && stepOf(body.field) ? body.field : ''
       const message = body.message ?? 'Something went wrong on our side. Nothing was charged. Try again.'
-      if (field) {
+      if (field && group && (field === 'tech' || field === 'workshop')) {
+        // A group's sessions are set per person on step three.
+        setNotice(message)
+        setStep(3)
+        top()
+      } else if (field) {
         setErr({ [field]: message })
-        setStep(STEP_OF[field]!)
+        setStep(stepOf(field)!)
         top()
       } else setNotice(message)
     } catch {
@@ -403,6 +481,8 @@ export function Flow({ resume }: { resume?: Resume }) {
       if (!tech) e.tech = 'Choose the technical session you want to attend.'
       if (lvl >= 2 && !workshop) e.workshop = 'Choose the hands-on workshop you want to attend.'
       if (Object.keys(e).length) return setErr(e)
+      // In a group, these picks are everyone's starting point; each person can change theirs on step three.
+      setOthers((o) => o.map((p) => ({ ...p, tech: p.tech || tech, workshop: lvl >= 2 ? p.workshop || workshop : '' })))
       top()
       setErr({})
       return setStep(3)
@@ -412,8 +492,8 @@ export function Flow({ resume }: { resume?: Resume }) {
       const e = validate()
       if (Object.keys(e).length) {
         setErr(e)
-        const first = (['first', 'last', 'email', 'phone', 'college', 'branch', 'roll', 'dob'] as const).find((k) => e[k])
-        if (first) document.getElementById(`rg-${first}`)?.focus()
+        const first = Object.keys(e)[0]
+        if (first) document.getElementById(`rg-${first.replace('.', '-')}`)?.focus()
         return
       }
       top()
@@ -471,7 +551,7 @@ export function Flow({ resume }: { resume?: Resume }) {
   const bar = (n: number) => (step > n ? '#9FE3B6' : step === n ? '#FF9900' : 'var(--bar)')
 
   const barLabel =
-    step === 1 ? (t ? t.name : 'No pass picked')
+    step === 1 ? (t ? (group ? `${t.name} × ${size}` : t.name) : 'No pass picked')
     : step === 2 ? (sessLeft ? `${sessLeft} still to pick` : 'Sessions set')
     : step === 3 ? (underage ? 'Under 18 · blocked' : missing ? `${missing} still to fill` : 'All done')
     : step === 4 ? 'Amount to send'
@@ -532,11 +612,20 @@ export function Flow({ resume }: { resume?: Resume }) {
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'clamp(20px,3vw,40px)', alignItems: 'flex-start' }}>
           <div style={{ flex: '1 1 440px', minWidth: '0', display: 'flex', flexDirection: 'column', gap: 'clamp(18px,4vh,26px)' }}>
-            {inForm && step === 1 ? <StepPass tier={tier} pickTier={pickTier} err={err.tier} /> : null}
+            {inForm && step === 1 ? (
+              <StepPass tier={tier} pickTier={pickTier} err={err.tier}>
+                {tier ? <GroupPicker size={size} pickSize={pickSize} full={price(tier)} /> : null}
+              </StepPass>
+            ) : null}
 
             {inForm && step === 2 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '26px' }}>
                 <p style={{ margin: '0', fontSize: '15px', lineHeight: '1.6', color: 'var(--body)', maxWidth: '56ch' }}>Some sessions come with every pass and are already on your plan. Where there is a choice, pick one.</p>
+                {group ? (
+                  <p role="note" style={{ margin: '0', alignSelf: 'flex-start', border: '3px solid #9FE3B6', background: 'var(--panel-mint)', padding: '10px 14px', fontSize: '13.5px', lineHeight: '1.55', color: 'var(--ink)' }}>
+                    <strong>These are your sessions, person 1.</strong> On the next step everyone else picks their own; they start on the same as yours.
+                  </p>
+                ) : null}
                 <p role="note" style={{ margin: '0', alignSelf: 'flex-start', border: '3px dashed var(--line-dash)', padding: '10px 14px', fontSize: '13px', lineHeight: '1.55', color: 'var(--body)' }}>
                   <strong style={{ color: 'var(--ink)' }}>Sessions are subject to change.</strong> Titles, speakers and timings may shift before the day. If yours changes, we will email you.
                 </p>
@@ -612,6 +701,13 @@ export function Flow({ resume }: { resume?: Resume }) {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
                   <p style={{ margin: '0', flex: '1 1 auto', fontSize: '13px', lineHeight: '1.55', color: 'var(--muted)' }}>Middle name is optional. Everything else is needed.</p>
                 </div>
+                {group ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', border: '3px solid var(--line)', background: 'var(--panel-mint)', padding: '12px 14px' }}>
+                    <span style={{ fontFamily: 'var(--font-display)', fontSize: '24px', lineHeight: '1', color: 'var(--ink)' }}>PERSON 1 · YOU</span>
+                    <span style={{ fontSize: '13px', lineHeight: '1.55', color: 'var(--body)' }}>You fill in all {size} people and pay once for everyone. Each person gets their own pass ID and their own emails, so use each person&apos;s real email.</span>
+                  </div>
+                ) : null}
+                <Notice text={group ? notice : ''} />
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,170px),1fr))', gap: '12px' }}>
                     <Field id="first" label="First name" value={fields.first} onChange={onField} err={err.first} autoComplete="given-name" />
@@ -662,8 +758,11 @@ export function Flow({ resume }: { resume?: Resume }) {
                     </span>
                   </div>
                 ) : null}
+                {others.map((o, j) => (
+                  <OtherPerson key={`${formKey}-${j}`} n={j + 2} p={o} lvl={lvl} err={err} onChange={(c) => onOther(j, c)} />
+                ))}
                 <p style={{ margin: '0', fontSize: '12.5px', lineHeight: '1.6', color: 'var(--muted)' }}>
-                  By continuing you agree to the <Link href="/code-of-conduct">code of conduct</Link>.
+                  By continuing {group ? 'everyone agrees' : 'you agree'} to the <Link href="/code-of-conduct">code of conduct</Link>.
                 </p>
               </div>
             ) : null}
@@ -688,9 +787,30 @@ export function Flow({ resume }: { resume?: Resume }) {
                       <span style={{ fontSize: '14px', lineHeight: '1.45', color: 'var(--ink)', textAlign: 'right', wordBreak: 'break-word' }}>{r.value}</span>
                     </div>
                   ))}
+                  {group ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', borderBottom: '1px solid var(--line-soft)' }}>
+                      <span style={{ ...S.rowL, padding: '12px 16px 4px', color: 'var(--mint-ink)' }}>The rest of your group</span>
+                      {others.map((o, j) => (
+                        <div key={j} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', padding: '9px 16px' }}>
+                          <span style={{ ...S.rowL, flex: 'none' }}>Person {j + 2}</span>
+                          <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px', fontSize: '13.5px', lineHeight: '1.4', color: 'var(--ink)', textAlign: 'right', wordBreak: 'break-word' }}>
+                            <span>{[o.fields.first, o.fields.middle, o.fields.last].map((x) => x.trim()).filter(Boolean).join(' ')}</span>
+                            <span style={{ color: 'var(--muted)' }}>{o.fields.email}</span>
+                            <span style={{ color: 'var(--muted)' }}>
+                              {technicalSessions.find((x) => x.id === o.tech)?.title}
+                              {lvl >= 2 ? ` · ${workshops.find((x) => x.id === o.workshop)?.title ?? ''}` : ''}
+                            </span>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '14px 16px', flexWrap: 'wrap' }}>
-                    <span style={S.rowL}>Amount to send</span>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontWeight: '600', fontSize: '26px', color: 'var(--ink)' }}>{money(amount)}</span>
+                    <span style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                      <span style={S.rowL}>Amount to send</span>
+                      {group ? <span style={{ fontSize: '12.5px', color: 'var(--mint-ink)' }}>Group of {size} · group discount applied</span> : null}
+                    </span>
+                    {group && tier ? <GroupTotal was={price(tier) * size} now={amount} size="26px" /> : <span style={{ fontFamily: 'var(--font-mono)', fontWeight: '600', fontSize: '26px', color: 'var(--ink)' }}>{money(amount)}</span>}
                   </div>
                 </div>
                 <div style={{ border: '3px dashed var(--line-dash)', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -884,6 +1004,17 @@ export function Flow({ resume }: { resume?: Resume }) {
                     {copied === 'id' ? 'COPIED ✓' : 'COPY PASS ID'}
                   </button>
                 </div>
+                {hold.members && hold.members.length > 1 ? (
+                  <div style={{ border: '3px solid var(--line)', background: 'var(--surface)', display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ ...S.rowL, padding: '12px 14px 6px', color: 'var(--mint-ink)' }}>Everyone&apos;s pass ID · each gets their own email</span>
+                    {hold.members.map((m) => (
+                      <div key={m.passId} style={{ display: 'flex', justifyContent: 'space-between', gap: '14px', padding: '9px 14px', borderTop: '1px solid var(--line-soft)' }}>
+                        <span style={{ fontSize: '13.5px', color: 'var(--ink)' }}>{m.name}</span>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '13.5px', color: 'var(--ink)' }}>{m.passId}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
                 <ol style={{ margin: '0', padding: '0', listStyle: 'none', display: 'flex', flexDirection: 'column', border: '3px solid var(--line)', background: 'var(--surface)' }}>
                   <Stage n="✓" done>Registration details received</Stage>
                   <Stage n="✓" done>
@@ -892,14 +1023,14 @@ export function Flow({ resume }: { resume?: Resume }) {
                   <Stage n="3" now note="Soon. Nothing for you to do.">
                     We check your payment
                   </Stage>
-                  <Stage n="4">Confirmation email with your ticket</Stage>
+                  <Stage n="4">Payment verified email</Stage>
                   <Stage n="5" last>
                     On the day: show your ticket at the gate
                   </Stage>
                 </ol>
                 <div style={{ border: '3px solid var(--line)', background: 'var(--surface)', display: 'flex', flexDirection: 'column' }}>
                   {[
-                    { label: 'Pass', value: t?.name ?? '' },
+                    { label: 'Pass', value: group ? `${t?.name ?? ''} × ${size}` : (t?.name ?? '') },
                     { label: 'Technical', value: techName },
                     ...(lvl >= 2 ? [{ label: 'Workshop', value: wsName }] : []),
                     { label: 'Amount sent', value: money(amount) },
@@ -990,7 +1121,7 @@ function Ticker() {
   )
 }
 
-function StepPass({ tier, pickTier, err }: { tier: Tier | null; pickTier: (t: Tier) => void; err?: string }) {
+function StepPass({ tier, pickTier, err, children }: { tier: Tier | null; pickTier: (t: Tier) => void; err?: string; children?: ReactNode }) {
   const sel = TIERS.findIndex((x) => x.id === tier)
   const colBg = (i: number): CSSProperties => (i === sel ? { background: 'rgba(255,153,0,.16)' } : {})
   const cell: CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px 6px', borderBottom: '1px solid var(--line-soft)', borderLeft: '1px solid var(--line-soft)', fontFamily: 'var(--font-display)' }
@@ -1057,6 +1188,7 @@ function StepPass({ tier, pickTier, err }: { tier: Tier | null; pickTier: (t: Ti
         })}
       </div>
       <span role="alert" style={S.err}>{err}</span>
+      {children}
 
       <div style={S.col}>
         <div style={S.headRow}>
@@ -1135,6 +1267,22 @@ function Option({ code, level, title, on, onPick }: { code: string; level: Level
   )
 }
 
+/** A session as a compact radio card, for each person in a group. */
+function MiniOption({ code, level, title, on, onPick }: { code: string; level: Level; title: string; on: boolean; onPick: () => void }) {
+  return (
+    <button className="rf-h2" type="button" role="radio" onClick={onPick} aria-checked={on} style={{ ...optStyle(on), minHeight: '0', gap: '6px', padding: '10px 12px', boxShadow: on ? '3px 3px 0 var(--line)' : 'none' }}>
+      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', width: '100%' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '9.5px', letterSpacing: '.16em', color: 'var(--muted)' }}>{code}</span>
+          <span style={{ ...levelChip(level), fontSize: '8.5px', padding: '2px 5px' }}>{level.toUpperCase()}</span>
+        </span>
+        <span style={{ ...radioDot(on), width: '16px', height: '16px' }} />
+      </span>
+      <span style={{ fontSize: '14px', fontWeight: 500, lineHeight: '1.3', color: 'var(--ink)', textAlign: 'left' }}>{title}</span>
+    </button>
+  )
+}
+
 function Extra({ lvl, pickTier, name, note, need, up, upName }: { lvl: number; pickTier: (t: Tier) => void; name: string; note: string; need: number; up?: Tier; upName?: string }) {
   const on = lvl >= need
   return (
@@ -1159,6 +1307,8 @@ function Extra({ lvl, pickTier, name, note, need, up, upName }: { lvl: number; p
 
 type FieldProps = {
   id: FieldKey
+  /** m1-, m2-, ... for the other people in a group. */
+  prefix?: string
   label: string
   value: string
   onChange: (k: FieldKey, v: string) => void
@@ -1175,14 +1325,15 @@ type FieldProps = {
 }
 
 /** Uncontrolled, as the handoff's inputs are, so typing never fights a re-render. */
-function Field({ id, label, value, onChange, err, type = 'text', inputMode, autoComplete, placeholder, min, max, style, wrapStyle, children }: FieldProps) {
+function Field({ id, prefix = '', label, value, onChange, err, type = 'text', inputMode, autoComplete, placeholder, min, max, style, wrapStyle, children }: FieldProps) {
+  const html = `rg-${prefix}${id}`
   return (
     <div style={{ ...S.field, ...wrapStyle }}>
-      <label htmlFor={`rg-${id}`} style={S.label}>
+      <label htmlFor={html} style={S.label}>
         {label}
       </label>
       <input
-        id={`rg-${id}`}
+        id={html}
         className="inp"
         defaultValue={value}
         onChange={(e) => onChange(id, e.currentTarget.value)}
@@ -1193,13 +1344,128 @@ function Field({ id, label, value, onChange, err, type = 'text', inputMode, auto
         min={min}
         max={max}
         aria-invalid={Boolean(err)}
-        aria-describedby={`rg-${id}-e`}
+        aria-describedby={`${html}-e`}
         style={style}
       />
       {children}
-      <span id={`rg-${id}-e`} style={S.err}>
+      <span id={`${html}-e`} style={S.err}>
         {err}
       </span>
+    </div>
+  )
+}
+
+/** Just me, or a group of GROUP_MIN to GROUP_MAX on the same pass, with what each person saves. */
+function GroupPicker({ size, pickSize, full }: { size: number; pickSize: (n: number) => void; full: number }) {
+  const total = (n: number) => (full - groupOffPaise(n)) * n
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', border: '3px solid var(--line)', background: 'var(--surface)', padding: '16px', boxShadow: '6px 6px 0 var(--sh)' }}>
+      <div style={S.headRow}>
+        <span id="rg-group-l" style={S.eye}>{'// COMING AS A GROUP?'}</span>
+        <span style={S.eyeR}>Same pass for everyone</span>
+      </div>
+      <div role="group" aria-labelledby="rg-group-l" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,150px),1fr))', gap: '8px' }}>
+        {[1, ...GROUP_SIZES].map((n) => (
+          <button key={n} type="button" onClick={() => pickSize(n)} aria-pressed={size === n} style={{ ...chip(size === n, true), minHeight: '64px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px' }}>
+            <span>{n === 1 ? 'JUST ME' : `GROUP OF ${n}`}</span>
+            {n === 1 ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', fontWeight: 600 }}>{money(full)}</span> : <GroupTotal was={full * n} now={total(n)} size="13px" />}
+          </button>
+        ))}
+      </div>
+      {size > 1 ? (
+        <div role="status" style={{ display: 'flex', flexDirection: 'column', gap: '6px', border: '3px solid #9FE3B6', background: 'var(--panel-mint)', padding: '12px 14px' }}>
+          <span style={{ fontFamily: 'var(--font-display)', fontSize: '24px', lineHeight: '1.05', color: 'var(--ink)' }}>GROUP OF {size} · GROUP DISCOUNT</span>
+          <GroupTotal was={full * size} now={total(size)} size="30px" />
+          <span style={{ fontSize: '12.5px', lineHeight: '1.5', color: 'var(--body)' }}>You fill in everyone&apos;s details and pay once. Everyone gets their own pass ID and emails.</span>
+        </div>
+      ) : (
+        <span style={{ fontSize: '12.5px', lineHeight: '1.5', color: 'var(--muted)' }}>Coming with friends? Book a group pass for {GROUP_SIZES.join(' or ')} and your group gets our group discount. One person fills in everyone and pays once.</span>
+      )}
+    </div>
+  )
+}
+
+/** A group's total: the full price struck through, the discounted one in moving foil. Never the per-ticket saving. */
+function GroupTotal({ was, now, size }: { was: number; now: number; size: string }) {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: '10px', flexWrap: 'wrap' }}>
+      <s style={{ fontFamily: 'var(--font-mono)', fontSize: `calc(${size} * .62)`, color: 'var(--muted)' }}>{money(was)}</s>
+      <span
+        style={{
+          fontFamily: 'var(--font-mono)', fontWeight: '700', fontSize: size, lineHeight: '1',
+          backgroundImage: 'linear-gradient(100deg,#B86B00 0%,#FF9900 30%,#FFE7A8 45%,#FFFFFF 50%,#FFE7A8 55%,#FF9900 70%,#B86B00 100%)',
+          backgroundSize: '300% 100%', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', WebkitTextFillColor: 'transparent',
+          animation: 'rf-foil 3.2s cubic-bezier(.45,0,.55,1) infinite', filter: 'drop-shadow(1px 1px 0 var(--line))',
+        }}
+      >
+        {money(now)}
+      </span>
+    </span>
+  )
+}
+
+/** Person 2 onwards in a group: the same boxes as step three, plus their own sessions. */
+function OtherPerson({ n, p, lvl, err, onChange }: { n: number; p: Person; lvl: number; err: Record<string, string>; onChange: (c: Partial<Person> | { field: FieldKey; value: string }) => void }) {
+  const key = `m${n - 1}.`
+  const prefix = `m${n - 1}-`
+  const e = (k: string) => err[key + k]
+  const set = (k: FieldKey, v: string) => onChange({ field: k, value: v })
+  const name = [p.fields.first, p.fields.last].map((x) => x.trim()).filter(Boolean).join(' ')
+  return (
+    <div style={{ border: '3px solid var(--line)', background: 'var(--surface)', boxShadow: '6px 6px 0 var(--sh)', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '10px 14px', background: 'var(--ink-fill)', color: 'var(--bg)' }}>
+        <span style={{ fontFamily: 'var(--font-display)', fontSize: '22px', lineHeight: '1' }}>PERSON {n}</span>
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '.08em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
+      </div>
+      <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,170px),1fr))', gap: '12px' }}>
+          <Field id="first" prefix={prefix} label="First name" value={p.fields.first} onChange={set} err={e('first')} autoComplete="off" />
+          <Field id="middle" prefix={prefix} label="Middle name · optional" value={p.fields.middle} onChange={set} err={e('middle')} autoComplete="off" />
+          <Field id="last" prefix={prefix} label="Last name" value={p.fields.last} onChange={set} err={e('last')} autoComplete="off" />
+        </div>
+        <Field id="email" prefix={prefix} label="Their email" type="email" inputMode="email" value={p.fields.email} onChange={set} err={e('email')} autoComplete="off" placeholder="Their own, not yours" />
+        <Field id="phone" prefix={prefix} label="Their phone · 10 digits" type="tel" inputMode="numeric" value={p.fields.phone} onChange={set} err={e('phone')} autoComplete="off" style={{ fontFamily: 'var(--font-mono)' }} />
+        <Field id="college" prefix={prefix} label="College" value={p.fields.college} onChange={set} err={e('college')} autoComplete="off" />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,220px),1fr))', gap: '12px' }}>
+          <Field id="branch" prefix={prefix} label="Branch" value={p.fields.branch} onChange={set} err={e('branch')} autoComplete="off" />
+          <Field id="roll" prefix={prefix} label="Roll number" value={p.fields.roll} onChange={set} err={e('roll')} autoComplete="off" style={{ fontFamily: 'var(--font-mono)', textTransform: 'uppercase' }} />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <span id={`rg-${prefix}year-l`} style={S.label}>Year of study</span>
+          <div role="group" aria-labelledby={`rg-${prefix}year-l`} style={{ display: 'grid', gridTemplateColumns: 'repeat(5,minmax(0,1fr))', gap: '6px' }}>
+            {YEARS.map((y) => (
+              <button key={y} type="button" onClick={() => onChange({ year: y })} aria-pressed={p.year === y} style={chip(p.year === y)}>
+                {y}
+              </button>
+            ))}
+          </div>
+          <span role="alert" style={S.err}>{e('year')}</span>
+        </div>
+        <Field id="dob" prefix={prefix} label="Date of birth" type="date" value={p.fields.dob} onChange={set} err={e('dob')} autoComplete="off" min="1960-01-01" max="2012-12-31" style={{ fontFamily: 'var(--font-mono)' }} wrapStyle={{ maxWidth: '280px' }} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', borderTop: '2px dashed var(--line-dash)', paddingTop: '14px' }}>
+          <span style={{ fontFamily: 'var(--font-display)', fontSize: '21px', lineHeight: '1', color: 'var(--ink)' }}>{name ? `${name.toUpperCase()}'S SESSIONS` : 'THEIR SESSIONS'}</span>
+          <div style={S.col}>
+            <span id={`rg-${prefix}tech-l`} style={S.label}>Technical session · one</span>
+            <div role="radiogroup" aria-labelledby={`rg-${prefix}tech-l`} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(min(100%,210px),1fr))', gap: '8px' }}>
+              {technicalSessions.map((o) => (
+                <MiniOption key={o.id} code={o.code} level={o.level} title={o.title} on={p.tech === o.id} onPick={() => onChange({ tech: o.id })} />
+              ))}
+            </div>
+            <span role="alert" style={S.err}>{e('tech')}</span>
+          </div>
+          {lvl >= 2 ? (
+            <div style={S.col}>
+              <span id={`rg-${prefix}ws-l`} style={S.label}>Hands-on workshop · one</span>
+              <div role="radiogroup" aria-labelledby={`rg-${prefix}ws-l`} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(min(100%,210px),1fr))', gap: '8px' }}>
+                {workshops.map((o) => (
+                  <MiniOption key={o.id} code={o.code} level={o.level} title={o.title} on={p.workshop === o.id} onPick={() => onChange({ workshop: o.id })} />
+                ))}
+              </div>
+              <span role="alert" style={S.err}>{e('workshop')}</span>
+            </div>
+          ) : null}
+        </div>
+      </div>
     </div>
   )
 }

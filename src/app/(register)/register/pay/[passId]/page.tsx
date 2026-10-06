@@ -28,7 +28,8 @@ export default async function PayPage({ params }: PageProps<'/register/pay/[pass
   if (passId !== raw) redirect(`/register/pay/${passId}`)
 
   const a = await getAttendee(passId)
-  if (!a) notFound()
+  // A group member never pays: the leader's link is the one that works.
+  if (!a || (a.groupId && a.groupId !== a.passId)) notFound()
   const payable = a.state === 'REJECTED' || (a.state === 'AWAITING_PAYMENT' && !lapsed(a.holdUntil))
   if (!payable) notFound()
 
@@ -36,7 +37,7 @@ export default async function PayPage({ params }: PageProps<'/register/pay/[pass
     hold: {
       passId: a.passId,
       holdEnds: a.state === 'AWAITING_PAYMENT' ? Date.parse(a.holdUntil!) : 0,
-      amountPaise: a.amountPaise,
+      amountPaise: a.groupTotalPaise ?? a.amountPaise,
       payee: null,
       link: payment.live ? upiLink(payment.live, a.passId) : null,
     },

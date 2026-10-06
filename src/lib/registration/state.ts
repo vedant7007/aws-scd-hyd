@@ -1,8 +1,8 @@
 import { DeleteCommand, GetCommand, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import { ddb, tableName } from '../db/client'
 import { gsi1, keys, normaliseEmail } from '../db/keys'
-import { getAttendee } from '../db/queries'
-import { claimSeat, failedIndexes, releaseSeat, transactWithRetry, type TransactItem } from '../db/tx'
+import { getAttendee, getSessions } from '../db/queries'
+import { claimSeat, claimSeats, failedIndexes, releaseSeat, releaseSeats, transactWithRetry, type TransactItem } from '../db/tx'
 import type { Attendee, CrewAudit, RegistrationState, VerificationLog } from '../db/types'
 
 /**
@@ -134,6 +134,95 @@ export async function createHold(passId: string, rec: HoldRecord): Promise<HoldO
   }
 }
 
+/* ---- group passes ---------------------------------------------------------- */
+
+/** How many seats each session needs across these people, so each counter is touched once. */
+function tally(people: Pick<Attendee, 'technicalSession' | 'workshop'>[]): [string, number][] {
+  const m = new Map<string, number>()
+  for (const p of people) for (const s of seatsOf(p)) m.set(s, (m.get(s) ?? 0) + 1)
+  return [...m]
+}
+
+/** The leader's record and every member's that still exists. A record outside a group is a group of one. */
+export async function groupOf(a: Attendee): Promise<Attendee[]> {
+  if (!a.groupId) return [a]
+  const leader = a.groupId === a.passId ? a : await getAttendee(a.groupId)
+  if (!leader) return [a]
+  const members = await Promise.all((leader.groupMembers ?? []).map((id) => getAttendee(id)))
+  return [leader, ...members.filter((m): m is Attendee => Boolean(m))]
+}
+
+/** A member of a group, not its leader: they never pay, submit or get verified on their own. */
+export const isGroupMember = (a: Pick<Attendee, 'groupId' | 'passId'>) => Boolean(a.groupId) && a.groupId !== a.passId
+
+export type GroupHoldOutcome =
+  | { ok: true; attendees: Attendee[] }
+  | { ok: false; reason: 'full'; sessionId: string }
+  | { ok: false; reason: 'id-collision' }
+
+/**
+ * Every record of a group and every seat they need, in ONE transaction:
+ * if any session cannot take them all, nobody is held and nothing is
+ * written. recs[0] is the leader.
+ */
+export async function createGroupHold(recs: { passId: string; rec: HoldRecord }[]): Promise<GroupHoldOutcome> {
+  const at = now()
+  const attendees: Attendee[] = recs.map(({ passId, rec }) => ({
+    ...keys.attendee(passId),
+    ...gsi1.attendeeByPass(passId),
+    ...rec,
+    email: normaliseEmail(rec.email),
+    passId,
+    state: 'AWAITING_PAYMENT',
+    createdAt: at,
+  }))
+  const counts = tally(attendees)
+  const sessions = await getSessions()
+  const capacity = new Map(sessions.filter((x) => x).map((x) => [x!.sessionId, x!.sellableCapacity ?? null]))
+  for (const [sid, n] of counts) {
+    const cap = capacity.get(sid) ?? null
+    if (cap !== null && cap - n < 0) return { ok: false, reason: 'full', sessionId: sid }
+  }
+  const puts: TransactItem[] = attendees.map((item) => ({ Put: { TableName: table(), Item: item, ConditionExpression: 'attribute_not_exists(PK)' } }))
+  try {
+    await transactWithRetry([...puts, ...counts.map(([sid, n]) => claimSeats(sid, n, capacity.get(sid) ?? null))], 14)
+    return { ok: true, attendees }
+  } catch (err) {
+    const failed = failedIndexes(err)
+    if (!failed.length) throw err
+    const full = failed.find((i) => i >= puts.length)
+    if (full !== undefined) return { ok: false, reason: 'full', sessionId: counts[full - puts.length]![0] }
+    return { ok: false, reason: 'id-collision' }
+  }
+}
+
+/**
+ * Drops a group's live hold so the browser that made it can make a fresh
+ * one after going back to edit: every record and every seat, in one
+ * transaction, conditional on the state and on the submission key. False if
+ * anything moved underneath.
+ */
+export async function dropGroupHold(leader: Attendee, keyHash: string): Promise<boolean> {
+  const all = await groupOf(leader)
+  const items: TransactItem[] = all.map((a) => ({
+    Delete: {
+      TableName: table(),
+      Key: keys.attendee(a.passId),
+      ConditionExpression: '#state = :awaiting AND submissionKeyHash = :owner',
+      ExpressionAttributeNames: { '#state': 'state' },
+      ExpressionAttributeValues: { ':awaiting': 'AWAITING_PAYMENT', ':owner': keyHash },
+    },
+  }))
+  items.push(...tally(all).map(([sid, n]) => releaseSeats(sid, n)))
+  try {
+    await transactWithRetry(items)
+    return true
+  } catch (err) {
+    if (failedIndexes(err).length) return false
+    throw err
+  }
+}
+
 /**
  * The student went back and changed something, or came back after the clock
  * ran out, on a hold this browser already made. The record is updated in
@@ -200,6 +289,8 @@ export type UtrOutcome = { ok: true; attendee: Attendee } | { ok: false; reason:
  */
 export async function submitUtr(passId: string, utr: string, screenshotKey: string): Promise<UtrOutcome> {
   const at = now()
+  const before = await getAttendee(passId)
+  if (!before || isGroupMember(before)) return { ok: false, reason: 'wrong-state' }
   const items: TransactItem[] = [
     transitionItem(passId, ['AWAITING_PAYMENT', 'REJECTED'], 'PENDING_VERIFICATION', {
       set: { utr, utrSubmittedAt: at, screenshotKey },
@@ -213,6 +304,10 @@ export async function submitUtr(passId: string, utr: string, screenshotKey: stri
         ExpressionAttributeValues: { ':me': passId },
       },
     },
+    // A group's members move with the leader's payment.
+    ...(before.groupMembers ?? []).map((m) =>
+      transitionItem(m, ['AWAITING_PAYMENT', 'REJECTED'], 'PENDING_VERIFICATION', { set: { utrSubmittedAt: at }, remove: ['holdUntil', 'rejectionReason'] }),
+    ),
   ]
   try {
     await transactWithRetry(items)
@@ -222,31 +317,39 @@ export async function submitUtr(passId: string, utr: string, screenshotKey: stri
   } catch (err) {
     const failed = failedIndexes(err)
     if (failed.includes(1)) return { ok: false, reason: 'utr-used' }
-    if (failed.includes(0)) return { ok: false, reason: 'wrong-state' }
+    if (failed.length) return { ok: false, reason: 'wrong-state' }
     throw err
   }
 }
 
-export type AdminOutcome = { ok: true; attendee: Attendee } | { ok: false; reason: 'wrong-state' }
+/** members: the rest of a group, moved in the same transaction; empty outside a group. */
+export type AdminOutcome = { ok: true; attendee: Attendee; members: Attendee[] } | { ok: false; reason: 'wrong-state' }
 
 /** PENDING_VERIFICATION to VERIFIED. The admin matched the UTR against the statement. */
 export async function verify(passId: string, by: string): Promise<AdminOutcome> {
   const at = now()
   const before = await getAttendee(passId)
-  if (!before || before.state !== 'PENDING_VERIFICATION') return { ok: false, reason: 'wrong-state' }
+  if (!before || before.state !== 'PENDING_VERIFICATION' || isGroupMember(before)) return { ok: false, reason: 'wrong-state' }
+  const set = { verifiedBy: by, verifiedAt: at, paymentId: `UTR:${before.utr ?? ''}`, paidAt: at }
   try {
     await transactWithRetry([
-      transitionItem(passId, 'PENDING_VERIFICATION', 'VERIFIED', {
-        set: { verifiedBy: by, verifiedAt: at, paymentId: `UTR:${before.utr ?? ''}`, paidAt: at },
-      }),
+      transitionItem(passId, 'PENDING_VERIFICATION', 'VERIFIED', { set }),
       logItem({ passId, action: 'verify', utr: before.utr, by, at }),
+      ...(before.groupMembers ?? []).map((m) => transitionItem(m, 'PENDING_VERIFICATION', 'VERIFIED', { set })),
     ])
   } catch (err) {
     if (failedIndexes(err).length) return { ok: false, reason: 'wrong-state' }
     throw err
   }
+  return settled(passId, before)
+}
+
+/** The leader and the rest of the group as they now stand. */
+async function settled(passId: string, before: Attendee): Promise<AdminOutcome> {
   const attendee = await getAttendee(passId)
-  return attendee ? { ok: true, attendee } : { ok: false, reason: 'wrong-state' }
+  if (!attendee) return { ok: false, reason: 'wrong-state' }
+  const members = await Promise.all((before.groupMembers ?? []).map((m) => getAttendee(m)))
+  return { ok: true, attendee, members: members.filter((m): m is Attendee => Boolean(m)) }
 }
 
 /**
@@ -257,18 +360,18 @@ export async function verify(passId: string, by: string): Promise<AdminOutcome> 
 export async function reject(passId: string, by: string, reason: string): Promise<AdminOutcome> {
   const at = now()
   const before = await getAttendee(passId)
-  if (!before || before.state !== 'PENDING_VERIFICATION') return { ok: false, reason: 'wrong-state' }
+  if (!before || before.state !== 'PENDING_VERIFICATION' || isGroupMember(before)) return { ok: false, reason: 'wrong-state' }
   try {
     await transactWithRetry([
       transitionItem(passId, 'PENDING_VERIFICATION', 'REJECTED', { set: { rejectionReason: reason, verifiedBy: by, verifiedAt: at } }),
       logItem({ passId, action: 'reject', utr: before.utr, by, at, reason }),
+      ...(before.groupMembers ?? []).map((m) => transitionItem(m, 'PENDING_VERIFICATION', 'REJECTED', { set: { verifiedBy: by, verifiedAt: at } })),
     ])
   } catch (err) {
     if (failedIndexes(err).length) return { ok: false, reason: 'wrong-state' }
     throw err
   }
-  const attendee = await getAttendee(passId)
-  return attendee ? { ok: true, attendee } : { ok: false, reason: 'wrong-state' }
+  return settled(passId, before)
 }
 
 /**
@@ -309,32 +412,34 @@ export async function abandon(passId: string, at = now()): Promise<{ abandoned: 
  * state not having moved since it was read. Its log goes after; a failure
  * there only leaves history behind. No email.
  */
-export async function deleteRegistration(passId: string): Promise<{ ok: true; attendee: Attendee } | { ok: false }> {
-  const before = await getAttendee(passId)
-  if (!before) return { ok: false }
-  const items: TransactItem[] = [
-    {
-      Delete: {
-        TableName: table(),
-        Key: keys.attendee(passId),
-        ConditionExpression: '#state = :was',
-        ExpressionAttributeNames: { '#state': 'state' },
-        ExpressionAttributeValues: { ':was': before.state },
-      },
+export async function deleteRegistration(passId: string): Promise<{ ok: true; attendee: Attendee; deleted: string[] } | { ok: false }> {
+  const found = await getAttendee(passId)
+  if (!found) return { ok: false }
+  // A group is one payment: deleting anyone in it deletes the whole group.
+  const all = await groupOf(found)
+  const items: TransactItem[] = all.map((a) => ({
+    Delete: {
+      TableName: table(),
+      Key: keys.attendee(a.passId),
+      ConditionExpression: '#state = :was',
+      ExpressionAttributeNames: { '#state': 'state' },
+      ExpressionAttributeValues: { ':was': a.state },
     },
-    ...(before.utr ? [{ Delete: { TableName: table(), Key: keys.utr(before.utr) } }] : []),
-    // An abandoned record already gave its seats back.
-    ...(before.state === 'ABANDONED' ? [] : seatsOf(before).map(releaseSeat)),
-  ]
+  }))
+  for (const a of all) if (a.utr) items.push({ Delete: { TableName: table(), Key: keys.utr(a.utr) } })
+  // An abandoned record already gave its seats back.
+  items.push(...tally(all.filter((a) => a.state !== 'ABANDONED')).map(([sid, n]) => (n === 1 ? releaseSeat(sid) : releaseSeats(sid, n))))
   try {
     await transactWithRetry(items)
   } catch (err) {
     if (failedIndexes(err).length) return { ok: false }
     throw err
   }
-  const rest = await ddb.send(new QueryCommand({ TableName: table(), KeyConditionExpression: 'PK = :pk', ExpressionAttributeValues: { ':pk': keys.attendee(passId).PK } }))
-  for (const i of rest.Items ?? []) await ddb.send(new DeleteCommand({ TableName: table(), Key: { PK: i.PK, SK: i.SK } }))
-  return { ok: true, attendee: before }
+  for (const a of all) {
+    const rest = await ddb.send(new QueryCommand({ TableName: table(), KeyConditionExpression: 'PK = :pk', ExpressionAttributeValues: { ':pk': keys.attendee(a.passId).PK } }))
+    for (const i of rest.Items ?? []) await ddb.send(new DeleteCommand({ TableName: table(), Key: { PK: i.PK, SK: i.SK } }))
+  }
+  return { ok: true, attendee: found, deleted: all.map((a) => a.passId) }
 }
 
 /** Records that an email was accepted. First write wins, so a retried send never double counts. */

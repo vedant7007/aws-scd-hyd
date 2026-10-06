@@ -72,3 +72,41 @@ export function releaseSeat(sessionId: string): TransactItem {
     },
   }
 }
+
+/**
+ * n seats in one session at once, for a group: a transaction may touch an
+ * item only once, so four people in one session are one claim of four.
+ * DynamoDB conditions cannot add, so the caller passes the ceiling it read
+ * (null for an unsized session) and the condition pins it: if an admin
+ * changes the ceiling in between, the claim fails and nothing is written.
+ */
+export function claimSeats(sessionId: string, n: number, capacity: number | null): TransactItem {
+  const sized = capacity !== null
+  return {
+    Update: {
+      TableName: tableName(),
+      Key: keys.session(sessionId),
+      UpdateExpression: 'SET seatsTaken = if_not_exists(seatsTaken, :zero) + :n, sessionId = :sid',
+      ConditionExpression: sized
+        ? '#capacity = :cap AND (attribute_not_exists(seatsTaken) OR seatsTaken <= :room)'
+        : 'attribute_not_exists(#capacity) OR attribute_type(#capacity, :null)',
+      ExpressionAttributeNames: { '#capacity': 'sellableCapacity' },
+      ExpressionAttributeValues: sized
+        ? { ':n': n, ':zero': 0, ':sid': sessionId, ':cap': capacity, ':room': capacity - n }
+        : { ':n': n, ':zero': 0, ':sid': sessionId, ':null': 'NULL' },
+    },
+  }
+}
+
+/** n seats back at once. Conditional, so a count can never go below zero. */
+export function releaseSeats(sessionId: string, n: number): TransactItem {
+  return {
+    Update: {
+      TableName: tableName(),
+      Key: keys.session(sessionId),
+      UpdateExpression: 'SET seatsTaken = seatsTaken - :n',
+      ConditionExpression: 'seatsTaken >= :n',
+      ExpressionAttributeValues: { ':n': n },
+    },
+  }
+}
