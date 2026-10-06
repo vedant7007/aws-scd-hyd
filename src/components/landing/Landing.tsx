@@ -132,6 +132,18 @@ export function Landing({ registrationOpen, doors, prices }: Props) {
 
       <main id="main">
         <section style={{position:'relative',zIndex:'10',padding:'clamp(28px,7vh,80px) clamp(14px,4vw,40px) clamp(30px,7vh,70px)',maxWidth:'1240px',margin:'0 auto',display:'flex',flexDirection:'column',gap:'clamp(22px,4vh,40px)'}}>
+          {registrationOpen ? (
+            <Link href="/register?group=4" className="gp-banner" aria-label="Group passes are live. Register a group of 4 now">
+              <span className="gp-banner-in">
+                <span className="gp-banner-tag"><span className="gp-dot" aria-hidden="true"></span>NEW</span>
+                <span className="gp-banner-text">
+                  <span className="gp-banner-title">GROUP PASSES ARE LIVE</span>
+                  <span className="gp-banner-sub">Come as 4, pay one total with a group discount. Everyone gets their own pass.</span>
+                </span>
+                <span className="gp-banner-cta">{'REGISTER NOW >'}</span>
+              </span>
+            </Link>
+          ) : null}
           <div data-in="1" style={{display:'flex',flexWrap:'wrap',alignItems:'center',gap:'8px',fontFamily:'var(--font-mono)',fontSize:'clamp(9.5px,2.5vw,11.5px)',letterSpacing:'.2em',textTransform:'uppercase'}}>
             <span style={{background:'#9FE3B6',color:'var(--on-fill)',padding:'5px 8px',fontWeight:'600'}}>LOADED: /EVENT/SCD-HYD-2026</span>
             <span style={{color:'var(--muted)'}}>READY<span style={{animation:'bm-blink 1s steps(1) infinite',color:'var(--mint-ink)'}}>_</span></span>

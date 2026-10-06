@@ -236,6 +236,11 @@ export function Flow({ resume }: { resume?: Resume }) {
     } catch {
       // Storage blocked or garbled: start clean.
     }
+    // Arriving from the group pass banner on a fresh tab: Group of 4 already picked.
+    if (!key.current && new URLSearchParams(window.location.search).get('group') === String(GROUP_SIZES[0])) {
+      setSize(GROUP_SIZES[0]!)
+      setOthers(Array.from({ length: GROUP_SIZES[0]! - 1 }, () => ({ fields: EMPTY, year: '' as const, tech: '', workshop: '' })))
+    }
     if (!key.current) key.current = newKey()
     setLoaded(true)
   }, [resume])
@@ -614,7 +619,7 @@ export function Flow({ resume }: { resume?: Resume }) {
           <div style={{ flex: '1 1 440px', minWidth: '0', display: 'flex', flexDirection: 'column', gap: 'clamp(18px,4vh,26px)' }}>
             {inForm && step === 1 ? (
               <StepPass tier={tier} pickTier={pickTier} err={err.tier}>
-                {tier ? <GroupPicker size={size} pickSize={pickSize} full={price(tier)} /> : null}
+                <GroupPicker size={size} pickSize={pickSize} full={tier ? price(tier) : null} />
               </StepPass>
             ) : null}
 
@@ -1127,6 +1132,7 @@ function StepPass({ tier, pickTier, err, children }: { tier: Tier | null; pickTi
   const cell: CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px 6px', borderBottom: '1px solid var(--line-soft)', borderLeft: '1px solid var(--line-soft)', fontFamily: 'var(--font-display)' }
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+      {children}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,230px),1fr))', gap: 'clamp(16px,2vw,22px)', alignItems: 'stretch' }}>
         {TIERS.map((x, idx) => {
           const on = tier === x.id
@@ -1188,7 +1194,6 @@ function StepPass({ tier, pickTier, err, children }: { tier: Tier | null; pickTi
         })}
       </div>
       <span role="alert" style={S.err}>{err}</span>
-      {children}
 
       <div style={S.col}>
         <div style={S.headRow}>
@@ -1356,8 +1361,8 @@ function Field({ id, prefix = '', label, value, onChange, err, type = 'text', in
 }
 
 /** Just me, or a group of GROUP_MIN to GROUP_MAX on the same pass, with what each person saves. */
-function GroupPicker({ size, pickSize, full }: { size: number; pickSize: (n: number) => void; full: number }) {
-  const total = (n: number) => (full - groupOffPaise(n)) * n
+function GroupPicker({ size, pickSize, full }: { size: number; pickSize: (n: number) => void; full: number | null }) {
+  const total = (n: number) => ((full ?? 0) - groupOffPaise(n)) * n
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', border: '3px solid var(--line)', background: 'var(--surface)', padding: '16px', boxShadow: '6px 6px 0 var(--sh)' }}>
       <div style={S.headRow}>
@@ -1368,14 +1373,20 @@ function GroupPicker({ size, pickSize, full }: { size: number; pickSize: (n: num
         {[1, ...GROUP_SIZES].map((n) => (
           <button key={n} type="button" onClick={() => pickSize(n)} aria-pressed={size === n} style={{ ...chip(size === n, true), minHeight: '64px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px' }}>
             <span>{n === 1 ? 'JUST ME' : `GROUP OF ${n}`}</span>
-            {n === 1 ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', fontWeight: 600 }}>{money(full)}</span> : <GroupTotal was={full * n} now={total(n)} size="13px" />}
+            {full === null ? (
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: 600 }}>{n === 1 ? 'ONE PERSON' : 'GROUP DISCOUNT'}</span>
+            ) : n === 1 ? (
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', fontWeight: 600 }}>{money(full)}</span>
+            ) : (
+              <GroupTotal was={full * n} now={total(n)} size="13px" />
+            )}
           </button>
         ))}
       </div>
       {size > 1 ? (
         <div role="status" style={{ display: 'flex', flexDirection: 'column', gap: '6px', border: '3px solid #9FE3B6', background: 'var(--panel-mint)', padding: '12px 14px' }}>
           <span style={{ fontFamily: 'var(--font-display)', fontSize: '24px', lineHeight: '1.05', color: 'var(--ink)' }}>GROUP OF {size} · GROUP DISCOUNT</span>
-          <GroupTotal was={full * size} now={total(size)} size="30px" />
+          {full === null ? <span style={{ fontSize: '13.5px', fontWeight: 600, color: 'var(--ink)' }}>Now pick your pass below to see your group total.</span> : <GroupTotal was={full * size} now={total(size)} size="30px" />}
           <span style={{ fontSize: '12.5px', lineHeight: '1.5', color: 'var(--body)' }}>You fill in everyone&apos;s details and pay once. Everyone gets their own pass ID and emails.</span>
         </div>
       ) : (
