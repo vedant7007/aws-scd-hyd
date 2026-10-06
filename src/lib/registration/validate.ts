@@ -192,7 +192,7 @@ export function validateGroupHold(body: unknown): { group: GroupInput; submissio
   if (!tier) return { error: { field: 'tier', message: 'Pick a pass to continue.' } }
   const list = b.members
   if (!Array.isArray(list) || list.length < GROUP_MIN || list.length > GROUP_MAX) {
-    return { error: { field: 'group', message: `A group is ${GROUP_MIN} to ${GROUP_MAX} people.` } }
+    return { error: { field: 'group', message: GROUP_MIN === GROUP_MAX ? `A group pass is exactly ${GROUP_MIN} people.` : `A group is ${GROUP_MIN} to ${GROUP_MAX} people.` } }
   }
 
   const members: PersonInput[] = []
