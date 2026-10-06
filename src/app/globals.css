@@ -868,4 +868,13 @@ body:has(.rg-grid) .page-bg {
 .gp-banner-title { font-family: var(--font-display); font-size: clamp(22px,4.6vw,30px); line-height: 1; }
 .gp-banner-sub { font-size: 13.5px; line-height: 1.45; color: var(--body); }
 .gp-banner-cta { flex: none; font-family: var(--font-display); font-size: clamp(18px,4vw,22px); background: #FF9900; color: #14161C; padding: 9px 16px; box-shadow: 4px 4px 0 var(--line); }
-@media (prefers-reduced-motion: reduce) { .gp-banner, .gp-dot { animation: none; } }
+.gp-overlay { position: fixed; inset: 0; z-index: 90; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(20,22,28,.55); animation: gp-fade .2s ease-out; }
+.gp-pop { width: min(100%,440px); animation: gp-border 4s linear infinite, gp-pulse 2.4s ease-in-out infinite, rg-pop .35s cubic-bezier(.2,.9,.3,1.2); }
+.gp-pop:hover { transform: none; }
+.gp-pop-in { position: relative; flex-direction: column; align-items: flex-start; gap: 12px; padding: 22px 20px 20px; }
+.gp-pop .gp-banner-title { font-size: clamp(28px,8vw,36px); }
+.gp-pop .gp-banner-sub { font-size: 14.5px; }
+.gp-pop .gp-banner-cta { align-self: stretch; text-align: center; text-decoration: none; margin-top: 4px; }
+.gp-close { position: absolute; top: 10px; right: 10px; width: 40px; height: 40px; border: 2px solid var(--line); background: var(--surface); color: var(--ink); font-size: 16px; cursor: pointer; }
+@keyframes gp-fade { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .gp-banner, .gp-dot, .gp-overlay, .gp-pop { animation: none; } }

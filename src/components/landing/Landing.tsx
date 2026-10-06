@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { useEffect, useRef, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import type { Tier } from '@/lib/db/types'
 import { formatCount } from '@/content/formats'
 import { passes } from '@/content/passes'
@@ -117,6 +117,7 @@ export function Landing({ registrationOpen, doors, prices }: Props) {
         <div style={{height:'100%',background:'#FF9900',transformOrigin:'0 50%',transform:'scaleX(calc(var(--prog)))',boxShadow:'0 0 0 0 #FF9900'}}></div>
       </div>
 
+      {registrationOpen ? <GroupPromo /> : null}
       <header style={{position:'sticky',top:'8px',zIndex:'40',display:'flex',alignItems:'center',justifyContent:'space-between',gap:'10px',flexWrap:'wrap',padding:'12px clamp(14px,5vw,56px)',background:'var(--surface)',borderBottom:'3px solid var(--line)'}}>
         <span style={{fontFamily:'var(--font-display)',fontSize:'clamp(24px,6vw,32px)',letterSpacing:'.02em',color:'var(--ink)'}}>SCD<span style={{color:'var(--amber-ink)'}}>.</span>HYD<span style={{color:'var(--mint-ink)'}}>26</span></span>
         <nav style={{display:'flex',alignItems:'center',flexWrap:'wrap',justifyContent:'flex-end',gap:'clamp(7px,2vw,20px)',minWidth:'0',fontFamily:'var(--font-display)',fontSize:'clamp(16.3px,4vw,20px)'}}>
@@ -132,18 +133,6 @@ export function Landing({ registrationOpen, doors, prices }: Props) {
 
       <main id="main">
         <section style={{position:'relative',zIndex:'10',padding:'clamp(28px,7vh,80px) clamp(14px,4vw,40px) clamp(30px,7vh,70px)',maxWidth:'1240px',margin:'0 auto',display:'flex',flexDirection:'column',gap:'clamp(22px,4vh,40px)'}}>
-          {registrationOpen ? (
-            <Link href="/register?group=4" className="gp-banner" aria-label="Group passes are live. Register a group of 4 now">
-              <span className="gp-banner-in">
-                <span className="gp-banner-tag"><span className="gp-dot" aria-hidden="true"></span>NEW</span>
-                <span className="gp-banner-text">
-                  <span className="gp-banner-title">GROUP PASSES ARE LIVE</span>
-                  <span className="gp-banner-sub">Come as 4, pay one total with a group discount. Everyone gets their own pass.</span>
-                </span>
-                <span className="gp-banner-cta">{'REGISTER NOW >'}</span>
-              </span>
-            </Link>
-          ) : null}
           <div data-in="1" style={{display:'flex',flexWrap:'wrap',alignItems:'center',gap:'8px',fontFamily:'var(--font-mono)',fontSize:'clamp(9.5px,2.5vw,11.5px)',letterSpacing:'.2em',textTransform:'uppercase'}}>
             <span style={{background:'#9FE3B6',color:'var(--on-fill)',padding:'5px 8px',fontWeight:'600'}}>LOADED: /EVENT/SCD-HYD-2026</span>
             <span style={{color:'var(--muted)'}}>READY<span style={{animation:'bm-blink 1s steps(1) infinite',color:'var(--mint-ink)'}}>_</span></span>
@@ -803,6 +792,62 @@ export function Landing({ registrationOpen, doors, prices }: Props) {
           </div>
         </div>
       </footer>
+    </div>
+  )
+}
+
+/**
+ * The group pass pop-up: once per visit, a moment after the page loads.
+ * Closes on the cross, Escape or a click outside; sessionStorage remembers,
+ * so it never comes back while someone browses.
+ */
+const PROMO_SEEN = 'scd-group-promo'
+
+function GroupPromo() {
+  const [open, setOpen] = useState(false)
+  const closeRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    let seen = false
+    try {
+      seen = sessionStorage.getItem(PROMO_SEEN) === '1'
+    } catch {
+      // Storage blocked: show it, it still closes.
+    }
+    if (seen) return
+    const t = setTimeout(() => setOpen(true), 900)
+    return () => clearTimeout(t)
+  }, [])
+
+  const close = () => {
+    setOpen(false)
+    try {
+      sessionStorage.setItem(PROMO_SEEN, '1')
+    } catch {
+      // Storage blocked: it may show again on the next load, which is fine.
+    }
+  }
+
+  useEffect(() => {
+    if (!open) return
+    closeRef.current?.focus()
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close()
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open])
+
+  if (!open) return null
+  return (
+    <div className="gp-overlay" onClick={close}>
+      <div role="dialog" aria-modal="true" aria-labelledby="gp-title" className="gp-banner gp-pop" onClick={(e) => e.stopPropagation()}>
+        <div className="gp-banner-in gp-pop-in">
+          <button ref={closeRef} type="button" className="gp-close" onClick={close} aria-label="Close">✕</button>
+          <span className="gp-banner-tag"><span className="gp-dot" aria-hidden="true"></span>NEW</span>
+          <span id="gp-title" className="gp-banner-title">GROUP PASSES ARE LIVE</span>
+          <span className="gp-banner-sub">Come as 4 and pay one total with a group discount. One person fills in everyone, and everyone gets their own pass.</span>
+          <Link href="/register?group=4" className="gp-banner-cta" onClick={close}>{'REGISTER NOW >'}</Link>
+        </div>
+      </div>
     </div>
   )
 }
