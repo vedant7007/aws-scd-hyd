@@ -514,6 +514,21 @@ export function Landing({ registrationOpen, doors, prices }: Props) {
           </div>
         </section>
 
+        <section id="attending" style={{position:'relative',zIndex:'10',borderTop:'3px solid var(--line)'}}>
+          <div style={{maxWidth:'1240px',margin:'0 auto',padding:'clamp(36px,7vh,72px) clamp(18px,5vw,56px)'}}>
+            <Link href="/attending" className="gp-banner" style={{display:'block'}}>
+              <span className="gp-banner-in">
+                <Image src="/assets/attending-thumb.jpg" alt="" width={200} height={300} sizes="84px" unoptimized style={{width:'84px',height:'auto',display:'block',border:'2px solid var(--line)'}} />
+                <span className="gp-banner-text">
+                  <span className="gp-banner-title">I&apos;M ATTENDING</span>
+                  <span className="gp-banner-sub">Coming to the event? Put your photo in our frame and share it on LinkedIn, Instagram or WhatsApp.</span>
+                </span>
+                <span className="gp-banner-cta">{'MAKE YOURS >'}</span>
+              </span>
+            </Link>
+          </div>
+        </section>
+
         <section id="speakers" style={{position:'relative',zIndex:'10',borderTop:'4px solid var(--line)',background:'var(--panel)'}}>
           <div style={{maxWidth:'1240px',margin:'0 auto',padding:'clamp(52px,10vh,124px) clamp(18px,5vw,56px)'}}>
             <div data-rv="1" style={{display:'flex',alignItems:'flex-end',justifyContent:'space-between',gap:'14px',flexWrap:'wrap',paddingBottom:'20px'}}>

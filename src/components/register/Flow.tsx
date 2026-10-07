@@ -1048,6 +1048,13 @@ export function Flow({ resume }: { resume?: Resume }) {
                     </div>
                   ))}
                 </div>
+                <Link href="/attending" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', border: '3px solid var(--line)', background: 'var(--panel-mint)', padding: '14px 16px', color: 'var(--ink)' }}>
+                  <span style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                    <span style={{ fontFamily: 'var(--font-display)', fontSize: '22px', lineHeight: '1' }}>MAKE YOUR &quot;I&apos;M ATTENDING&quot; POST</span>
+                    <span style={{ fontSize: '13px', color: 'var(--body)' }}>Your photo in the event frame, ready for LinkedIn and Instagram.</span>
+                  </span>
+                  <span aria-hidden="true" style={{ fontFamily: 'var(--font-display)', fontSize: '24px' }}>{'>'}</span>
+                </Link>
                 <p style={{ margin: '0', fontSize: '12.5px', lineHeight: '1.6', color: 'var(--muted)' }}>
                   Refreshing will not change this page. The next thing you hear from us is an email. Waiting a while? Check spam, then write to <a href={`mailto:${CONTACT}`}>{CONTACT}</a> with your Pass ID.
                 </p>

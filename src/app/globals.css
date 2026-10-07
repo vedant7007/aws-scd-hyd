@@ -878,3 +878,13 @@ body:has(.rg-grid) .page-bg {
 .gp-close { position: absolute; top: 10px; right: 10px; width: 40px; height: 40px; border: 2px solid var(--line); background: var(--surface); color: var(--ink); font-size: 16px; cursor: pointer; }
 @keyframes gp-fade { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .gp-banner, .gp-dot, .gp-overlay, .gp-pop { animation: none; } }
+
+/* The "I'm attending" picture maker. The add-photo button sits exactly over the frame's photo window (309,621 406x541 of 1024x1535). */
+.att-stage { position: relative; width: 100%; max-width: 420px; margin: 0 auto; border: 3px solid var(--line); box-shadow: 6px 6px 0 var(--sh); background: var(--surface); }
+.att-canvas { display: block; width: 100%; height: auto; touch-action: none; }
+.att-canvas[data-ready] { cursor: grab; }
+.att-canvas[data-ready]:active { cursor: grabbing; }
+.att-add { position: absolute; left: 30.18%; top: 40.46%; width: 39.65%; height: 35.24%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; border: 0; background: transparent; color: white; font-family: var(--font-display); font-size: clamp(16px,4.4vw,22px); cursor: pointer; animation: gp-blink 1.6s ease-in-out infinite; }
+.att-add-plus { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border: 3px solid currentColor; font-size: 30px; line-height: 1; }
+.att-range { width: 100%; accent-color: var(--orange); }
+@media (prefers-reduced-motion: reduce) { .att-add { animation: none; } }

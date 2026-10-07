@@ -237,6 +237,9 @@ Map:   ${venue.directionsUrl}
 
 We will email you again before the event with everything you need at the gate.
 
+Tell your friends you're coming: put your photo in our "I'm attending" frame and share it.
+${link('/attending')}
+
 REFUNDS
 ${REFUND_POLICY}
 
@@ -262,6 +265,8 @@ ${footerText}`,
           '#E6F5EB',
         ),
         p('We will email you again before the event with everything you need at the gate.'),
+        p('Tell your friends you&rsquo;re coming: put your photo in our &ldquo;I&rsquo;m attending&rdquo; frame and share it on LinkedIn or Instagram.'),
+        button(link('/attending'), 'MAKE MY POST &rarr;'),
         card(`${eyebrow('Refunds', MUTED)}${small(esc(REFUND_POLICY))}`, CREAM, '#E3DDD4'),
       ].join('\n'),
     }),

@@ -77,6 +77,9 @@ export default async function PassPage({ params }: PageProps<'/pass/[passId]'>) 
       <div className="card-dash flex flex-col gap-2.5 px-4 py-4">
         <span className="lbl eye-amber">On the day</span>
         <p className="copy">Doors at {doorsLabel}. The pin above is the gate.</p>
+        <Link href="/attending" className="btn btn-mint self-start">
+          MAKE YOUR &quot;I&apos;M ATTENDING&quot; POST
+        </Link>
         <p className="copy">Turn your screen brightness up before you reach the volunteer. Sunlight kills scanner reads.</p>
         <p className="copy">Lost this link? It is in your confirmation email.</p>
         <p className="copy">Sessions are subject to change; if yours does, we will email you. If you need a change, write to {REPLY_TO} quoting your pass ID.</p>
