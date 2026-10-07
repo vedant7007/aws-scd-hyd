@@ -19,6 +19,22 @@ const H = 1535
 const WIN = { x: 309, y: 621, w: 406, h: 541, r: 22 }
 const FILE_NAME = 'im-attending-aws-scd-hyderabad-2026.jpg'
 
+type Platform = 'linkedin' | 'instagram' | 'whatsapp' | 'x' | 'facebook'
+
+/**
+ * Where each button goes. No platform lets a web page attach a picture to a
+ * post, so the picture is saved and the caption copied first, then the
+ * platform opens with whatever it can prefill. On a phone, Instagram and
+ * WhatsApp go through the share sheet instead, which does carry the picture.
+ */
+const PLATFORMS: { id: Platform; name: string; url: (text: string, page: string) => string; how: string }[] = [
+  { id: 'linkedin', name: 'LinkedIn', url: (t) => `https://www.linkedin.com/feed/?shareActive=true&text=${encodeURIComponent(t)}`, how: 'Your post is open with the caption. Click the image icon and add the picture you just saved.' },
+  { id: 'instagram', name: 'Instagram', url: () => 'https://www.instagram.com/', how: 'Create a post or story with the picture you just saved, and paste the caption.' },
+  { id: 'whatsapp', name: 'WhatsApp', url: (t) => `https://wa.me/?text=${encodeURIComponent(t)}`, how: 'Pick a chat or your status, attach the picture you just saved, and send.' },
+  { id: 'x', name: 'X', url: (t) => `https://x.com/intent/post?text=${encodeURIComponent(t)}`, how: 'Your post is open with the caption. Add the picture you just saved.' },
+  { id: 'facebook', name: 'Facebook', url: (_t, page) => `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(page)}`, how: 'Add the picture you just saved and paste the caption.' },
+]
+
 const CAPTION = `I'm attending ${event.name}! 🚀
 
 A full day of cloud and AI with students from across Hyderabad: keynote, technical sessions, hands-on workshops and a panel.
@@ -27,6 +43,8 @@ A full day of cloud and AI with students from across Hyderabad: keynote, technic
 📍 ${venue.name}
 
 Join me: ${siteUrl()}
+
+@AWS Student Builders Group VJIT @The Orbit @CSXIA @AWS User Group Hyderabad
 
 #AWSSCDHyderabad #AWSStudentCommunityDay #AWS #CloudComputing #Hyderabad`
 
@@ -160,6 +178,25 @@ export function AttendingMaker() {
     navigator.clipboard?.writeText(CAPTION).then(() => setCopied(true), () => {})
   }
 
+  const [howTo, setHowTo] = useState('')
+
+  /**
+   * One button per platform. The platform's tab is opened first, inside the
+   * click, so no browser blocks it as a pop-up; the picture and caption follow.
+   */
+  const shareTo = async (p: (typeof PLATFORMS)[number]) => {
+    if (!photo) return setNote('Add your photo first.')
+    setNote('')
+    const phone = canShare && /Android|iPhone|iPad/i.test(navigator.userAgent)
+    if (phone && (p.id === 'instagram' || p.id === 'whatsapp')) return share()
+    const tab = window.open(p.url(CAPTION, `${siteUrl()}/attending`), '_blank')
+    if (tab) tab.opener = null
+    await navigator.clipboard?.writeText(CAPTION).then(() => setCopied(true), () => {})
+    await download()
+    setHowTo(`Picture saved and caption copied. ${p.how}`)
+    if (!tab) setHowTo(`Picture saved and caption copied. Your browser blocked the new tab: open ${p.name} yourself. ${p.how}`)
+  }
+
   return (
     <div className="flex flex-col gap-5">
       <div className="att-stage">
@@ -205,9 +242,27 @@ export function AttendingMaker() {
         </button>
         {canShare ? (
           <button type="button" className="btn btn-mint" onClick={share} disabled={!photo}>
-            SHARE
+            SHARE…
           </button>
         ) : null}
+      </div>
+
+      <div className="card flex flex-col gap-3 p-4">
+        <span className="lbl">Share to</span>
+        <div className="att-share">
+          {PLATFORMS.map((p) => (
+            <button key={p.id} type="button" className="att-share-btn" data-p={p.id} onClick={() => void shareTo(p)} disabled={!photo}>
+              {p.name}
+            </button>
+          ))}
+        </div>
+        {howTo ? (
+          <p role="status" className="att-howto">
+            {howTo}
+          </p>
+        ) : (
+          <p className="hint">{photo ? 'Pick where to post. We save the picture and copy the caption for you.' : 'Add your photo above to unlock sharing.'}</p>
+        )}
       </div>
 
       <div className="card flex flex-col gap-3 p-4">
@@ -218,7 +273,7 @@ export function AttendingMaker() {
         </button>
       </div>
 
-      <p className="hint">Your photo stays on your phone. Nothing is uploaded to us. On LinkedIn and Instagram, post the downloaded picture and paste the caption.</p>
+      <p className="hint">Your photo stays on your device. Nothing is uploaded to us.</p>
     </div>
   )
 }

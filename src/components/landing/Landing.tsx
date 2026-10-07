@@ -514,17 +514,33 @@ export function Landing({ registrationOpen, doors, prices }: Props) {
           </div>
         </section>
 
-        <section id="attending" style={{position:'relative',zIndex:'10',borderTop:'3px solid var(--line)'}}>
-          <div style={{maxWidth:'1240px',margin:'0 auto',padding:'clamp(36px,7vh,72px) clamp(18px,5vw,56px)'}}>
-            <Link href="/attending" className="gp-banner" style={{display:'block'}}>
-              <span className="gp-banner-in">
-                <Image src="/assets/attending-thumb.jpg" alt="" width={200} height={300} sizes="84px" unoptimized style={{width:'84px',height:'auto',display:'block',border:'2px solid var(--line)'}} />
-                <span className="gp-banner-text">
-                  <span className="gp-banner-title">I&apos;M ATTENDING</span>
-                  <span className="gp-banner-sub">Coming to the event? Put your photo in our frame and share it on LinkedIn, Instagram or WhatsApp.</span>
-                </span>
-                <span className="gp-banner-cta">{'MAKE YOURS >'}</span>
+        <section id="attending" className="att-sec">
+          <div className="att-sec-in">
+            <div className="att-copy">
+              <span className="att-eye">{'// SHARE THE HYPE'}</span>
+              <h2 className="att-h">I&apos;M<br /><span>ATTENDING</span></h2>
+              <p className="att-lede">Coming to the event? Put your photo in our official frame and tell the whole internet you&apos;ll be there.</p>
+              <ol className="att-steps">
+                <li><span>01</span>Add your photo</li>
+                <li><span>02</span>Drag and zoom it into place</li>
+                <li><span>03</span>Download or share it</li>
+              </ol>
+              <div className="att-tags">
+                <span className="att-tags-l">Tag us when you post</span>
+                <span className="att-chip" data-tone="orange">AWS SBG VJIT</span>
+                <span className="att-chip" data-tone="violet">The Orbit</span>
+                <span className="att-chip" data-tone="mint">CSXIA</span>
+                <span className="att-chip" data-tone="pink">AWS User Group Hyderabad</span>
+              </div>
+              <Link href="/attending" className="att-cta">{'MAKE YOURS >'}</Link>
+            </div>
+            <Link href="/attending" className="att-stage3d" aria-label="Make your I'm attending picture">
+              <span className="att-card3d">
+                <Image src="/assets/attending-frame.jpg" alt="The I'm attending frame for AWS Student Community Day Hyderabad 2026" width={1024} height={1535} sizes="(max-width: 700px) 72vw, 340px" style={{width:'100%',height:'auto',display:'block'}} />
+                <span className="att-card3d-you" aria-hidden="true">YOUR<br />PHOTO<br />HERE</span>
+                <span className="att-card3d-glare" aria-hidden="true"></span>
               </span>
+              <span className="att-sticker" aria-hidden="true">LINKEDIN · INSTA · WHATSAPP</span>
             </Link>
           </div>
         </section>

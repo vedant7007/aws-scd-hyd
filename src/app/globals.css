@@ -888,3 +888,46 @@ body:has(.rg-grid) .page-bg {
 .att-add-plus { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border: 3px solid currentColor; font-size: 30px; line-height: 1; }
 .att-range { width: 100%; accent-color: var(--orange); }
 @media (prefers-reduced-motion: reduce) { .att-add { animation: none; } }
+
+/* The I'm attending section on the landing: copy on one side, the frame as a tilted, floating 3D card on the other. */
+.att-sec { position: relative; z-index: 10; border-top: 3px solid var(--line); background: var(--panel); overflow: hidden; }
+.att-sec-in { max-width: 1240px; margin: 0 auto; padding: clamp(48px,9vh,110px) clamp(18px,5vw,56px); display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,320px),1fr)); gap: clamp(36px,6vw,80px); align-items: center; }
+.att-copy { display: flex; flex-direction: column; gap: 18px; }
+.att-eye { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .22em; text-transform: uppercase; color: var(--mint-ink); }
+.att-h { margin: 0; font-family: var(--font-display); font-size: clamp(48px,11vw,96px); line-height: .9; color: var(--ink); text-shadow: 4px 4px 0 var(--h-sh); }
+.att-h span { color: var(--orange); }
+.att-lede { margin: 0; max-width: 46ch; font-size: clamp(15px,3.8vw,17.5px); line-height: 1.6; color: var(--body); }
+.att-steps { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; border: 3px solid var(--line); background: var(--surface); }
+.att-steps li { display: flex; align-items: center; gap: 14px; padding: 11px 14px; font-size: 15px; color: var(--ink); }
+.att-steps li + li { border-top: 1px solid var(--line-soft); }
+.att-steps span { font-family: var(--font-mono); font-size: 12px; font-weight: 600; background: var(--ink-fill); color: var(--bg); padding: 3px 7px; }
+.att-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.att-tags-l { width: 100%; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); }
+.att-chip { font-family: var(--font-display); font-size: 18px; padding: 5px 11px; border: 3px solid var(--line); color: var(--on-fill); box-shadow: 3px 3px 0 var(--line); }
+.att-chip[data-tone="orange"] { background: var(--orange); }
+.att-chip[data-tone="violet"] { background: var(--violet-fill); }
+.att-chip[data-tone="mint"] { background: var(--mint-fill); }
+.att-chip[data-tone="pink"] { background: var(--pink-fill); }
+.att-cta { align-self: flex-start; display: inline-flex; align-items: center; min-height: 56px; padding: 0 26px; background: var(--orange); color: var(--on-fill); font-family: var(--font-display); font-size: clamp(22px,5vw,26px); border: 3px solid var(--line); box-shadow: 6px 6px 0 var(--line); transition: transform .1s steps(2), box-shadow .1s steps(2); }
+.att-cta:hover { color: var(--on-fill); transform: translate3d(-2px,-2px,0); box-shadow: 9px 9px 0 var(--line); }
+.att-stage3d { position: relative; display: block; width: min(100%,340px); justify-self: center; perspective: 1100px; padding: 18px 0 30px; }
+.att-card3d { position: relative; display: block; border: 4px solid var(--line); box-shadow: 18px 22px 0 var(--sh), 0 30px 60px -20px var(--sh); transform: rotateY(-18deg) rotateX(7deg) rotateZ(-2deg); transform-style: preserve-3d; animation: att-float 6s ease-in-out infinite; transition: transform .45s cubic-bezier(.2,.9,.3,1.1); overflow: hidden; }
+.att-stage3d:hover .att-card3d { animation-play-state: paused; transform: rotateY(-4deg) rotateX(2deg) rotateZ(0) scale(1.03); }
+.att-card3d-you { position: absolute; left: 30.18%; top: 40.46%; width: 39.65%; height: 35.24%; display: flex; align-items: center; justify-content: center; text-align: center; font-family: var(--font-display); font-size: clamp(15px,4vw,21px); line-height: 1.05; color: white; animation: gp-blink 1.8s ease-in-out infinite; }
+.att-card3d-glare { position: absolute; inset: 0; background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,.45) 45%, transparent 60%); background-size: 250% 100%; animation: att-glare 4.5s ease-in-out infinite; pointer-events: none; mix-blend-mode: soft-light; }
+.att-sticker { position: absolute; right: -6px; bottom: 6px; transform: rotate(-6deg); font-family: var(--font-mono); font-size: 10.5px; font-weight: 600; letter-spacing: .14em; background: var(--ink-fill); color: var(--bg); padding: 7px 10px; border: 2px solid var(--orange); }
+@keyframes att-float { 0%,100% { transform: rotateY(-18deg) rotateX(7deg) rotateZ(-2deg) translate3d(0,0,0); } 50% { transform: rotateY(-12deg) rotateX(4deg) rotateZ(-1deg) translate3d(0,-12px,0); } }
+@keyframes att-glare { 0%,100% { background-position: 120% 0; } 50% { background-position: -20% 0; } }
+@media (prefers-reduced-motion: reduce) { .att-card3d, .att-card3d-glare, .att-card3d-you { animation: none; } }
+
+/* Share-to buttons on the I'm attending page, in each platform's own colour. */
+.att-share { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,130px),1fr)); gap: 8px; }
+.att-share-btn { min-height: 50px; padding: 0 12px; border: 3px solid var(--line); color: #FFFFFF; font-family: var(--font-display); font-size: 20px; cursor: pointer; box-shadow: 4px 4px 0 var(--line); transition: transform .1s steps(2), box-shadow .1s steps(2); }
+.att-share-btn:hover:not(:disabled) { transform: translate3d(-2px,-2px,0); box-shadow: 6px 6px 0 var(--line); }
+.att-share-btn:disabled { opacity: .4; cursor: not-allowed; }
+.att-share-btn[data-p="linkedin"] { background: #0A66C2; }
+.att-share-btn[data-p="instagram"] { background: linear-gradient(45deg,#F58529,#DD2A7B 50%,#8134AF); }
+.att-share-btn[data-p="whatsapp"] { background: #1FA855; }
+.att-share-btn[data-p="x"] { background: #14161C; }
+.att-share-btn[data-p="facebook"] { background: #1877F2; }
+.att-howto { margin: 0; border: 3px solid var(--mint-fill); background: var(--panel-mint); padding: 10px 12px; font-size: 13.5px; line-height: 1.55; color: var(--ink); }
