@@ -1,4 +1,5 @@
 import { MINIMUM_AGE, YEARS, ageOnEventDay, hasWorkshop, technicalSessions, workshops, type Year } from '../../content/program'
+import { normaliseBuilderId } from '../../content/builder'
 import { GROUP_MAX, GROUP_MIN } from '../../content/groups'
 import { tierIds } from '../../content/passes'
 import type { Tier } from '../db/types'
@@ -25,6 +26,7 @@ export type HoldInput = {
   rollNumber: string
   yearOfStudy: Year
   dateOfBirth: string
+  builderId: string
 }
 
 export type Invalid = { field: string; message: string }
@@ -43,6 +45,7 @@ const FIELDS = [
   'rollNumber',
   'yearOfStudy',
   'dateOfBirth',
+  'builderId',
   'submissionKey',
   'passId',
 ] as const
@@ -126,6 +129,9 @@ function readPerson(b: Record<string, unknown>, tier: Tier, prefix = ''): { pers
   if (age < MINIMUM_AGE) return bad('dob', `${firstName} will be ${age} on 30 October 2026. This event is for people aged ${MINIMUM_AGE} and over.`)
   if (age > 100) return bad('dob', 'That date does not look right.')
 
+  const builderId = typeof b.builderId === 'string' ? normaliseBuilderId(b.builderId) : null
+  if (!builderId) return bad('builder', 'We need the AWS Builder ID @username. Do not have one? Create it with the link below.')
+
   return {
     person: {
       technicalSession,
@@ -140,6 +146,7 @@ function readPerson(b: Record<string, unknown>, tier: Tier, prefix = ''): { pers
       rollNumber: roll.toUpperCase(),
       yearOfStudy: year as Year,
       dateOfBirth: dob,
+      builderId,
     },
   }
 }

@@ -1,3 +1,4 @@
+import { BUILDER_SIGNUP, BUILDER_STEPS } from '../../content/builder'
 import { event, venue } from '../../content/event'
 import { programSession } from '../../content/program'
 import { REFUND_POLICY, formatInr, passes, tierLabel } from '../../content/passes'
@@ -37,6 +38,7 @@ export const SUBJECTS = {
   dayBefore: `Tomorrow: ${event.shortName}`,
   registrationsOpen: `Registrations are open: ${event.shortName}`,
   stillVerifying: `We are still checking your payment, ${event.shortName}`,
+  builderId: `Action needed: add your AWS Builder ID, ${event.shortName}`,
 } as const
 
 export const REPLY_TO = process.env.SES_REPLY_TO ?? event.contactEmail
@@ -304,6 +306,55 @@ ${footerText}`,
         p(`Thank you for registering for <strong>${esc(event.name)}</strong>, and sorry for the wait.`),
         p('Your registration and payment details reached us safely. We are checking every payment against the college bank statement by hand, and it is taking us a little longer than we hoped. Yours is in the queue and we will email you as soon as it is verified.'),
         p('There is <strong>nothing you need to do</strong>. Please do not pay again. Sit back and relax; your seat is held while we check.'),
+        passIdBlock(r.passId, 'Keep it safe. It is how we find your registration.'),
+      ].join('\n'),
+    }),
+  }
+}
+
+/**
+ * To every registration made before the flow asked for a Builder ID
+ * (7 October 2026): add it through a personal link, and make the
+ * "I'm attending" picture while they are there.
+ */
+export function builderIdRequest(r: Person): Body {
+  const add = link(`/builder-id?pass=${encodeURIComponent(r.passId)}`)
+  const post = link('/attending')
+  return {
+    subject: SUBJECTS.builderId,
+    text: `Hi ${r.name},
+
+Thank you for registering for ${event.name}. Two quick things before the day.
+
+1. ADD YOUR AWS BUILDER ID (needed for every attendee)
+Add your AWS Builder ID @username to your registration here:
+${add}
+
+Your @username is in AWS Builder Center: sign in at builder.aws.com, click your name at the top right, then Manage profile.
+
+No Builder ID yet? Create one free, it takes about two minutes:
+${BUILDER_SIGNUP}
+${BUILDER_STEPS.map((s, i) => `${i + 1}. ${s}`).join('\n')}
+
+2. TELL EVERYONE YOU'RE COMING
+Put your photo in our "I'm attending" frame and share it on LinkedIn, Instagram or WhatsApp:
+${post}
+
+YOUR PASS ID
+${r.passId}
+
+${footerText}`,
+    html: shell({
+      preheader: 'Add your AWS Builder ID to your registration, and make your I am attending post.',
+      tag: 'Action needed',
+      tagColor: '#FDF4E3',
+      title: `Two quick things, ${r.name}`,
+      body: [
+        p(`Thank you for registering for <strong>${esc(event.name)}</strong>. Two quick things before the day.`),
+        card(
+          `${eyebrow('1 · Add your AWS Builder ID')}${small('Needed for every attendee. Your @username is in AWS Builder Center: sign in at builder.aws.com, click your name at the top right, then <strong>Manage profile</strong>.')}${button(add, 'ADD MY BUILDER ID &rarr;')}${small(`No Builder ID yet? <a href="${BUILDER_SIGNUP}" style="color:${MINT};font-weight:bold">Create one free</a>, it takes about two minutes:`)}<ol style="margin:0 0 4px;padding-left:20px;font-family:${SANS};font-size:13px;line-height:1.55;color:${MUTED}">${BUILDER_STEPS.map((s) => `<li>${esc(s)}</li>`).join('')}</ol>`,
+        ),
+        card(`${eyebrow('2 · Tell everyone you&rsquo;re coming')}${small('Put your photo in our &ldquo;I&rsquo;m attending&rdquo; frame and share it on LinkedIn, Instagram or WhatsApp.')}${button(post, 'MAKE MY POST &rarr;')}`, '#E6F5EB'),
         passIdBlock(r.passId, 'Keep it safe. It is how we find your registration.'),
       ].join('\n'),
     }),

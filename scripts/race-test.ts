@@ -37,6 +37,7 @@ const input = (who: string): HoldInput => ({
   rollNumber: `RACE${who}`,
   yearOfStudy: '3',
   dateOfBirth: '2004-01-01',
+  builderId: `race${who}`,
 })
 
 async function main(): Promise<void> {

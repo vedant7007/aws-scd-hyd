@@ -19,7 +19,7 @@ export async function GET(): Promise<Response> {
   const csv = toCsv([
     ['Verified attendees (lunch headcount)', d.paid],
     [],
-    ['Pass ID', 'Name', 'Email', 'College', 'Tier', 'Technical session', 'Workshop'],
+    ['Pass ID', 'Name', 'Email', 'AWS Builder ID', 'College', 'Tier', 'Technical session', 'Workshop'],
     // Verified only, and never a preview record: nobody caters for a test.
     ...d.attendees
       .filter((a) => a.state === 'VERIFIED' && a.source !== 'preview')
@@ -27,6 +27,7 @@ export async function GET(): Promise<Response> {
         a.passId,
         a.name,
         a.email,
+        a.builderId ? `@${a.builderId}` : '',
         a.college,
         tierLabel(a.tier),
         programSession(a.technicalSession)?.title ?? a.technicalSession,

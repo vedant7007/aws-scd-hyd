@@ -13,6 +13,7 @@ export type Row = {
   college: string
   branch: string
   rollNumber: string
+  builderId: string | null
   yearOfStudy: string
   dateOfBirth: string
   tier: Tier
@@ -218,6 +219,18 @@ function RowCard({ row }: { row: Row }) {
             </dd>
           </div>
         ) : null}
+        <div className="flex flex-col gap-0.5">
+          <dt className="lbl-sm">AWS Builder ID</dt>
+          <dd className="num text-[14px] text-ink">
+            {row.builderId ? (
+              <a href={`https://builder.aws.com/community/@${row.builderId}`} target="_blank" rel="noopener">
+                @{row.builderId}
+              </a>
+            ) : (
+              'Not given yet'
+            )}
+          </dd>
+        </div>
         {row.rejectionReason ? (
           <div className="flex flex-col gap-0.5 sm:col-span-2">
             <dt className="lbl-sm">Rejected because</dt>

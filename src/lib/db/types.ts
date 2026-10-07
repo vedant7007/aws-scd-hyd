@@ -55,6 +55,8 @@ export type Attendee = Keyed & {
   /** Uppercased on write. */
   rollNumber: string
   yearOfStudy: YearOfStudy
+  /** AWS Builder Center username, without the @. Required from 7 October 2026; older records add it later. */
+  builderId?: string
   /** YYYY-MM-DD. 18 or older on the event day, checked by the server. */
   dateOfBirth: string
   tier: Tier

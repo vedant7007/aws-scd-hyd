@@ -42,6 +42,7 @@ export default async function AdminDashboardPage() {
     college: a.college,
     branch: a.branch,
     rollNumber: a.rollNumber,
+    builderId: a.builderId ?? null,
     yearOfStudy: a.yearOfStudy,
     dateOfBirth: a.dateOfBirth,
     tier: a.tier,

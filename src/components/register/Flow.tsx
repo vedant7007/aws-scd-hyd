@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { QRCodeSVG } from 'qrcode.react'
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
+import { BUILDER_SIGNUP, BUILDER_STEPS, normaliseBuilderId } from '@/content/builder'
 import { GROUP_SIZES, groupOffPaise } from '@/content/groups'
 import { formatInr, passFor } from '@/content/passes'
 import { holdMinutes } from '@/content/payment'
@@ -63,9 +64,9 @@ const price = (t: Tier) => passFor(t)?.pricePaise ?? 0
 const money = (paise: number) => formatInr(paise)
 const EVENT_DAY_LABEL = new Date(`${EVENT_DAY}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
 
-type Fields = { first: string; middle: string; last: string; email: string; phone: string; college: string; branch: string; roll: string; dob: string }
+type Fields = { first: string; middle: string; last: string; email: string; phone: string; college: string; branch: string; roll: string; dob: string; builder: string }
 type FieldKey = keyof Fields
-const EMPTY: Fields = { first: '', middle: '', last: '', email: '', phone: '', college: '', branch: '', roll: '', dob: '' }
+const EMPTY: Fields = { first: '', middle: '', last: '', email: '', phone: '', college: '', branch: '', roll: '', dob: '', builder: '' }
 type Upload = { status: 'none' | 'uploading' | 'done' | 'failed'; name: string; url: string; pct: number; err: string; key: string }
 const NO_UPLOAD: Upload = { status: 'none', name: '', url: '', pct: 0, err: '', key: '' }
 /** Someone else in a group: the leader fills in everything for them. */
@@ -129,6 +130,8 @@ function personErrors(f: Fields, year: Year | '', prefix: string): Record<string
   else if (d.length !== 10) e[prefix + 'phone'] = 'Enter exactly 10 digits, without +91.'
   if (!f.college.trim()) e[prefix + 'college'] = 'Which college?'
   if (!year) e[prefix + 'year'] = 'Pick the year of study.'
+  if (!f.builder.trim()) e[prefix + 'builder'] = 'We need the AWS Builder ID @username.'
+  else if (!normaliseBuilderId(f.builder)) e[prefix + 'builder'] = 'That does not look like a Builder ID. Type the @username from Manage profile.'
   return e
 }
 
@@ -146,6 +149,7 @@ const personBody = (f: Fields, year: Year | '', tech: string, workshop: string, 
   rollNumber: f.roll.toUpperCase(),
   yearOfStudy: year,
   dateOfBirth: f.dob,
+  builderId: f.builder,
 })
 
 const newKey = () => {
@@ -337,7 +341,7 @@ export function Flow({ resume }: { resume?: Resume }) {
   }
 
   /** Server field names to the flow's steps, for a refusal the browser did not catch. */
-  const STEP_OF: Record<string, number> = { tier: 1, group: 1, tech: 2, workshop: 2, first: 3, middle: 3, last: 3, email: 3, phone: 3, college: 3, branch: 3, roll: 3, year: 3, dob: 3 }
+  const STEP_OF: Record<string, number> = { tier: 1, group: 1, tech: 2, workshop: 2, first: 3, middle: 3, last: 3, email: 3, phone: 3, college: 3, branch: 3, roll: 3, year: 3, dob: 3, builder: 3 }
   /** The step a server field belongs to. Anyone after the first person, and a full session in a group, is step three. */
   const stepOf = (field: string): number | undefined => {
     if (/^m\d+\./.test(field)) return 3
@@ -571,6 +575,7 @@ export function Flow({ resume }: { resume?: Resume }) {
     ...(lvl >= 2 ? [{ label: 'Workshop', value: wsName }] : []),
     { label: 'Name', value: fullName },
     { label: 'Email', value: fields.email },
+    { label: 'AWS Builder ID', value: fields.builder ? `@${normaliseBuilderId(fields.builder) ?? fields.builder}` : '' },
     { label: 'Phone', value: fields.phone ? `+91 ${fields.phone.replace(/\D/g, '')}` : '' },
     { label: 'College', value: fields.college },
     { label: 'Branch', value: fields.branch },
@@ -724,6 +729,9 @@ export function Flow({ resume }: { resume?: Resume }) {
                 </div>
                 <Field id="email" label="Email" type="email" inputMode="email" value={fields.email} onChange={onField} err={err.email} autoComplete="email" placeholder="you@example.com">
                   <span style={S.hint}>Every update about your pass goes here. Check it twice.</span>
+                </Field>
+                <Field id="builder" label="AWS Builder ID · your @username" value={fields.builder} onChange={onField} err={err.builder} autoComplete="off" placeholder="@yourname" style={{ fontFamily: 'var(--font-mono)' }}>
+                  <BuilderHelp />
                 </Field>
                 <div style={S.field}>
                   <label htmlFor="rg-phone" style={S.label}>Phone</label>
@@ -1280,6 +1288,29 @@ function Option({ code, level, title, on, onPick }: { code: string; level: Level
   )
 }
 
+/** The way to a Builder ID, under the box that asks for it. */
+function BuilderHelp() {
+  return (
+    <span style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '10px' }}>
+        <span style={S.hint}>No Builder ID yet?</span>
+        <a href={BUILDER_SIGNUP} target="_blank" rel="noopener" style={{ display: 'inline-flex', alignItems: 'center', minHeight: '38px', padding: '0 12px', background: '#FF9900', color: '#14161C', border: '2px solid var(--line)', fontFamily: 'var(--font-display)', fontSize: '18px' }}>
+          {'CREATE ONE FREE >'}
+        </a>
+      </span>
+      <details style={{ border: '2px dashed var(--line-dash)', padding: '8px 12px' }}>
+        <summary style={{ ...S.rowL, cursor: 'pointer' }}>How to get it, step by step</summary>
+        <ol style={{ margin: '8px 0 0', paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '5px', fontSize: '13px', lineHeight: '1.5', color: 'var(--body)' }}>
+          {BUILDER_STEPS.map((s) => (
+            <li key={s}>{s}</li>
+          ))}
+        </ol>
+        <span style={{ ...S.hint, display: 'block', marginTop: '6px' }}>Then come back and type the @username here.</span>
+      </details>
+    </span>
+  )
+}
+
 /** A session as a compact radio card, for each person in a group. */
 function MiniOption({ code, level, title, on, onPick }: { code: string; level: Level; title: string; on: boolean; onPick: () => void }) {
   return (
@@ -1443,6 +1474,11 @@ function OtherPerson({ n, p, lvl, err, onChange }: { n: number; p: Person; lvl: 
           <Field id="last" prefix={prefix} label="Last name" value={p.fields.last} onChange={set} err={e('last')} autoComplete="off" />
         </div>
         <Field id="email" prefix={prefix} label="Their email" type="email" inputMode="email" value={p.fields.email} onChange={set} err={e('email')} autoComplete="off" placeholder="Their own, not yours" />
+        <Field id="builder" prefix={prefix} label="Their AWS Builder ID · @username" value={p.fields.builder} onChange={set} err={e('builder')} autoComplete="off" placeholder="@theirname" style={{ fontFamily: 'var(--font-mono)' }}>
+          <span style={S.hint}>
+            No Builder ID yet? They can <a href={BUILDER_SIGNUP} target="_blank" rel="noopener">create one free here</a>; it takes two minutes.
+          </span>
+        </Field>
         <Field id="phone" prefix={prefix} label="Their phone · 10 digits" type="tel" inputMode="numeric" value={p.fields.phone} onChange={set} err={e('phone')} autoComplete="off" style={{ fontFamily: 'var(--font-mono)' }} />
         <Field id="college" prefix={prefix} label="College" value={p.fields.college} onChange={set} err={e('college')} autoComplete="off" />
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,220px),1fr))', gap: '12px' }}>

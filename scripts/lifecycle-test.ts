@@ -98,6 +98,7 @@ const input = (over: Partial<HoldInput> = {}): HoldInput => ({
   college: 'Test',
   branch: 'CSE',
   rollNumber: 'TEST0002',
+  builderId: 'scdtest',
   yearOfStudy: '3',
   dateOfBirth: '2004-01-01',
   ...over,
