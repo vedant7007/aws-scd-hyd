@@ -844,7 +844,7 @@ function GroupPromo() {
           <button ref={closeRef} type="button" className="gp-close" onClick={close} aria-label="Close">✕</button>
           <span className="gp-banner-tag"><span className="gp-dot" aria-hidden="true"></span>NEW</span>
           <span id="gp-title" className="gp-banner-title">GROUP PASSES ARE LIVE</span>
-          <span className="gp-banner-sub">Come as 4 and pay one total with a group discount. One person fills in everyone, and everyone gets their own pass.</span>
+          <span className="gp-banner-sub">Come as 4 or 5 and pay one total with a group discount. One person fills in everyone, and everyone gets their own pass.</span>
           <Link href="/register?group=4" className="gp-banner-cta" onClick={close}>{'REGISTER NOW >'}</Link>
         </div>
       </div>

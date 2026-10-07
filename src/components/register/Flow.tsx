@@ -236,10 +236,11 @@ export function Flow({ resume }: { resume?: Resume }) {
     } catch {
       // Storage blocked or garbled: start clean.
     }
-    // Arriving from the group pass banner on a fresh tab: Group of 4 already picked.
-    if (!key.current && new URLSearchParams(window.location.search).get('group') === String(GROUP_SIZES[0])) {
-      setSize(GROUP_SIZES[0]!)
-      setOthers(Array.from({ length: GROUP_SIZES[0]! - 1 }, () => ({ fields: EMPTY, year: '' as const, tech: '', workshop: '' })))
+    // Arriving from the group pass pop-up on a fresh tab: that group size already picked.
+    const wanted = Number(new URLSearchParams(window.location.search).get('group'))
+    if (!key.current && GROUP_SIZES.includes(wanted)) {
+      setSize(wanted)
+      setOthers(Array.from({ length: wanted - 1 }, () => ({ fields: EMPTY, year: '' as const, tech: '', workshop: '' })))
     }
     if (!key.current) key.current = newKey()
     setLoaded(true)
