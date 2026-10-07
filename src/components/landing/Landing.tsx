@@ -360,7 +360,7 @@ export function Landing({ registrationOpen, doors, prices }: Props) {
             </div>
             <div style={{display:'flex',flexDirection:'column',gap:'14px',fontSize:'clamp(15px,3.8vw,17.5px)',lineHeight:'1.65',color:'var(--body)'}}>
               <p style={{margin:'0'}}>A keynote to open, technical sessions on Cloud Engineering and AI, hands-on workshops, a panel and an open Q&A. Your pass decides which of these you get.</p>
-              <p style={{margin:'0'}}>Run by volunteers from the AWS Student Builders Group at VJIT. Not an AWS event, and we are not pretending otherwise.</p>
+              <p style={{margin:'0'}}>An official AWS Student Community Day, organised by the AWS Student Builders Group at VJIT with AWS as title sponsor.</p>
               <div style={{display:'flex',flexWrap:'wrap',gap:'8px',paddingTop:'4px',fontFamily:'var(--font-display)',fontSize:'18.8px',color:'var(--on-fill)'}}>
                 <span style={{background:'#9FE3B6',padding:'6px 10px'}}>LUNCH, EVERY TIER</span>
                 <span style={{background:'#F6C899',padding:'6px 10px'}}>SWAG KIT</span>
@@ -779,7 +779,7 @@ export function Landing({ registrationOpen, doors, prices }: Props) {
               </details>
               <details style={{border:'3px solid var(--line)',background:'var(--surface)'}}>
                 <summary style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:'14px',padding:'20px 22px',cursor:'pointer',fontFamily:'var(--font-display)',fontSize:'clamp(21.3px,5.3vw,26.3px)',color:'var(--ink)'}}>Is this run by AWS?<span data-faq-plus="1" style={{flex:'none',fontFamily:'var(--font-mono)',fontSize:'18px',color:'var(--amber-ink)',transition:'transform .16s steps(3)'}}>+</span></summary>
-                <div style={{padding:'0 22px 22px',fontSize:'15px',lineHeight:'1.65',color:'var(--body)',maxWidth:'68ch'}}>No. It is organised by volunteers from the AWS Student Builders Group at VJIT. AWS funds it as a community event, which is why the tickets cost what they do, but the day is ours to run.</div>
+                <div style={{padding:'0 22px 22px',fontSize:'15px',lineHeight:'1.65',color:'var(--body)',maxWidth:'68ch'}}>Yes. This is an official AWS Student Community Day, organised by the AWS Student Builders Group at VJIT with AWS as title sponsor. AWS&apos;s support is why the tickets cost what they do.</div>
               </details>
               <details style={{border:'3px solid var(--line)',background:'var(--surface)'}}>
                 <summary style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:'14px',padding:'20px 22px',cursor:'pointer',fontFamily:'var(--font-display)',fontSize:'clamp(21.3px,5.3vw,26.3px)',color:'var(--ink)'}}>Can I speak or sponsor?<span data-faq-plus="1" style={{flex:'none',fontFamily:'var(--font-mono)',fontSize:'18px',color:'var(--amber-ink)',transition:'transform .16s steps(3)'}}>+</span></summary>
@@ -819,7 +819,7 @@ export function Landing({ registrationOpen, doors, prices }: Props) {
               <span style={{fontFamily:'var(--font-mono)',fontSize:'10.5px',letterSpacing:'.16em',textTransform:'uppercase',color:'var(--muted)'}}>awsscdhyd.in</span>
               <Link href="/admin/login" style={{fontFamily:'var(--font-mono)',fontSize:'10.5px',letterSpacing:'.16em',textTransform:'uppercase',color:'var(--muted)',minHeight:'30px',display:'inline-flex',alignItems:'center'}}>Crew sign in</Link>
             </div>
-            <p style={{margin:'0',fontSize:'12.5px',lineHeight:'1.65',color:'var(--muted)',maxWidth:'44ch'}}>AWS User Groups are run by independent volunteers and are not organized by AWS.</p>
+            <p style={{margin:'0',fontSize:'12.5px',lineHeight:'1.65',color:'var(--muted)',maxWidth:'44ch'}}>{'An official AWS Student Community Day, organised by the AWS Student Builders Group at VJIT with AWS as title sponsor.'}</p>
           </div>
         </div>
       </footer>

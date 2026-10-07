@@ -9,8 +9,8 @@ export const event = {
   // Public contact. Deliberately the Gmail address, not the domain: awsscdhyd.in
   // is send only and has no mailbox, so a domain address here would lose replies.
   contactEmail: 'awssbgvjit@gmail.com',
-  /** Required on every page footer, wording is fixed. */
-  disclaimer: 'AWS User Groups are run by independent volunteers and are not organized by AWS.',
+  /** The footer line on every page and email. An official AWS event, by the organiser (8 October 2026). */
+  disclaimer: 'An official AWS Student Community Day, organised by the AWS Student Builders Group at VJIT with AWS as title sponsor.',
 } as const
 
 /** Doors as the landing page prints it, "08:30". Derived from startsAt, never typed twice. */
@@ -87,7 +87,7 @@ export const registrationOpen: boolean = true
 export const about = [
   'A one day community conference put on by students, for students, in Hyderabad.',
   'A keynote to open, technical sessions on Cloud Engineering and AI, hands-on workshops, a panel and an open Q&A. Your pass decides which of these you get.',
-  'It is run by volunteers from the AWS Student Builders Group at VJIT, and it is not an AWS event.',
+  'An official AWS Student Community Day, organised by the AWS Student Builders Group at VJIT with AWS as title sponsor.',
 ]
 
 /**

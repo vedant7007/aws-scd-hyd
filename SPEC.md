@@ -341,7 +341,7 @@ The v3 handoff's `Landing Bitmap.dc.html`, converted to JSX from its own markup 
 7. **Sponsors.** Title sponsor, then an "Organised by AWS SBG VJIT, by students, for students" block, then the community sponsor wall with open slots.
 8. **Venue.** Address, map, metro, bus, cab, parking.
 9. **FAQ.** Accordion, keyboard operable.
-10. **Footer.** Contact, socials, code of conduct link, and this exact line: *AWS User Groups are run by independent volunteers and are not organized by AWS.*
+10. **Footer.** Contact, socials, code of conduct link, and this line: *An official AWS Student Community Day, organised by the AWS Student Builders Group at VJIT with AWS as title sponsor.* (an official AWS event, by the organiser on 8 October 2026; the earlier independent-volunteers line is retired)
 
 ### Session times
 

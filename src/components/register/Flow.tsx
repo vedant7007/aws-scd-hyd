@@ -1101,7 +1101,7 @@ export function Flow({ resume }: { resume?: Resume }) {
           <Link href="/" style={{ fontFamily: 'var(--font-mono)', fontSize: '10.5px', letterSpacing: '.16em', textTransform: 'uppercase', color: 'var(--muted)' }}>
             awsscdhyd.in
           </Link>
-          <p style={{ margin: '0', fontSize: '12.5px', lineHeight: '1.65', color: 'var(--muted)', maxWidth: '52ch' }}>AWS User Groups are run by independent volunteers and are not organized by AWS.</p>
+          <p style={{ margin: '0', fontSize: '12.5px', lineHeight: '1.65', color: 'var(--muted)', maxWidth: '52ch' }}>An official AWS Student Community Day, organised by the AWS Student Builders Group at VJIT with AWS as title sponsor.</p>
         </div>
       </footer>
 
