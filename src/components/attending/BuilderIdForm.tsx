@@ -2,7 +2,8 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
-import { BUILDER_SIGNUP, BUILDER_STEPS, builderProfile } from '@/content/builder'
+import { BuilderGuide } from '@/components/register/BuilderGuide'
+import { builderProfile } from '@/content/builder'
 
 /** Pass ID and @username in, saved on the registration. */
 export function BuilderIdForm({ initialPass }: { initialPass: string }) {
@@ -73,18 +74,7 @@ export function BuilderIdForm({ initialPass }: { initialPass: string }) {
         {busy ? 'SAVING' : 'SAVE MY BUILDER ID'}
       </button>
 
-      <div className="card-dash flex flex-col gap-3 p-4">
-        <span className="h3">NO BUILDER ID YET?</span>
-        <a href={BUILDER_SIGNUP} target="_blank" rel="noopener" className="btn btn-mint self-start">
-          {'CREATE ONE FREE >'}
-        </a>
-        <ol className="copy m-0 flex list-decimal flex-col gap-1.5 pl-5">
-          {BUILDER_STEPS.map((s) => (
-            <li key={s}>{s}</li>
-          ))}
-        </ol>
-        <span className="hint">It is free and takes about two minutes. Then come back here and save the @username.</span>
-      </div>
+      <BuilderGuide />
     </form>
   )
 }

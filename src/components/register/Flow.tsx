@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation'
 import { QRCodeSVG } from 'qrcode.react'
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
-import { BUILDER_SIGNUP, BUILDER_STEPS, normaliseBuilderId } from '@/content/builder'
+import { BUILDER_SIGNUP, normaliseBuilderId } from '@/content/builder'
+import { BuilderGuide } from './BuilderGuide'
 import { GROUP_SIZES, groupOffPaise } from '@/content/groups'
 import { formatInr, passFor } from '@/content/passes'
 import { holdMinutes } from '@/content/payment'
@@ -1288,26 +1289,16 @@ function Option({ code, level, title, on, onPick }: { code: string; level: Level
   )
 }
 
-/** The way to a Builder ID, under the box that asks for it. */
+/** The way to a Builder ID, under the box that asks for it: folded, so the form stays short. */
 function BuilderHelp() {
   return (
-    <span style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-      <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '10px' }}>
-        <span style={S.hint}>No Builder ID yet?</span>
-        <a href={BUILDER_SIGNUP} target="_blank" rel="noopener" style={{ display: 'inline-flex', alignItems: 'center', minHeight: '38px', padding: '0 12px', background: '#FF9900', color: '#14161C', border: '2px solid var(--line)', fontFamily: 'var(--font-display)', fontSize: '18px' }}>
-          {'CREATE ONE FREE >'}
-        </a>
-      </span>
-      <details style={{ border: '2px dashed var(--line-dash)', padding: '8px 12px' }}>
-        <summary style={{ ...S.rowL, cursor: 'pointer' }}>How to get it, step by step</summary>
-        <ol style={{ margin: '8px 0 0', paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '5px', fontSize: '13px', lineHeight: '1.5', color: 'var(--body)' }}>
-          {BUILDER_STEPS.map((s) => (
-            <li key={s}>{s}</li>
-          ))}
-        </ol>
-        <span style={{ ...S.hint, display: 'block', marginTop: '6px' }}>Then come back and type the @username here.</span>
-      </details>
-    </span>
+    <details className="bg-fold">
+      <summary className="bg-fold-s">
+        <span className="bg-fold-q">?</span>
+        Do not have a Builder ID, or cannot find your @username? Tap here
+      </summary>
+      <BuilderGuide />
+    </details>
   )
 }
 
@@ -1429,7 +1420,7 @@ function GroupPicker({ size, pickSize, full }: { size: number; pickSize: (n: num
           <span style={{ fontSize: '12.5px', lineHeight: '1.5', color: 'var(--body)' }}>You fill in everyone&apos;s details and pay once. Everyone gets their own pass ID and emails.</span>
         </div>
       ) : (
-        <span style={{ fontSize: '12.5px', lineHeight: '1.5', color: 'var(--muted)' }}>Coming with friends? Book a group pass for {GROUP_SIZES.join(' or ')} and your group gets our group discount. One person fills in everyone and pays once.</span>
+        <span style={{ fontSize: '12.5px', lineHeight: '1.5', color: 'var(--muted)' }}>Coming with friends? Book a group pass for {GROUP_SIZES.slice(0, -1).join(', ')} or {GROUP_SIZES.at(-1)} and your group gets our group discount. One person fills in everyone and pays once.</span>
       )}
     </div>
   )

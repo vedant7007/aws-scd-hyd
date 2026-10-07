@@ -363,7 +363,7 @@ export function Landing({ registrationOpen, doors, prices }: Props) {
               <p style={{margin:'0'}}>Run by volunteers from the AWS Student Builders Group at VJIT. Not an AWS event, and we are not pretending otherwise.</p>
               <div style={{display:'flex',flexWrap:'wrap',gap:'8px',paddingTop:'4px',fontFamily:'var(--font-display)',fontSize:'18.8px',color:'var(--on-fill)'}}>
                 <span style={{background:'#9FE3B6',padding:'6px 10px'}}>LUNCH, EVERY TIER</span>
-                <span style={{background:'#F6C899',padding:'6px 10px'}}>VEG / NON-VEG</span>
+                <span style={{background:'#F6C899',padding:'6px 10px'}}>SWAG KIT</span>
                 <span style={{background:'#C4AEF2',padding:'6px 10px'}}>ANY COLLEGE</span>
               </div>
             </div>
@@ -875,7 +875,7 @@ function GroupPromo() {
           <button ref={closeRef} type="button" className="gp-close" onClick={close} aria-label="Close">✕</button>
           <span className="gp-banner-tag"><span className="gp-dot" aria-hidden="true"></span>NEW</span>
           <span id="gp-title" className="gp-banner-title">GROUP PASSES ARE LIVE</span>
-          <span className="gp-banner-sub">Come as 4 or 5 and pay one total with a group discount. One person fills in everyone, and everyone gets their own pass.</span>
+          <span className="gp-banner-sub">Come as 3, 4 or 5 and pay one total with a group discount. One person fills in everyone, and everyone gets their own pass.</span>
           <Link href="/register?group=4" className="gp-banner-cta" onClick={close}>{'REGISTER NOW >'}</Link>
         </div>
       </div>
