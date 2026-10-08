@@ -28,10 +28,26 @@ export type Row = {
   rejectionReason: string | null
   createdAt: string
   /** A group pass: the leader pays and is verified for everyone; members follow. */
-  group: { size: number; leader: string; isLeader: boolean; members: { passId: string; name: string }[] } | null
+  group: { size: number; leader: string; isLeader: boolean; members: GroupMember[] } | null
   /** Made through the old test link: real, verifiable, never counted. */
   preview: boolean
   checkedIn: boolean
+}
+
+/** Everything about one other person in a group, shown on the payer's card. */
+export type GroupMember = {
+  passId: string
+  name: string
+  email: string
+  phone: string
+  college: string
+  branch: string
+  rollNumber: string
+  yearOfStudy: string
+  dateOfBirth: string
+  builderId: string | null
+  technical: string
+  workshop: string | null
 }
 
 type View = 'queue' | 'verified' | 'all'
@@ -83,7 +99,8 @@ export function AdminConsole({ rows }: { rows: Row[] }) {
           r.passId.toLowerCase().replace(/-/g, '').includes(q) ||
           (r.utr ?? '').toLowerCase().includes(q) ||
           r.email.toLowerCase().includes(q) ||
-          r.rollNumber.toLowerCase().includes(q),
+          r.rollNumber.toLowerCase().includes(q) ||
+          (r.builderId ?? '').toLowerCase().includes(q.replace(/^@/, '')),
       )
     } else if (view === 'queue') {
       list = rows.filter((r) => r.state === 'PENDING_VERIFICATION' && !(r.group && !r.group.isLeader)).sort((a, b) => (a.utrSubmittedAt ?? '').localeCompare(b.utrSubmittedAt ?? ''))
@@ -124,8 +141,8 @@ export function AdminConsole({ rows }: { rows: Row[] }) {
             className="inp min-w-0 flex-[1_1_220px]"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search pass ID, UTR, email or roll number"
-            aria-label="Search by pass ID, UTR, email or roll number"
+            placeholder="Search pass ID, UTR, email, roll number or Builder ID"
+            aria-label="Search by pass ID, UTR, email, roll number or Builder ID"
           />
           <div className="flex flex-wrap gap-2" role="group" aria-label="View">
             {(['queue', 'verified', 'all'] as View[]).map((v) => (
@@ -207,18 +224,6 @@ function RowCard({ row }: { row: Row }) {
             </dd>
           </div>
         ) : null}
-        {row.group?.isLeader ? (
-          <div className="flex flex-col gap-0.5 sm:col-span-2">
-            <dt className="lbl-sm">Also in this group</dt>
-            <dd className="copy text-ink">
-              {row.group.members.map((m) => (
-                <span key={m.passId} className="block">
-                  {m.name} <span className="num text-[12px] text-muted">{m.passId}</span>
-                </span>
-              ))}
-            </dd>
-          </div>
-        ) : null}
         <div className="flex flex-col gap-0.5">
           <dt className="lbl-sm">AWS Builder ID</dt>
           <dd className="num text-[14px] text-ink">
@@ -238,6 +243,44 @@ function RowCard({ row }: { row: Row }) {
           </div>
         ) : null}
       </dl>
+
+      {row.group?.isLeader ? (
+        <section className="flex flex-col gap-2.5" aria-label="Everyone else in this group">
+          <span className="lbl-sm">Everyone else in this group · {row.group.members.length}</span>
+          <div className="grid gap-2.5 [grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))]">
+            {row.group.members.map((m, i) => (
+              <div key={m.passId} className="card-dash flex flex-col gap-1.5 p-3">
+                <span className="flex flex-wrap items-baseline justify-between gap-2">
+                  <span className="h3 text-[19px]">
+                    {i + 2}. {m.name}
+                  </span>
+                  <span className="num text-[11.5px] text-muted">{m.passId}</span>
+                </span>
+                <span className="num text-[12px] text-muted">
+                  {m.email} · {m.phone}
+                </span>
+                <span className="hint">
+                  {m.college} · {m.branch} · {m.rollNumber} · year {m.yearOfStudy} · born {m.dateOfBirth}
+                </span>
+                <span className="copy text-[13px] text-ink">
+                  {m.technical}
+                  {m.workshop ? <span className="block">{m.workshop}</span> : null}
+                </span>
+                <span className="num text-[13px]">
+                  <span className="lbl-sm">Builder ID </span>
+                  {m.builderId ? (
+                    <a href={`https://builder.aws.com/community/@${m.builderId}`} target="_blank" rel="noopener">
+                      @{m.builderId}
+                    </a>
+                  ) : (
+                    'Not given yet'
+                  )}
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {row.group && !row.group.isLeader ? (
         <p className="hint">Paid for by {row.group.leader}. Verify or reject that registration and this one moves with it.</p>

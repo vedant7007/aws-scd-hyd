@@ -56,7 +56,23 @@ export default async function AdminDashboardPage() {
           size: a.groupSize ?? 0,
           leader: a.groupId,
           isLeader: a.groupId === a.passId,
-          members: (a.groupId === a.passId ? (a.groupMembers ?? []) : []).map((id) => ({ passId: id, name: byId.get(id)?.name ?? id })),
+          members: (a.groupId === a.passId ? (a.groupMembers ?? []) : []).map((id) => {
+            const m = byId.get(id)
+            return {
+              passId: id,
+              name: m?.name ?? id,
+              email: m?.email ?? '',
+              phone: m?.phone ?? '',
+              college: m?.college ?? '',
+              branch: m?.branch ?? '',
+              rollNumber: m?.rollNumber ?? '',
+              yearOfStudy: m?.yearOfStudy ?? '',
+              dateOfBirth: m?.dateOfBirth ?? '',
+              builderId: m?.builderId ?? null,
+              technical: m ? (programSession(m.technicalSession)?.title ?? m.technicalSession) : '',
+              workshop: m?.workshop ? (programSession(m.workshop)?.title ?? m.workshop) : null,
+            }
+          }),
         }
       : null,
     utr: a.utr ?? null,
