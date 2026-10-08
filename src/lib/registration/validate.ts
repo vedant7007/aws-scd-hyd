@@ -216,6 +216,8 @@ export function validateGroupHold(body: unknown): { group: GroupInput; submissio
     if (clash !== -1) return { error: { field: `${prefix}email`, message: `Person ${clash + 1} already uses this email. Everyone needs their own.` } }
     const sameRoll = members.findIndex((o) => o.rollNumber === p.person.rollNumber && o.college.toLowerCase() === p.person.college.toLowerCase())
     if (sameRoll !== -1) return { error: { field: `${prefix}roll`, message: `Person ${sameRoll + 1} already has this roll number.` } }
+    const sameBuilder = members.findIndex((o) => o.builderId.toLowerCase() === p.person.builderId.toLowerCase())
+    if (sameBuilder !== -1) return { error: { field: `${prefix}builder`, message: `Person ${sameBuilder + 1} already uses this Builder ID. Everyone needs their own.` } }
     members.push(p.person)
   }
 

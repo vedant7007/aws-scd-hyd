@@ -283,6 +283,7 @@ export function Flow({ resume }: { resume?: Resume }) {
     const e = personErrors(fields, year, '')
     if (!group) return e
     const seen = [fields.email.trim().toLowerCase()]
+    const ids = [normaliseBuilderId(fields.builder)?.toLowerCase() ?? '']
     others.forEach((o, j) => {
       const pre = `m${j + 1}.`
       Object.assign(e, personErrors(o.fields, o.year, pre))
@@ -291,6 +292,9 @@ export function Flow({ resume }: { resume?: Resume }) {
       const mail = o.fields.email.trim().toLowerCase()
       if (mail && seen.includes(mail) && !e[pre + 'email']) e[pre + 'email'] = `Person ${seen.indexOf(mail) + 1} already uses this email. Everyone needs their own.`
       seen.push(mail)
+      const id = normaliseBuilderId(o.fields.builder)?.toLowerCase()
+      if (id && ids.includes(id) && !e[pre + 'builder']) e[pre + 'builder'] = `Person ${ids.indexOf(id) + 1} already uses this Builder ID. Everyone needs their own.`
+      ids.push(id ?? '')
     })
     return e
   }
@@ -558,6 +562,14 @@ export function Flow({ resume }: { resume?: Resume }) {
   const wsName = workshops.find((o) => o.id === workshop)?.title ?? ''
   const fullName = [fields.first, fields.middle, fields.last].map((x) => x.trim()).filter(Boolean).join(' ')
   const missing = step === 3 ? Object.keys(validate()).length : 0
+  /** Who in a group is fully filled in, the payer first. */
+  const peopleDone = group
+    ? [
+        Object.keys(personErrors(fields, year, '')).length === 0,
+        ...others.map((o) => Object.keys(personErrors(o.fields, o.year, 'x.')).length === 0 && Boolean(o.tech) && (lvl < 2 || Boolean(o.workshop))),
+      ]
+    : []
+  const peopleNames = group ? [fields, ...others.map((o) => o.fields)].map((f) => [f.first, f.last].map((x) => x.trim()).filter(Boolean).join(' ')) : []
   const sessLeft = (tech ? 0 : 1) + (lvl >= 2 && !workshop ? 1 : 0)
   const bar = (n: number) => (step > n ? '#9FE3B6' : step === n ? '#FF9900' : 'var(--bar)')
 
@@ -714,10 +726,31 @@ export function Flow({ resume }: { resume?: Resume }) {
                   <p style={{ margin: '0', flex: '1 1 auto', fontSize: '13px', lineHeight: '1.55', color: 'var(--muted)' }}>Middle name is optional. Everything else is needed.</p>
                 </div>
                 {group ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', border: '3px solid var(--line)', background: 'var(--panel-mint)', padding: '12px 14px' }}>
-                    <span style={{ fontFamily: 'var(--font-display)', fontSize: '24px', lineHeight: '1', color: 'var(--ink)' }}>PERSON 1 · YOU</span>
-                    <span style={{ fontSize: '13px', lineHeight: '1.55', color: 'var(--body)' }}>You fill in all {size} people and pay once for everyone. Each person gets their own pass ID and their own emails, so use each person&apos;s real email.</span>
+                  <div className="gpk-track">
+                    <div className="gpk-track-head">
+                      <span className="gpk-track-t">FILL IN ALL {size}</span>
+                      <span className="gpk-track-n">
+                        {peopleDone.filter(Boolean).length} / {size} DONE
+                      </span>
+                    </div>
+                    <span className="gpk-bar" aria-hidden="true">
+                      <span style={{ width: `${(peopleDone.filter(Boolean).length / size) * 100}%` }} />
+                    </span>
+                    <div className="gpk-chips">
+                      {peopleDone.map((done, i) => (
+                        <a key={i} href={`#rg-person-${i + 1}`} className="gpk-chip" data-done={done ? '1' : undefined}>
+                          <span>{done ? '✓' : i + 1}</span>
+                          {peopleNames[i] || (i === 0 ? 'You' : `Person ${i + 1}`)}
+                        </a>
+                      ))}
+                    </div>
+                    <span className="gpk-track-x">You pay once for everyone. Each person needs their own email and their own AWS Builder ID.</span>
                   </div>
+                ) : null}
+                {group ? (
+                  <span id="rg-person-1" className="gpk-me">
+                    PERSON 1 · YOU{peopleDone[0] ? <span className="gpk-me-ok">✓ DONE</span> : null}
+                  </span>
                 ) : null}
                 <Notice text={group ? notice : ''} />
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -731,7 +764,7 @@ export function Flow({ resume }: { resume?: Resume }) {
                 <Field id="email" label="Email" type="email" inputMode="email" value={fields.email} onChange={onField} err={err.email} autoComplete="email" placeholder="you@example.com">
                   <span style={S.hint}>Every update about your pass goes here. Check it twice.</span>
                 </Field>
-                <Field id="builder" label="AWS Builder ID · your @username" value={fields.builder} onChange={onField} err={err.builder} autoComplete="off" placeholder="@yourname" style={{ fontFamily: 'var(--font-mono)' }}>
+                <Field id="builder" label="AWS Builder ID · required · your @username" value={fields.builder} onChange={onField} err={err.builder} autoComplete="off" placeholder="@yourname" style={{ fontFamily: 'var(--font-mono)' }}>
                   <BuilderHelp />
                 </Field>
                 <div style={S.field}>
@@ -774,7 +807,7 @@ export function Flow({ resume }: { resume?: Resume }) {
                   </div>
                 ) : null}
                 {others.map((o, j) => (
-                  <OtherPerson key={`${formKey}-${j}`} n={j + 2} p={o} lvl={lvl} err={err} onChange={(c) => onOther(j, c)} />
+                  <OtherPerson key={`${formKey}-${j}`} n={j + 2} p={o} lvl={lvl} err={err} done={Boolean(peopleDone[j + 1])} onChange={(c) => onOther(j, c)} />
                 ))}
                 <p style={{ margin: '0', fontSize: '12.5px', lineHeight: '1.6', color: 'var(--muted)' }}>
                   By continuing {group ? 'everyone agrees' : 'you agree'} to the <Link href="/code-of-conduct">code of conduct</Link>.
@@ -1394,34 +1427,46 @@ function Field({ id, prefix = '', label, value, onChange, err, type = 'text', in
 function GroupPicker({ size, pickSize, full }: { size: number; pickSize: (n: number) => void; full: number | null }) {
   const total = (n: number) => ((full ?? 0) - groupOffPaise(n)) * n
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', border: '3px solid var(--line)', background: 'var(--surface)', padding: '16px', boxShadow: '6px 6px 0 var(--sh)' }}>
-      <div style={S.headRow}>
-        <span id="rg-group-l" style={S.eye}>{'// COMING AS A GROUP?'}</span>
-        <span style={S.eyeR}>Same pass for everyone</span>
+    <div className="gpk">
+      <div className="gpk-head">
+        <span id="rg-group-l" className="gpk-eye">{'// HOW ARE YOU COMING?'}</span>
+        <span className="gpk-badge">GROUP DISCOUNT</span>
       </div>
-      <div role="group" aria-labelledby="rg-group-l" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,150px),1fr))', gap: '8px' }}>
+      <div role="group" aria-labelledby="rg-group-l" className="gpk-grid">
         {[1, ...GROUP_SIZES].map((n) => (
-          <button key={n} type="button" onClick={() => pickSize(n)} aria-pressed={size === n} style={{ ...chip(size === n, true), minHeight: '64px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px' }}>
-            <span>{n === 1 ? 'JUST ME' : `GROUP OF ${n}`}</span>
+          <button key={n} type="button" className="gpk-opt" onClick={() => pickSize(n)} aria-pressed={size === n} data-group={n > 1 ? '1' : undefined}>
+            {size === n ? (
+              <span className="gpk-check" aria-hidden="true">
+                ✓
+              </span>
+            ) : null}
+            <span className="gpk-people" aria-hidden="true">
+              {Array.from({ length: n }, (_, i) => (
+                <span key={i} className="gpk-person" />
+              ))}
+            </span>
+            <span className="gpk-name">{n === 1 ? 'JUST ME' : `GROUP OF ${n}`}</span>
             {full === null ? (
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: 600 }}>{n === 1 ? 'ONE PERSON' : 'GROUP DISCOUNT'}</span>
+              <span className="gpk-hint">{n === 1 ? 'One pass' : 'Group price'}</span>
             ) : n === 1 ? (
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', fontWeight: 600 }}>{money(full)}</span>
+              <span className="gpk-solo">{money(full)}</span>
             ) : (
-              <GroupTotal was={full * n} now={total(n)} size="13px" />
+              <GroupTotal was={full * n} now={total(n)} size="15px" />
             )}
           </button>
         ))}
       </div>
       {size > 1 ? (
-        <div role="status" style={{ display: 'flex', flexDirection: 'column', gap: '6px', border: '3px solid #9FE3B6', background: 'var(--panel-mint)', padding: '12px 14px' }}>
-          <span style={{ fontFamily: 'var(--font-display)', fontSize: '24px', lineHeight: '1.05', color: 'var(--ink)' }}>GROUP OF {size} · GROUP DISCOUNT</span>
-          {full === null ? <span style={{ fontSize: '13.5px', fontWeight: 600, color: 'var(--ink)' }}>Now pick your pass below to see your group total.</span> : <GroupTotal was={full * size} now={total(size)} size="30px" />}
-          <span style={{ fontSize: '12.5px', lineHeight: '1.5', color: 'var(--body)' }}>You fill in everyone&apos;s details and pay once. Everyone gets their own pass ID and emails.</span>
+        <div role="status" className="gpk-sum">
+          <span className="gpk-sum-t">YOUR GROUP OF {size}</span>
+          {full === null ? <span className="gpk-sum-x">Now pick your pass below to see your group total.</span> : <GroupTotal was={full * size} now={total(size)} size="32px" />}
         </div>
-      ) : (
-        <span style={{ fontSize: '12.5px', lineHeight: '1.5', color: 'var(--muted)' }}>Coming with friends? Book a group pass for {GROUP_SIZES.slice(0, -1).join(', ')} or {GROUP_SIZES.at(-1)} and your group gets our group discount. One person fills in everyone and pays once.</span>
-      )}
+      ) : null}
+      <ol className="gpk-how">
+        <li><span>1</span>One person fills in everyone</li>
+        <li><span>2</span>One payment for the group</li>
+        <li><span>3</span>Everyone gets their own pass ID and emails</li>
+      </ol>
     </div>
   )
 }
@@ -1446,16 +1491,16 @@ function GroupTotal({ was, now, size }: { was: number; now: number; size: string
 }
 
 /** Person 2 onwards in a group: the same boxes as step three, plus their own sessions. */
-function OtherPerson({ n, p, lvl, err, onChange }: { n: number; p: Person; lvl: number; err: Record<string, string>; onChange: (c: Partial<Person> | { field: FieldKey; value: string }) => void }) {
+function OtherPerson({ n, p, lvl, err, done, onChange }: { n: number; p: Person; lvl: number; err: Record<string, string>; done: boolean; onChange: (c: Partial<Person> | { field: FieldKey; value: string }) => void }) {
   const key = `m${n - 1}.`
   const prefix = `m${n - 1}-`
   const e = (k: string) => err[key + k]
   const set = (k: FieldKey, v: string) => onChange({ field: k, value: v })
   const name = [p.fields.first, p.fields.last].map((x) => x.trim()).filter(Boolean).join(' ')
   return (
-    <div style={{ border: '3px solid var(--line)', background: 'var(--surface)', boxShadow: '6px 6px 0 var(--sh)', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '10px 14px', background: 'var(--ink-fill)', color: 'var(--bg)' }}>
-        <span style={{ fontFamily: 'var(--font-display)', fontSize: '22px', lineHeight: '1' }}>PERSON {n}</span>
+    <div id={`rg-person-${n}`} style={{ border: `3px solid ${done ? 'var(--mint-ink)' : 'var(--line)'}`, background: 'var(--surface)', boxShadow: '6px 6px 0 var(--sh)', display: 'flex', flexDirection: 'column', scrollMarginTop: '90px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '10px 14px', background: done ? 'var(--mint-fill)' : 'var(--ink-fill)', color: done ? 'var(--on-fill)' : 'var(--bg)' }}>
+        <span style={{ fontFamily: 'var(--font-display)', fontSize: '22px', lineHeight: '1' }}>PERSON {n}{done ? ' ✓' : ''}</span>
         <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '.08em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
       </div>
       <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -1465,7 +1510,7 @@ function OtherPerson({ n, p, lvl, err, onChange }: { n: number; p: Person; lvl: 
           <Field id="last" prefix={prefix} label="Last name" value={p.fields.last} onChange={set} err={e('last')} autoComplete="off" />
         </div>
         <Field id="email" prefix={prefix} label="Their email" type="email" inputMode="email" value={p.fields.email} onChange={set} err={e('email')} autoComplete="off" placeholder="Their own, not yours" />
-        <Field id="builder" prefix={prefix} label="Their AWS Builder ID · @username" value={p.fields.builder} onChange={set} err={e('builder')} autoComplete="off" placeholder="@theirname" style={{ fontFamily: 'var(--font-mono)' }}>
+        <Field id="builder" prefix={prefix} label="Their AWS Builder ID · required · @username" value={p.fields.builder} onChange={set} err={e('builder')} autoComplete="off" placeholder="@theirname" style={{ fontFamily: 'var(--font-mono)' }}>
           <span style={S.hint}>
             No Builder ID yet? They can <a href={BUILDER_SIGNUP} target="_blank" rel="noopener">create one free here</a>; it takes two minutes.
           </span>
