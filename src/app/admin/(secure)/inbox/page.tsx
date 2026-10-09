@@ -38,6 +38,11 @@ export default async function InboxPage({ searchParams }: PageProps<'/admin/inbo
           </Link>
         ))}
         {urgent ? <span className="pill pill-err self-center">{urgent} urgent</span> : null}
+        {tab === 'speak' && counts.speak ? (
+          <a href="/api/admin/speakers-csv" className="btn btn-mint btn-sm ml-auto" download>
+            EXPORT CSV ({counts.speak})
+          </a>
+        ) : null}
       </nav>
 
       {items.length ? (
