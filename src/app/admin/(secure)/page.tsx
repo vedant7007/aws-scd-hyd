@@ -43,6 +43,7 @@ export default async function AdminDashboardPage() {
     branch: a.branch,
     rollNumber: a.rollNumber,
     builderId: a.builderId ?? null,
+    ticketSentAt: a.ticketSentAt ?? null,
     yearOfStudy: a.yearOfStudy,
     dateOfBirth: a.dateOfBirth,
     tier: a.tier,

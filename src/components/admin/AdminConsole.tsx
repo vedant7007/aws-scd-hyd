@@ -1,7 +1,7 @@
 'use client'
 
 import { useActionState, useMemo, useState } from 'react'
-import { deleteAction, rejectAction, verifyAction, type ActionState } from '@/app/admin/(secure)/actions'
+import { deleteAction, rejectAction, sendTicketAction, verifyAction, type ActionState } from '@/app/admin/(secure)/actions'
 import type { RegistrationState, Tier } from '@/lib/db/types'
 import { REJECTION_REASONS, rejectionCodes } from '@/lib/registration/reasons'
 
@@ -14,6 +14,7 @@ export type Row = {
   branch: string
   rollNumber: string
   builderId: string | null
+  ticketSentAt: string | null
   yearOfStudy: string
   dateOfBirth: string
   tier: Tier
@@ -166,8 +167,9 @@ function RowCard({ row }: { row: Row }) {
   const [verifyState, verify, verifying] = useActionState(verifyAction, null)
   const [rejectState, reject, rejecting] = useActionState(rejectAction, null)
   const [deleteState, del, deleting] = useActionState(deleteAction, null)
-  const result = verifyState ?? rejectState ?? deleteState
-  const busy = verifying || rejecting || deleting
+  const [ticketState, sendTicket, sendingTicket] = useActionState(sendTicketAction, null)
+  const result = verifyState ?? rejectState ?? deleteState ?? ticketState
+  const busy = verifying || rejecting || deleting || sendingTicket
 
   return (
     <article className="flex flex-col gap-3 border-t border-line-soft p-4" aria-label={`${row.name}, ${row.passId}`}>
@@ -315,6 +317,19 @@ function RowCard({ row }: { row: Row }) {
             </button>
           </form>
         </div>
+      ) : null}
+
+      {row.state === 'VERIFIED' ? (
+        <form action={sendTicket} className="flex flex-wrap items-center gap-3">
+          <input type="hidden" name="passId" value={row.passId} />
+          <button type="submit" className={row.ticketSentAt ? 'btn' : 'btn btn-primary'} disabled={busy}>
+            {sendingTicket ? 'SENDING' : row.ticketSentAt ? 'RESEND TICKET' : 'SEND TICKET'}
+          </button>
+          <span className="hint">{row.ticketSentAt ? `Ticket sent ${when(row.ticketSentAt)}` : 'Ticket not sent yet'}</span>
+          <a href={`/pass/${row.passId}`} target="_blank" rel="noopener" className="hint">
+            View their ticket
+          </a>
+        </form>
       ) : null}
 
       <details>

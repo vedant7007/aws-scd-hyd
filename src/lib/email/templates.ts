@@ -36,6 +36,7 @@ export const SUBJECTS = {
   confirmation: `Payment verified, ${event.shortName}`,
   rejection: `We could not match your payment, ${event.shortName}`,
   dayBefore: `Tomorrow: ${event.shortName}`,
+  ticket: `Your ticket: ${event.shortName}`,
   registrationsOpen: `Registrations are open: ${event.shortName}`,
   stillVerifying: `We are still checking your payment, ${event.shortName}`,
   builderId: `Action needed: add your AWS Builder ID, ${event.shortName}`,
@@ -403,6 +404,59 @@ ${footerText}`,
         p('Your sessions are still held. Check the UTR in your UPI app and send the correct one with a screenshot. If you have already paid, do not pay again.'),
         button(url, 'SEND THE CORRECT UTR &rarr;'),
         small(`Or reply to this email with the correct UTR and a screenshot, quoting your pass ID ${esc(r.passId)}.`),
+      ].join('\n'),
+    }),
+  }
+}
+
+/** The ticket, sent by an admin from the verified list: the pass link with the QR the gate scans. */
+export function ticket(r: Person): Body {
+  const url = passLink(r.passId)
+  const lines = sessionLines(r)
+  return {
+    subject: SUBJECTS.ticket,
+    text: `Hi ${r.name},
+
+Your ticket for ${event.name} is ready.
+
+OPEN YOUR TICKET
+${url}
+
+Show the QR on that page at the gate. Open it before you arrive so it loads quickly, or screenshot it.
+
+YOUR PASS ID
+${r.passId}
+
+YOUR PASS
+${tierLabel(r.tier)}
+${lines.join('\n')}
+
+When:  ${event.dateLabel}, doors ${doors} IST
+Where: ${venue.name}
+Map:   ${venue.directionsUrl}
+Lunch is included.
+
+${footerText}`,
+    html: shell({
+      preheader: `Your ticket is ready. Doors at ${doors} IST on ${event.dateLabel}.`,
+      tag: 'Your ticket',
+      title: `Your ticket, ${r.name}`,
+      body: [
+        p(`Your ticket for <strong>${esc(event.name)}</strong> is ready. Show the QR on it at the gate.`),
+        button(url, 'OPEN MY TICKET &rarr;'),
+        small('Open it before you arrive so it loads quickly, or take a screenshot of the QR.'),
+        passIdBlock(r.passId, 'The gate can also find you by this.'),
+        card(`${eyebrow('Your pass')}${rows([['Pass', esc(tierLabel(r.tier))], ...sessionRows(r)])}`),
+        card(
+          `${eyebrow('When and where')}${rows([
+            ['Date', esc(event.dateLabel)],
+            ['Doors', `${esc(doors)} IST`],
+            ['Venue', esc(venue.name)],
+            ['Map', `<a href="${venue.directionsUrl}" style="color:${MINT};font-weight:bold">Open in Google Maps</a>`],
+            ['Lunch', 'Included'],
+          ])}`,
+          '#E6F5EB',
+        ),
       ].join('\n'),
     }),
   }

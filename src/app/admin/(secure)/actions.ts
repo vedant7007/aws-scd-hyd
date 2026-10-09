@@ -11,6 +11,12 @@ import { CONFIRM_CLOSE, rejectionText } from '@/lib/registration/reasons'
 import { deleteScreenshots } from '@/lib/registration/screenshots'
 import { deleteRegistration, setRegistrationOpen, setSessionCapacity } from '@/lib/registration/state'
 import { mailNotifyListOpen } from '@/lib/notify-open'
+import { UpdateCommand } from '@aws-sdk/lib-dynamodb'
+import { ddb, tableName } from '@/lib/db/client'
+import { keys } from '@/lib/db/keys'
+import { getAttendee } from '@/lib/db/queries'
+import { isReservedAddress, sendEmail } from '@/lib/email/send'
+import { ticket } from '@/lib/email/templates'
 
 /**
  * Amendment 1 section 6. Every action resolves the admin first, so the
@@ -24,6 +30,26 @@ import { mailNotifyListOpen } from '@/lib/notify-open'
 export type ActionState = { ok: boolean; message: string } | null
 
 const id = (formData: FormData) => normalisePassId(String(formData.get('passId') ?? '')) ?? ''
+
+/** Emails one verified person their ticket, and records when. A resend is the same action. */
+export async function sendTicketAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const { email } = await requireAdmin()
+  const passId = id(formData)
+  const a = await getAttendee(passId)
+  if (!a || a.state !== 'VERIFIED') return { ok: false, message: `${passId} is not verified, so it has no ticket yet.` }
+  if (isReservedAddress(a.email)) return { ok: false, message: `${a.email} is a test address; nothing was sent.` }
+  try {
+    await sendEmail({ to: a.email, ...ticket(a) })
+  } catch (err) {
+    console.error(`[ticket] ${passId} failed`, err)
+    return { ok: false, message: 'The email did not go. Try again in a minute.' }
+  }
+  const at = new Date().toISOString()
+  await ddb.send(new UpdateCommand({ TableName: tableName(), Key: keys.attendee(passId), UpdateExpression: 'SET ticketSentAt = :at', ExpressionAttributeValues: { ':at': at } }))
+  console.info(`[ticket] ${passId} sent by ${email}`)
+  revalidatePath('/admin')
+  return { ok: true, message: `Ticket sent to ${a.email}.` }
+}
 
 export async function verifyAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const { email } = await requireAdmin()

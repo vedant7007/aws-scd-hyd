@@ -104,6 +104,8 @@ export type Attendee = Keyed & {
   receiptSentAt?: string
   /** Email 2, the ticket, sent on VERIFIED. Absent means owed; reconcile retries. */
   confirmationSentAt?: string
+  /** The ticket email: sent by an admin from the verified list, and again on a resend. Last send wins. */
+  ticketSentAt?: string
   checkedInAt?: string
   swagIssuedAt?: string
   source: AttendeeSource
