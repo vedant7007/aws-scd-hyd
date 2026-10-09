@@ -1,7 +1,7 @@
 'use client'
 
 import { useActionState } from 'react'
-import { confirmResetAction, loginAction, requestResetAction, type LoginState, type ResetState } from '@/app/admin/login/actions'
+import { confirmResetAction, loginAction, requestResetAction, volunteerAction, type LoginState, type ResetState, type VolunteerState } from '@/app/admin/login/actions'
 
 export function LoginForm() {
   const [state, action, pending] = useActionState<LoginState, FormData>(loginAction, null)
@@ -82,5 +82,39 @@ export function ResetForm() {
         </button>
       </form>
     </div>
+  )
+}
+
+/** Volunteers: email, then the code it brings. No password. */
+export function VolunteerForm() {
+  const [state, action, pending] = useActionState<VolunteerState, FormData>(volunteerAction, null)
+  const codeStep = state?.step === 'code'
+  return (
+    <form action={action} className="flex flex-col gap-4">
+      <div className="fld">
+        <label htmlFor="vol-email">Your email</label>
+        <input id="vol-email" name="email" type="email" autoComplete="email" required className="inp" defaultValue={state?.email ?? ''} readOnly={codeStep} />
+        {!codeStep ? <span className="hint">The one an admin added you with. We email you a code; no password needed.</span> : null}
+      </div>
+      {codeStep ? (
+        <div className="fld">
+          <label htmlFor="vol-code">6 digit code from your email</label>
+          <input id="vol-code" name="code" inputMode="numeric" autoComplete="one-time-code" maxLength={7} required autoFocus className="inp inp-num" />
+        </div>
+      ) : null}
+      {state?.message ? (
+        <p role={state.ok ? 'status' : 'alert'} className={state.ok ? 'copy' : 'err-text'}>
+          {state.message}
+        </p>
+      ) : null}
+      <button type="submit" className="btn btn-primary btn-lg" disabled={pending}>
+        {pending ? 'WAIT' : codeStep ? 'SIGN IN >' : 'EMAIL ME A CODE >'}
+      </button>
+      {codeStep ? (
+        <a href="/admin/login?as=volunteer" className="hint">
+          Wrong email, or no code after a few minutes? Start again.
+        </a>
+      ) : null}
+    </form>
   )
 }

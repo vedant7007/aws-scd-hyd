@@ -361,6 +361,24 @@ ${footerText}`,
   }
 }
 
+/** The code a volunteer types to sign in. Ten minutes, single use. */
+export function volunteerCode(code: string, minutes: number): Body {
+  return {
+    subject: `${code} is your volunteer sign in code, ${event.shortName}`,
+    text: `Your code to sign in as a volunteer for ${event.name} is:\n\n${code}\n\nIt works for ${minutes} minutes. If you did not ask for it, ignore this email.\n\n${footerText}`,
+    html: shell({
+      preheader: `Your volunteer sign in code. It works for ${minutes} minutes.`,
+      tag: 'Volunteer sign in',
+      title: 'Your sign in code',
+      body: [
+        p(`Type this code on the crew sign in page to sign in as a volunteer for <strong>${esc(event.name)}</strong>.`),
+        card(`<p style="margin:0;font-family:${MONO};font-size:38px;font-weight:bold;letter-spacing:8px;color:${INK}">${esc(code)}</p>`),
+        small(`It works for ${minutes} minutes, once. If you did not ask for it, ignore this email.`),
+      ].join('\n'),
+    }),
+  }
+}
+
 /** REJECTION EMAIL, on entering REJECTED. Quotes the UTR, links the resubmission page, never the ticket. */
 export function rejection(r: Person, utr: string, reason: string): Body {
   const url = payLink(r.passId)

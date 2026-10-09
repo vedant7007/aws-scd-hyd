@@ -137,7 +137,10 @@ export async function addUserAction(_prev: ActionState, formData: FormData): Pro
   revalidatePath('/admin/users')
   return {
     ok: true,
-    message: `${target} added as ${role}. ${account.created ? 'Their sign-in account is created; they set their own password with "Forgot password" on the sign-in page.' : 'Their sign-in account already existed.'}`,
+    message:
+      role === 'volunteer'
+        ? `${target} added as volunteer. They sign in on the Volunteer tab of the sign-in page with just this email; a code is emailed to them.`
+        : `${target} added as admin. ${account.created ? 'Their sign-in account is created; they set their own password with "Forgot password" on the sign-in page.' : 'Their sign-in account already existed.'}`,
   }
 }
 

@@ -22,6 +22,7 @@ import { redirect } from 'next/navigation'
 import type { CrewRole } from '../db/types'
 import { required } from '../outputs'
 import { BOOTSTRAP_ADMIN, adminCount, bootstrapFirstAdmin, getUser } from './crew'
+import { VOLUNTEER_COOKIE, volunteerFromCookie } from './volunteer'
 
 // Server only. SPEC.md section 7: no AWS SDK call ever runs in the browser, so
 // the whole sign in round trip happens here and the browser only ever holds an
@@ -107,7 +108,13 @@ export type CrewSession =
  */
 export const currentCrew = cache(async (): Promise<CrewSession> => {
   const refreshToken = (await cookies()).get(REFRESH_COOKIE)?.value
-  if (!refreshToken) return { status: 'signed-out' }
+  if (!refreshToken) {
+    // A volunteer signed in by email code: always the volunteer role, and
+    // only while they are still on the crew list.
+    const volunteer = await volunteerFromCookie()
+    if (!volunteer) return { status: 'signed-out' }
+    return (await getUser(volunteer)) ? { status: 'ok', email: volunteer, role: 'volunteer' } : { status: 'signed-out' }
+  }
 
   const hit = sessionCache.get(refreshToken)
   if (hit && Date.now() - hit.at < SESSION_TTL_MS) return hit.session
@@ -208,6 +215,7 @@ export async function signOut(): Promise<void> {
   // lasting until the TTL expires.
   if (token) sessionCache.delete(token)
   store.delete(REFRESH_COOKIE)
+  store.delete(VOLUNTEER_COOKIE)
 }
 
 /** Forgets every cached decision. Called after a role change so it lands within the request, not the TTL. */
