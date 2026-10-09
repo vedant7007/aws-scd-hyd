@@ -93,6 +93,12 @@ export type RosterEntry = {
   name: string
   tier: string
   college: string
+  technical?: string
+  workshop?: string | null
+  builderId?: string | null
+  group?: { size: number; payer: boolean } | null
+  /** Whether the pass was already checked in when the page loaded. */
+  checkedIn?: boolean
 }
 
 /** Cached so a scan still shows a name when the network is gone. */

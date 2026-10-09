@@ -2,6 +2,7 @@ import { Scanner } from '@/components/admin/Scanner'
 import { requireCrew } from '@/lib/auth/admin'
 import { listAttendees } from '@/lib/db/queries'
 import type { RosterEntry } from '@/lib/scan-queue'
+import { programSession } from '@/content/program'
 
 /**
  * The gate. Any crew role: this is the one screen a volunteer is for.
@@ -14,8 +15,8 @@ export default async function ScanPage() {
 
   /**
    * The roster ships with the page and is cached on the device, so a scan still
-   * shows a name when the wifi has gone. No email addresses and no phone
-   * numbers are included: the gate needs to identify a person, not contact them.
+   * shows a name and sessions when the wifi has gone. No email addresses and no
+   * phone numbers are included: the gate needs to identify a person, not contact them.
    */
   const roster: RosterEntry[] = attendees
     .filter((a) => a.state === 'VERIFIED')
@@ -24,17 +25,15 @@ export default async function ScanPage() {
       name: a.name,
       tier: a.tier,
       college: a.college,
+      technical: programSession(a.technicalSession)?.title ?? a.technicalSession,
+      workshop: a.workshop ? (programSession(a.workshop)?.title ?? a.workshop) : null,
+      builderId: a.builderId ?? null,
+      group: a.groupId ? { size: a.groupSize ?? 0, payer: a.groupId === a.passId } : null,
+      checkedIn: Boolean(a.checkedInAt),
     }))
 
   return (
     <div className="page rise">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="flex flex-col gap-2">
-          <span className="eye">{'// THE GATE'}</span>
-          <h1 className="h1">SCAN</h1>
-        </div>
-        <span className="lbl">{roster.length} passes cached on this phone</span>
-      </div>
       <Scanner roster={roster} />
     </div>
   )
