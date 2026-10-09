@@ -35,7 +35,7 @@ frontend:
         # Amplify does not hand console variables to the Next.js server at
         # runtime; the documented fix is to write the ones the server reads
         # into .env.production before building. Only these names, never all.
-        - env | grep -E '^(SES_FROM|SES_REPLY_TO|ADMIN_EMAILS|EMAIL_TRANSPORT|SCD_UPI_ID|SCD_UPI_PAYEE|SCD_UPI_MC)=' >> .env.production || true
+        - env | grep -E '^(SES_FROM|SES_REPLY_TO|ADMIN_EMAILS|EMAIL_TRANSPORT|SCD_UPI_ID|SCD_UPI_PAYEE|SCD_UPI_MC|SCD_SHEETS_KEY)=' >> .env.production || true
         - npm run build
   artifacts:
     baseDirectory: .next
