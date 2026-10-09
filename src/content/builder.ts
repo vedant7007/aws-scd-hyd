@@ -2,9 +2,9 @@
  * AWS Builder ID. Every attendee gives the @username of their AWS Builder
  * Center profile (shown under Manage profile), organiser's decision,
  * 7 October 2026. Those without one create it through the event's own
- * link, which lands on builder.aws.com/start.
+ * invite link (changed 9 October 2026 from the earlier bit.ly one).
  */
-export const BUILDER_SIGNUP = 'https://bit.ly/4vWEDS7'
+export const BUILDER_SIGNUP = 'https://builder.aws.com?inviteId=181ad685-385c-4861-8642-0dd6c98fbc26'
 
 /** The public profile behind a username. */
 export const builderProfile = (alias: string) => `https://builder.aws.com/community/@${alias}`
