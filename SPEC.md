@@ -255,7 +255,7 @@ The draft lives in the tab's `sessionStorage` (not `localStorage`: a shared lab 
 
 **Rejected.** The seats stay held while the student fixes a wrong UTR at `/register/pay/<passId>`, the link in the rejection email.
 
-**Refunds.** The wording, on the payment step and in email 2, verbatim: *Refunds are available if you tell us at least two weeks before the event. Write to awssbgvjit@gmail.com with your pass ID.* Reject reasons come from a short list (Could not find this payment; Amount does not match; This payment has already been used for another registration; Other, with a note) and go into the rejection email.
+**Refunds.** None are offered, and refunds are mentioned nowhere on the site or in any email (organiser's decision, 9 October 2026). Reject reasons come from a short list (Could not find this payment; Amount does not match; This payment has already been used for another registration; Other, with a note) and go into the rejection email.
 
 ### Verification
 
@@ -398,7 +398,7 @@ SES, `ap-south-1`. Every body lives in `src/lib/email/templates.ts` as named exp
 | Email | Trigger | Idempotency mark |
 |---|---|---|
 | 1, receipt | entering `PENDING_VERIFICATION`: pass id, pass, sessions, amount | `receiptSentAt` |
-| 2, payment verified | entering `VERIFIED`: payment verified, pass id, sessions, date and venue, refund wording. **No ticket, no QR, no pass link** (organiser decision, 29 September 2026); a gate email comes separately before the event | `confirmationSentAt`; the hourly run resends anything owed |
+| 2, payment verified | entering `VERIFIED`: payment verified, pass id, sessions, date and venue, the I'm attending link. **No ticket, no QR, no pass link** (organiser decision, 29 September 2026); a gate email comes separately before the event | `confirmationSentAt`; the hourly run resends anything owed |
 | rejection | entering `REJECTED`, quotes the UTR and the reason, links `/register/pay/<passId>`, **contains no pass link** | none |
 | day before | timings and directions | not yet scheduled |
 

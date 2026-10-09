@@ -87,7 +87,7 @@ export default function CodeOfConductPage() {
           </div>
           <div className="numlist">
             <span className="n">02</span>
-            <span>If it continues, your pass is cancelled and you are asked to leave campus. No refund.</span>
+            <span>If it continues, your pass is cancelled and you are asked to leave campus.</span>
           </div>
           <div className="numlist">
             <span className="n" data-tone="err">

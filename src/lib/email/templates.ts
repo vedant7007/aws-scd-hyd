@@ -1,7 +1,7 @@
 import { BUILDER_SIGNUP, BUILDER_STEPS } from '../../content/builder'
 import { event, venue } from '../../content/event'
 import { programSession } from '../../content/program'
-import { REFUND_POLICY, formatInr, passes, tierLabel } from '../../content/passes'
+import { formatInr, passes, tierLabel } from '../../content/passes'
 import type { Attendee } from '../db/types'
 import { siteUrl } from '../site'
 import type { Mail } from './send'
@@ -242,9 +242,6 @@ We will email you again before the event with everything you need at the gate.
 Tell your friends you're coming: put your photo in our "I'm attending" frame and share it.
 ${link('/attending')}
 
-REFUNDS
-${REFUND_POLICY}
-
 ${footerText}`,
     html: shell({
       preheader: `Your payment is verified. Pass ID ${r.passId}.`,
@@ -269,7 +266,6 @@ ${footerText}`,
         p('We will email you again before the event with everything you need at the gate.'),
         p('Tell your friends you&rsquo;re coming: put your photo in our &ldquo;I&rsquo;m attending&rdquo; frame and share it on LinkedIn or Instagram.'),
         button(link('/attending'), 'MAKE MY POST &rarr;'),
-        card(`${eyebrow('Refunds', MUTED)}${small(esc(REFUND_POLICY))}`, CREAM, '#E3DDD4'),
       ].join('\n'),
     }),
   }

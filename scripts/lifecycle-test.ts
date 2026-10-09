@@ -27,7 +27,6 @@ import { getAttendee, getAttendeeWithLog, listAttendees } from '../src/lib/db/qu
 import type { Attendee, RegistrationState, Session } from '../src/lib/db/types'
 import { RECEIPT_FORBIDDEN_WORDS, confirmation, receipt, rejection } from '../src/lib/email/templates'
 import { addUser, adminCount, getUser, removeUser, setRole } from '../src/lib/auth/crew'
-import { REFUND_POLICY } from '../src/content/passes'
 import { upiLink } from '../src/content/payment'
 import { programSessions } from '../src/content/program'
 import { adminReject, adminVerify, placeHold, submitPayment, sweepAbandoned } from '../src/lib/registration/flow'
@@ -326,9 +325,9 @@ function emails(): void {
   assert.ok(rej.text.includes('UTR123456789012') && !rej.text.includes('/pass/'))
   ok('rejection email quotes the UTR and contains no pass link')
   const c = confirmation(person)
-  assert.ok(c.text.includes(REFUND_POLICY) && c.text.includes('SCD-TESTTESTTE') && !c.text.includes('/pass/') && !c.html.includes('/pass/'), 'payment verified mail, no ticket')
+  assert.ok(!/refund/i.test(c.text + c.html) && c.text.includes('SCD-TESTTESTTE') && !c.text.includes('/pass/') && !c.html.includes('/pass/'), 'payment verified mail, no ticket')
   for (const t of [r.text, rej.text, c.text]) assert.ok(!t.includes('—'), 'an email carries an em dash')
-  ok('email 2 says payment verified with the pass id and refund wording, and carries no ticket; no email carries an em dash')
+  ok('email 2 says payment verified with the pass id, mentions no refunds and carries no ticket; no email carries an em dash')
 }
 
 /* ---- http ----------------------------------------------------------------- */

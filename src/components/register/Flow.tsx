@@ -1028,9 +1028,6 @@ export function Flow({ resume }: { resume?: Resume }) {
                   <span role="alert" style={S.err}>{err.shot}</span>
                 </div>
                 <Notice text={notice} />
-                <p style={{ margin: '0', borderTop: '2px solid var(--line-soft)', paddingTop: '14px', fontSize: '12.5px', lineHeight: '1.6', color: 'var(--muted)' }}>
-                  Refunds are available if you tell us at least two weeks before the event. Write to <a href={`mailto:${CONTACT}`}>{CONTACT}</a> with your Pass ID.
-                </p>
               </div>
             ) : null}
 

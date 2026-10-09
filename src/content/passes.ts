@@ -23,9 +23,6 @@ export type Pass = {
   swag: string | null
 }
 
-/** Verbatim, on the registration page before the pay button and in the confirmation email. */
-export const REFUND_POLICY =
-  'Refunds are available if you tell us at least two weeks before the event. Write to awssbgvjit@gmail.com with your pass ID.'
 
 /**
  * Prices are confirmed (24 September 2026) and this is their only home: the
