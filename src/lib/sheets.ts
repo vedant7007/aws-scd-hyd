@@ -13,8 +13,15 @@ import { SPEAKER_FORM } from './forms-options'
  * new or changed row simply appears on the next refresh.
  */
 
+/**
+ * Text Google Sheets keeps as written. IMPORTDATA turns anything that looks
+ * like a date or a long number into a bare serial (46301.96, 6.6E+11); a
+ * zero-width space in front stops that and is invisible in the cell.
+ */
+const asText = (v: string | undefined) => (v ? `​${v}` : '')
+
 const ist = (iso: string | undefined) =>
-  iso ? new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Kolkata' }).format(new Date(iso)) : ''
+  iso ? asText(new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Kolkata' }).format(new Date(iso))) : ''
 
 /** Every speaker interest form, one column per question in the form's order. */
 export async function speakersCsv(): Promise<string> {
@@ -41,19 +48,19 @@ export async function registrationsCsv(): Promise<string> {
       a.state.replace('_', ' ').toLowerCase(),
       a.name,
       a.email,
-      a.phone,
+      asText(a.phone),
       a.builderId ? `@${a.builderId}` : '',
       a.college,
       a.branch,
-      a.rollNumber,
+      asText(a.rollNumber),
       a.yearOfStudy,
-      a.dateOfBirth,
+      asText(a.dateOfBirth),
       tierLabel(a.tier),
       programSession(a.technicalSession)?.title ?? a.technicalSession,
       a.workshop ? (programSession(a.workshop)?.title ?? a.workshop) : '',
       a.amountPaise / 100,
       a.groupId ? (a.groupId === a.passId ? `Paid for group of ${a.groupSize ?? ''}` : `In group ${a.groupId}`) : '',
-      a.utr ?? '',
+      asText(a.utr),
       ist(a.createdAt),
       a.state === 'VERIFIED' ? ist(a.verifiedAt) : '',
     ]),
