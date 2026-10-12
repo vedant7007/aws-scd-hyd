@@ -1102,3 +1102,6 @@ button.adm-kpi:hover { transform: translate3d(-2px,-2px,0); box-shadow: 6px 6px 
 @media (min-width: 720px) {
   .adm-row { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto 24px; grid-template-areas: "main tags end chev"; }
 }
+/* Native dropdowns: no lift on focus (Chrome on Windows paints a white ghost where the popup was), and dark options in dark mode. */
+select:focus { transform: none; }
+option { background: var(--color-surface); color: var(--color-ink); }
