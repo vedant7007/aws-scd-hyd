@@ -147,11 +147,12 @@ export default async function AdminDashboardPage() {
             <span id="tier-h" className="card-title">
               BY TIER
             </span>
-            <span className="lbl">{d.total} records</span>
+            <span className="lbl">{d.registered} registered</span>
           </div>
           {tiers.map((tier) => {
-            const n = d.byTier.find((t) => t.tier === tier)?.count ?? 0
-            const pct = d.total ? Math.round((n / d.total) * 100) : 0
+            const t = d.byTier.find((x) => x.tier === tier)
+            const n = t?.registered ?? 0
+            const pct = d.registered ? Math.round((n / d.registered) * 100) : 0
             return (
               <div key={tier} className="flex flex-col gap-2 border-b border-line-soft p-4">
                 <div className="flex items-center justify-between gap-3">
@@ -159,7 +160,10 @@ export default async function AdminDashboardPage() {
                     <span className="dot" data-tier={tier} aria-hidden="true" />
                     <span className="h3">{tierLabel(tier).toUpperCase()}</span>
                   </span>
-                  <span className="num text-[17px] font-semibold text-ink">{n}</span>
+                  <span className="flex items-baseline gap-2">
+                    <span className="num text-[17px] font-semibold text-ink">{n}</span>
+                    <span className="hint">{t?.count ?? 0} verified</span>
+                  </span>
                 </div>
                 <span className="meter">
                   <span data-tone="orange" style={{ width: `${pct}%` }} />

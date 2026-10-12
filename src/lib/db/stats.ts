@@ -29,7 +29,9 @@ export type Dashboard = {
   byState: { state: RegistrationState; count: number }[]
   /** PENDING_VERIFICATION, oldest UTR first. The default admin view. Preview records included, marked. */
   queue: Attendee[]
-  byTier: { tier: Tier; count: number }[]
+  /** Per pass: everyone past the payment step, and how many of those are verified. */
+  byTier: { tier: Tier; count: number; registered: number }[]
+  registered: number
   checkedIn: number
   swagIssued: number
   sessions: SessionSeats[]
@@ -67,6 +69,7 @@ export async function loadDashboard(): Promise<Dashboard> {
   // are theirs to verify or reject, but they are nobody's lunch.
   const real = attendees.filter((a) => a.source !== 'preview')
   const paid = real.filter((a) => a.state === 'VERIFIED')
+  const registered = real.filter((a) => a.state === 'PENDING_VERIFICATION' || a.state === 'VERIFIED')
 
   const sessions: SessionSeats[] = programSessions.map((spec, i) => {
     const item = stored[i]
@@ -90,7 +93,8 @@ export async function loadDashboard(): Promise<Dashboard> {
     queue: attendees
       .filter((a) => a.state === 'PENDING_VERIFICATION')
       .sort((a, b) => (a.utrSubmittedAt ?? a.createdAt).localeCompare(b.utrSubmittedAt ?? b.createdAt)),
-    byTier: TIERS.map((tier) => ({ tier, count: paid.filter((a) => a.tier === tier).length })),
+    byTier: TIERS.map((tier) => ({ tier, count: paid.filter((a) => a.tier === tier).length, registered: registered.filter((a) => a.tier === tier).length })),
+    registered: registered.length,
     checkedIn: real.filter((a) => a.checkedInAt).length,
     swagIssued: real.filter((a) => a.swagIssuedAt).length,
     sessions,
