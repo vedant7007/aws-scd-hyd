@@ -51,6 +51,7 @@ export default async function AdminDashboardPage() {
     technical: programSession(a.technicalSession)?.title ?? a.technicalSession,
     workshop: a.workshop ? (programSession(a.workshop)?.title ?? a.workshop) : null,
     state: a.state,
+    sharePaise: a.amountPaise,
     amountLabel: formatInr(a.groupId === a.passId ? (a.groupTotalPaise ?? a.amountPaise) : a.amountPaise),
     group: a.groupId
       ? {
