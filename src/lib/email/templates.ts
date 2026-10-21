@@ -41,7 +41,7 @@ export const SUBJECTS = {
   registrationsOpen: `Registrations are open: ${event.shortName}`,
   stillVerifying: `We are still checking your payment, ${event.shortName}`,
   builderId: `Action needed: add your AWS Builder ID, ${event.shortName}`,
-  referral: `Bring your friends, win prizes: ${event.shortName}`,
+  referral: `A quick update on your registration: ${event.shortName}`,
 } as const
 
 export const REPLY_TO = process.env.SES_REPLY_TO ?? event.contactEmail
@@ -372,54 +372,109 @@ const referText = `Pick your referral code and share it. Every friend who regist
 const referCard = (passId: string) =>
   card(`${eyebrow('Bring your friends · win prizes', ORANGE)}${small(esc(referText))}${button(referLink(passId), 'GET MY REFERRAL CODE &rarr;')}`, '#FFF6E8')
 
+/** When tickets go out, by the organisers' decision (21 October 2026): two days before the event. */
+export const TICKET_DAY_LABEL = '28 October'
+
+/** One step of the status tracker: a filled square when done, an outlined one when not. */
+const trackStep = (icon: string, label: string, note: string, state: 'done' | 'now' | 'later') => {
+  const bg = state === 'done' ? '#9FE3B6' : state === 'now' ? ORANGE : '#FFFFFF'
+  const fg = state === 'later' ? MUTED : INK
+  return `<td width="33%" valign="top" align="center" style="padding:0 4px">
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 8px"><tr><td width="44" height="44" align="center" valign="middle" style="width:44px;height:44px;border:3px solid ${INK};background:${bg};font-size:20px;line-height:44px">${icon}</td></tr></table>
+<p style="margin:0 0 2px;font-family:${MONO};font-size:11px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;color:${fg}">${label}</p>
+<p style="margin:0;font-family:${SANS};font-size:12px;line-height:1.4;color:${MUTED}">${note}</p></td>`
+}
+
+/** An update: a coloured number column, then the text and one button. */
+const updateCard = (n: number, icon: string, title: string, text: string, href: string, label: string, accent: string) =>
+  `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 14px;border:3px solid ${INK};background:#FFFFFF"><tr>
+<td width="56" valign="top" align="center" style="width:56px;background:${accent};border-right:3px solid ${INK};padding:14px 0">
+<p style="margin:0;font-size:22px;line-height:1">${icon}</p>
+<p style="margin:6px 0 0;font-family:${MONO};font-size:12px;font-weight:bold;color:${INK}">0${n}</p></td>
+<td valign="top" style="padding:14px 16px 4px">
+<p style="margin:0 0 6px;font-family:${SANS};font-size:16px;font-weight:bold;color:${INK}">${title}</p>
+<p style="margin:0 0 12px;font-family:${SANS};font-size:13.5px;line-height:1.55;color:${MUTED}">${text}</p>
+${button(href, label)}</td></tr></table>`
+
 /**
- * The one mail to everyone already registered when referrals opened: their
- * code, the code of whoever referred them, the Builder ID if it is still
- * missing, and the "I'm attending" post. One mail, not four.
+ * The quick update to everyone already registered when referrals opened: a
+ * word on the wait and when tickets come, then what is new. Their referral
+ * code, who referred them, the Builder ID if it is still missing, and the
+ * "I'm attending" post. One mail, not four.
  */
-export function referralLaunch(r: Pick<Attendee, 'name' | 'firstName' | 'passId' | 'builderId'>): Body {
+export function referralLaunch(r: Pick<Attendee, 'name' | 'firstName' | 'passId' | 'builderId' | 'state'>): Body {
   const refer = referLink(r.passId)
   const builder = link(`/builder-id?pass=${encodeURIComponent(r.passId)}`)
   const post = link('/attending')
   const board = link('/leaderboard')
-  const needsBuilder = !r.builderId
-  const steps: { title: string; text: string; href: string; label: string; bg?: string }[] = [
-    { title: 'Get your referral code', text: referText, href: refer, label: 'GET MY CODE &rarr;', bg: '#FFF6E8' },
+  const verified = r.state === 'VERIFIED'
+  const wait = verified
+    ? `Thank you for your patience. Your payment is verified and your seat is confirmed. Tickets go out on ${TICKET_DAY_LABEL}, two days before the event.`
+    : `Sorry for making you wait. Your registration is safe with us. We are verifying payments as fast as we can, and tickets go out on ${TICKET_DAY_LABEL}, two days before the event. For now, sit back and have a look at what is new.`
+  const updates: { icon: string; title: string; text: string; href: string; label: string; accent: string }[] = [
+    { icon: '🏆', title: 'Get your referral code', text: esc(referText), href: refer, label: 'GET MY CODE &rarr;', accent: ORANGE },
     {
+      icon: '🤝',
       title: 'Did someone refer you?',
-      text: `If a friend told you about the event, add their code to your registration so they get the credit. Same page, by ${REFERRAL_CUTOFF_LABEL}.`,
+      text: `If a friend told you about the event, add their code to your registration so they get the credit. Same page, by ${esc(REFERRAL_CUTOFF_LABEL)}.`,
       href: refer,
       label: 'ADD THEIR CODE &rarr;',
+      accent: '#C4AEF2',
     },
-    ...(needsBuilder
-      ? [{ title: 'Add your AWS Builder ID', text: 'Needed for every attendee. Your @username is in AWS Builder Center under Manage profile.', href: builder, label: 'ADD MY BUILDER ID &rarr;' }]
-      : []),
-    { title: "Tell everyone you're coming", text: "Put your photo in our I'm attending frame and share it on LinkedIn, Instagram or WhatsApp.", href: post, label: 'MAKE MY POST &rarr;', bg: '#E6F5EB' },
+    ...(r.builderId
+      ? []
+      : [{ icon: '🆔', title: 'Add your AWS Builder ID', text: 'Needed for every attendee. Your @username is in AWS Builder Center under Manage profile.', href: builder, label: 'ADD MY BUILDER ID &rarr;', accent: '#F6D27A' }]),
+    { icon: '📸', title: "Tell everyone you're coming", text: "Put your photo in our I'm attending frame and share it on LinkedIn, Instagram or WhatsApp.", href: post, label: 'MAKE MY POST &rarr;', accent: '#9FE3B6' },
   ]
+  const tracker = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 18px;border:3px solid ${INK};background:#FFFFFF"><tr><td style="padding:16px 8px 14px">
+<p style="margin:0 0 14px;text-align:center;font-family:${MONO};font-size:11px;letter-spacing:2px;text-transform:uppercase;color:${MUTED}">Where your registration is</p>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+${trackStep('✓', 'Registered', 'We have your details', 'done')}
+${trackStep(verified ? '✓' : '⏳', verified ? 'Verified' : 'Payment check', verified ? 'Your seat is confirmed' : 'In progress, nothing to do', verified ? 'done' : 'now')}
+${trackStep('🎟', 'Ticket', `Arrives ${TICKET_DAY_LABEL}`, verified ? 'now' : 'later')}
+</tr></table></td></tr></table>`
+  const banner = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:4px 0 18px;background:${INK};border:3px solid ${INK}"><tr><td align="center" style="padding:20px 16px">
+<p style="margin:0 0 4px;font-family:${MONO};font-size:11px;letter-spacing:3px;color:#F6D27A">&#9679; &#9679; &#9679; LIVE NOW &#9679; &#9679; &#9679;</p>
+<p style="margin:0 0 6px;font-family:${MONO};font-size:30px;font-weight:bold;letter-spacing:2px;color:${ORANGE}">HIGH SCORES</p>
+<p style="margin:0 0 14px;font-family:${SANS};font-size:13.5px;line-height:1.5;color:#E8F2EC">Top referrers win exciting prizes. Counting ends ${esc(REFERRAL_CUTOFF_LABEL)}.</p>
+<table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="background:#9FE3B6;border:3px solid #FFFFFF"><a href="${board}" style="display:inline-block;padding:11px 20px;font-family:${SANS};font-size:14px;font-weight:bold;letter-spacing:1px;color:${INK};text-decoration:none">SEE THE LEADERBOARD &rarr;</a></td></tr></table>
+</td></tr></table>`
+
   return {
     subject: SUBJECTS.referral,
     text: `Hi ${r.name},
 
-The referral leaderboard for ${event.name} is live. A few quick things:
+A QUICK UPDATE
+${wait}
 
-${steps.map((x, i) => `${i + 1}. ${x.title.toUpperCase()}\n${x.text}\n${x.href}`).join('\n\n')}
+WHERE YOUR REGISTRATION IS
+1. Registered: done
+2. ${verified ? 'Verified: done' : 'Payment check: in progress, nothing for you to do'}
+3. Ticket: arrives ${TICKET_DAY_LABEL}
 
-See the leaderboard: ${board}
+WHAT'S NEW
+${updates.map((x, i) => `${i + 1}. ${x.title.toUpperCase()}\n${x.text.replace(/&[a-z]+;/g, '')}\n${x.href}`).join('\n\n')}
+
+THE LEADERBOARD
+Top referrers win exciting prizes. Counting ends ${REFERRAL_CUTOFF_LABEL}.
+${board}
 
 YOUR PASS ID
 ${r.passId}
 
 ${footerText}`,
     html: shell({
-      preheader: 'Your referral code, the leaderboard, and a few quick things before the day.',
-      tag: 'Referral leaderboard is live',
+      preheader: verified ? `Your seat is confirmed. Tickets on ${TICKET_DAY_LABEL}, and the referral leaderboard is live.` : `Sorry for the wait. Your registration is safe with us; tickets go out on ${TICKET_DAY_LABEL}.`,
+      tag: 'Quick update',
       tagColor: '#FFF6E8',
-      title: `Bring your friends, ${r.firstName}`,
+      title: `A quick update, ${r.firstName}`,
       body: [
-        p(`The referral leaderboard for <strong>${esc(event.name)}</strong> is live. A few quick things:`),
-        ...steps.map((x, i) => card(`${eyebrow(`${i + 1} · ${esc(x.title)}`)}${small(esc(x.text))}${button(x.href, x.label)}`, x.bg)),
-        small(`<a href="${board}" style="color:${MINT};font-weight:bold">See the leaderboard</a>`),
-        passIdBlock(r.passId, 'You need it for the links above.'),
+        card(`${eyebrow(verified ? 'Thank you' : 'Thank you for waiting', ORANGE)}<p style="margin:0;font-family:${SANS};font-size:15px;line-height:1.65;color:${INK}">${esc(wait)}</p>`, '#FFF6E8'),
+        tracker,
+        `<p style="margin:8px 0 12px;font-family:${MONO};font-size:12px;font-weight:bold;letter-spacing:2px;text-transform:uppercase;color:${INK}">What&rsquo;s new</p>`,
+        ...updates.map((x, i) => updateCard(i + 1, x.icon, x.title, x.text, x.href, x.label, x.accent)),
+        banner,
+        passIdBlock(r.passId, 'You need it for the links above. Keep it safe.'),
       ].join('\n'),
     }),
   }
