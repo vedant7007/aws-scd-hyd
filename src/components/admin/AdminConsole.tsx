@@ -35,6 +35,9 @@ export type Row = {
   /** Made through the old test link: real, verifiable, never counted. */
   preview: boolean
   checkedIn: boolean
+  /** Their own referral code, and the code they registered with. */
+  refCode: string | null
+  referredBy: string | null
 }
 
 /** Everything about one other person in a group, shown on the payer's card. */
@@ -462,6 +465,15 @@ function RowCard({ row }: { row: Row }) {
             )}
           </dd>
         </div>
+        {row.refCode || row.referredBy ? (
+          <div className="flex flex-col gap-0.5">
+            <dt className="lbl-sm">Referral</dt>
+            <dd className="num text-[14px] text-ink">
+              {row.refCode ? <span className="block">Their code: {row.refCode}</span> : null}
+              {row.referredBy ? <span className="block">Referred by: {row.referredBy}</span> : null}
+            </dd>
+          </div>
+        ) : null}
         {row.rejectionReason ? (
           <div className="flex flex-col gap-0.5 sm:col-span-2">
             <dt className="lbl-sm">Rejected because</dt>

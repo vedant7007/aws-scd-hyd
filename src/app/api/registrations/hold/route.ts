@@ -1,7 +1,9 @@
 import { payment, upiLink } from '@/content/payment'
 import { programSession } from '@/content/program'
 import { callerIp, withinRateLimit } from '@/lib/db/rate-limit'
-import { placeGroupHold, placeHold } from '@/lib/registration/flow'
+import { emailTaken, emailTakenMessage, placeGroupHold, placeHold } from '@/lib/registration/flow'
+import { normaliseCode } from '@/lib/referral/codes'
+import { codeOwner } from '@/lib/referral/store'
 import { validateGroupHold, validateHold } from '@/lib/registration/validate'
 import { launchStatus } from '@/lib/tickets/launch'
 
@@ -50,7 +52,12 @@ export async function POST(req: Request): Promise<Response> {
     return json(429, { ok: false, message: 'Too many registrations from this network in the last hour. Nothing was charged. Try again a little later.' })
   }
 
-  const out = await placeHold(v.input, v.submissionKey, v.passId, 'checkout')
+  const taken = await emailTaken([v.input.email])
+  if (taken) return json(409, { ok: false, field: 'email', message: emailTakenMessage(taken) })
+  const ref = await referral(v.referralCode, [v.input.email])
+  if ('error' in ref) return json(400, { ok: false, field: 'ref', message: ref.error })
+
+  const out = await placeHold(v.input, v.submissionKey, v.passId, 'checkout', ref.code)
   if (!out.ok) {
     const s = programSession(out.sessionId)
     const isWorkshop = s?.kind === 'workshop'
@@ -78,6 +85,19 @@ export async function POST(req: Request): Promise<Response> {
       link: account ? upiLink(account, a.passId) : null,
     },
   })
+}
+
+/**
+ * The referral code as typed: nothing, a code someone live holds, or a refusal.
+ * Never your own: the owner's email may not be one of the people registering.
+ */
+async function referral(typed: string | undefined, emails: string[]): Promise<{ code?: string } | { error: string }> {
+  if (!typed) return {}
+  const code = normaliseCode(typed)
+  const owner = code ? await codeOwner(code) : null
+  if (!code || !owner) return { error: 'Referral code not found. Check the spelling with the person who gave it to you, or leave it empty.' }
+  if (emails.includes(owner.email)) return { error: 'That is your own code. Use the code of the person who told you about the event.' }
+  return { code }
 }
 
 /** A session full for the group, in the flow's words. */
@@ -109,7 +129,16 @@ async function groupHold(req: Request, body: object): Promise<Response> {
     return json(429, { ok: false, message: 'Too many registrations from this network in the last hour. Nothing was charged. Try again a little later.' })
   }
 
-  const out = await placeGroupHold(v.group, v.submissionKey, v.passId, 'checkout')
+  const emails = v.group.members.map((m) => m.email)
+  const taken = await emailTaken(emails)
+  if (taken) {
+    const i = emails.indexOf(taken)
+    return json(409, { ok: false, field: i > 0 ? `m${i}.email` : 'email', message: emailTakenMessage(taken) })
+  }
+  const ref = await referral(v.referralCode, emails)
+  if ('error' in ref) return json(400, { ok: false, field: 'ref', message: ref.error })
+
+  const out = await placeGroupHold(v.group, v.submissionKey, v.passId, 'checkout', ref.code)
   if (!out.ok) return fullResponse(out.sessionId)
 
   const { leader, members } = out

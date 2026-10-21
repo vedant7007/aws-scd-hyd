@@ -28,6 +28,26 @@ async function mail(a: Attendee, body: Omit<Parameters<typeof sendEmail>[0], 'to
 
 const hashKey = (key: string) => createHash('sha256').update(key).digest('hex')
 
+/** The referral on a new record: the code, already looked up by the caller, and when it was given. */
+const referredFields = (code?: string) => (code ? { referredBy: code, referredAt: new Date().toISOString() } : {})
+
+/**
+ * One registration per email. The first of `emails` that already belongs to a
+ * registration past the payment step (other than the passes in `except`, a
+ * group's own), or null. A rejected registration does not block: that person
+ * may start again. ponytail: a scan, like the admin list; an EMAIL claim item
+ * if registrations ever reach the tens of thousands.
+ */
+export async function emailTaken(emails: string[], except: string[] = []): Promise<string | null> {
+  const want = new Set(emails.map((e) => e.trim().toLowerCase()))
+  const hit = (await listAttendees()).find(
+    (a) => want.has(a.email) && !except.includes(a.passId) && a.source !== 'preview' && (a.state === 'PENDING_VERIFICATION' || a.state === 'VERIFIED'),
+  )
+  return hit?.email ?? null
+}
+
+export const emailTakenMessage = (email: string) => `${email} is already registered. Each email can register once; your pass ID is in that inbox.`
+
 /* ---- the hold ------------------------------------------------------------ */
 
 export type Held = { ok: true; attendee: Attendee; moved: boolean } | Extract<HoldOutcome, { ok: false; reason: 'full' }>
@@ -39,12 +59,12 @@ export type Held = { ok: true; attendee: Attendee; moved: boolean } | Extract<Ho
  * amount is decided here from content and locked into the record: the admin
  * verifies against that number and nothing the browser said.
  */
-export async function placeHold(input: HoldInput, submissionKey: string, previousPassId: string | undefined, source: AttendeeSource): Promise<Held> {
+export async function placeHold(input: HoldInput, submissionKey: string, previousPassId: string | undefined, source: AttendeeSource, referral?: string): Promise<Held> {
   const amount = amountFor(input.tier)
   const keyHash = hashKey(submissionKey)
   const holdUntil = new Date(Date.now() + holdMinutes * 60_000).toISOString()
   const name = [input.firstName, input.middleName, input.lastName].filter(Boolean).join(' ')
-  const rec = { ...input, name, amountPaise: amount.amountPaise, submissionKeyHash: keyHash, holdUntil, source }
+  const rec = { ...input, name, amountPaise: amount.amountPaise, submissionKeyHash: keyHash, holdUntil, source, ...referredFields(referral) }
 
   if (previousPassId) {
     const before = await getAttendee(previousPassId)
@@ -80,7 +100,7 @@ export type GroupHeld = { ok: true; leader: Attendee; members: Attendee[] } | { 
  * back to edit drops the group's earlier hold and makes a fresh one, keeping
  * the old clock so editing never buys more time.
  */
-export async function placeGroupHold(group: GroupInput, submissionKey: string, previousPassId: string | undefined, source: AttendeeSource): Promise<GroupHeld> {
+export async function placeGroupHold(group: GroupInput, submissionKey: string, previousPassId: string | undefined, source: AttendeeSource, referral?: string): Promise<GroupHeld> {
   const size = group.members.length
   const amountPaise = amountFor(group.tier, size).amountPaise
   const keyHash = hashKey(submissionKey)
@@ -109,6 +129,8 @@ export async function placeGroupHold(group: GroupInput, submissionKey: string, p
         source,
         groupId: leaderId,
         groupSize: size,
+        // Every person in the group counts for whoever referred them.
+        ...referredFields(referral),
         ...(i === 0 ? { groupMembers: ids.slice(1), groupTotalPaise: amountPaise * size } : {}),
       },
     }))

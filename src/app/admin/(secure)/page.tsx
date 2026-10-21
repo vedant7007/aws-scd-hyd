@@ -84,6 +84,8 @@ export default async function AdminDashboardPage() {
     createdAt: a.createdAt,
     preview: a.source === 'preview',
     checkedIn: Boolean(a.checkedInAt),
+    refCode: a.refCode ?? null,
+    referredBy: a.referredBy ?? null,
   }))
 
   const sized = d.sessions.filter((s) => s.sellable !== null).length

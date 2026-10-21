@@ -2,6 +2,7 @@ import { BUILDER_SIGNUP, BUILDER_STEPS } from '../../content/builder'
 import { event, venue } from '../../content/event'
 import { programSession } from '../../content/program'
 import { formatInr, passes, tierLabel } from '../../content/passes'
+import { REFERRAL_CUTOFF_LABEL } from '../../content/referral'
 import type { Attendee } from '../db/types'
 import { siteUrl } from '../site'
 import type { Mail } from './send'
@@ -40,6 +41,7 @@ export const SUBJECTS = {
   registrationsOpen: `Registrations are open: ${event.shortName}`,
   stillVerifying: `We are still checking your payment, ${event.shortName}`,
   builderId: `Action needed: add your AWS Builder ID, ${event.shortName}`,
+  referral: `Bring your friends, win prizes: ${event.shortName}`,
 } as const
 
 export const REPLY_TO = process.env.SES_REPLY_TO ?? event.contactEmail
@@ -195,6 +197,10 @@ ${g ? groupText(g) : ''}YOUR PASS
 ${tierLabel(r.tier)}, ${formatInr(r.amountPaise)}
 ${lines.join('\n')}
 
+BRING YOUR FRIENDS
+${referText}
+${referLink(r.passId)}
+
 If you have a question, reply to this email. Replies go to ${REPLY_TO}.
 
 ${footerText}`,
@@ -210,6 +216,7 @@ ${footerText}`,
         ...(g ? [groupHtml(g)] : []),
         card(`${eyebrow('Your pass')}${rows([['Pass', esc(tierLabel(r.tier))], ['Amount', esc(formatInr(r.amountPaise))], ...sessionRows(r)])}`),
         small('Sessions are subject to change. If yours does, we will email you.'),
+        referCard(r.passId),
       ].join('\n'),
     }),
   }
@@ -353,6 +360,66 @@ ${footerText}`,
         ),
         card(`${eyebrow('2 · Tell everyone you&rsquo;re coming')}${small('Put your photo in our &ldquo;I&rsquo;m attending&rdquo; frame and share it on LinkedIn, Instagram or WhatsApp.')}${button(post, 'MAKE MY POST &rarr;')}`, '#E6F5EB'),
         passIdBlock(r.passId, 'Keep it safe. It is how we find your registration.'),
+      ].join('\n'),
+    }),
+  }
+}
+
+/* ---- referrals ------------------------------------------------------------ */
+
+const referLink = (passId: string) => link(`/refer?pass=${encodeURIComponent(passId)}`)
+const referText = `Pick your referral code and share it. Every friend who registers with it is a point on the leaderboard, a group of five is five points, and the top referrers win exciting prizes. Counting ends ${REFERRAL_CUTOFF_LABEL}.`
+const referCard = (passId: string) =>
+  card(`${eyebrow('Bring your friends · win prizes', ORANGE)}${small(esc(referText))}${button(referLink(passId), 'GET MY REFERRAL CODE &rarr;')}`, '#FFF6E8')
+
+/**
+ * The one mail to everyone already registered when referrals opened: their
+ * code, the code of whoever referred them, the Builder ID if it is still
+ * missing, and the "I'm attending" post. One mail, not four.
+ */
+export function referralLaunch(r: Pick<Attendee, 'name' | 'firstName' | 'passId' | 'builderId'>): Body {
+  const refer = referLink(r.passId)
+  const builder = link(`/builder-id?pass=${encodeURIComponent(r.passId)}`)
+  const post = link('/attending')
+  const board = link('/leaderboard')
+  const needsBuilder = !r.builderId
+  const steps: { title: string; text: string; href: string; label: string; bg?: string }[] = [
+    { title: 'Get your referral code', text: referText, href: refer, label: 'GET MY CODE &rarr;', bg: '#FFF6E8' },
+    {
+      title: 'Did someone refer you?',
+      text: `If a friend told you about the event, add their code to your registration so they get the credit. Same page, by ${REFERRAL_CUTOFF_LABEL}.`,
+      href: refer,
+      label: 'ADD THEIR CODE &rarr;',
+    },
+    ...(needsBuilder
+      ? [{ title: 'Add your AWS Builder ID', text: 'Needed for every attendee. Your @username is in AWS Builder Center under Manage profile.', href: builder, label: 'ADD MY BUILDER ID &rarr;' }]
+      : []),
+    { title: "Tell everyone you're coming", text: "Put your photo in our I'm attending frame and share it on LinkedIn, Instagram or WhatsApp.", href: post, label: 'MAKE MY POST &rarr;', bg: '#E6F5EB' },
+  ]
+  return {
+    subject: SUBJECTS.referral,
+    text: `Hi ${r.name},
+
+The referral leaderboard for ${event.name} is live. A few quick things:
+
+${steps.map((x, i) => `${i + 1}. ${x.title.toUpperCase()}\n${x.text}\n${x.href}`).join('\n\n')}
+
+See the leaderboard: ${board}
+
+YOUR PASS ID
+${r.passId}
+
+${footerText}`,
+    html: shell({
+      preheader: 'Your referral code, the leaderboard, and a few quick things before the day.',
+      tag: 'Referral leaderboard is live',
+      tagColor: '#FFF6E8',
+      title: `Bring your friends, ${r.firstName}`,
+      body: [
+        p(`The referral leaderboard for <strong>${esc(event.name)}</strong> is live. A few quick things:`),
+        ...steps.map((x, i) => card(`${eyebrow(`${i + 1} · ${esc(x.title)}`)}${small(esc(x.text))}${button(x.href, x.label)}`, x.bg)),
+        small(`<a href="${board}" style="color:${MINT};font-weight:bold">See the leaderboard</a>`),
+        passIdBlock(r.passId, 'You need it for the links above.'),
       ].join('\n'),
     }),
   }

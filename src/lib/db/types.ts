@@ -108,6 +108,11 @@ export type Attendee = Keyed & {
   ticketSentAt?: string
   checkedInAt?: string
   swagIssuedAt?: string
+  /** Their own referral code, once they pick one. Unique through a REFCODE# item. */
+  refCode?: string
+  /** The code they registered with, and when it was put on the record. Counted on the leaderboard while the record is live. */
+  referredBy?: string
+  referredAt?: string
   source: AttendeeSource
   createdAt: string
 }
@@ -160,6 +165,9 @@ export type EventConfig = Keyed & {
  * itself refuses a second submission of the same UTR anywhere in the system.
  */
 export type UtrClaim = Keyed & { utr: string; passId: string; submittedAt: string }
+
+/** A claimed referral code. Put once, conditionally, with the owner's record in the same transaction. */
+export type RefCode = Keyed & { code: string; passId: string; createdAt: string }
 
 /** One admin action on a registration. Append only. */
 export type VerificationLog = Keyed & {

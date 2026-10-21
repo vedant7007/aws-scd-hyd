@@ -3,6 +3,7 @@ import { doorsLabel } from '@/content/event'
 import { formatInr, passes } from '@/content/passes'
 import type { Tier } from '@/lib/db/types'
 import { eventJsonLd } from '@/lib/jsonld'
+import { leaderboard } from '@/lib/referral/store'
 import { registrationIsOpen } from '@/lib/tickets/launch'
 
 /** Rendered per request: the registration switch comes from the config item and may not be shown stale. */
@@ -10,6 +11,8 @@ export const dynamic = 'force-dynamic'
 
 export default async function HomePage() {
   const open = await registrationIsOpen()
+  // The home page never fails for the board: no board, an empty podium.
+  const board = (await leaderboard().catch(() => [])).slice(0, 3)
 
   // The one source of prices, formatted here so the page and the checkout can
   // never show different figures. A null price renders as pending. There is
@@ -24,7 +27,7 @@ export default async function HomePage() {
         // JSON.stringify output built from typed content, never user input.
         dangerouslySetInnerHTML={{ __html: eventJsonLd() }}
       />
-      <Landing registrationOpen={open} doors={doorsLabel} prices={prices} />
+      <Landing registrationOpen={open} board={board} doors={doorsLabel} prices={prices} />
     </>
   )
 }

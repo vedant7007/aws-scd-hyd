@@ -1,6 +1,7 @@
 import { normalisePassId } from '@/lib/db/keys'
 import { getAttendee } from '@/lib/db/queries'
-import { submitPayment } from '@/lib/registration/flow'
+import { emailTaken, emailTakenMessage, submitPayment } from '@/lib/registration/flow'
+import { groupOf } from '@/lib/registration/state'
 import { screenshotExists } from '@/lib/registration/screenshots'
 import { normaliseUtr } from '@/lib/registration/validate'
 import { VERIFICATION_WINDOW } from '@/lib/email/templates'
@@ -31,6 +32,14 @@ export async function POST(req: Request): Promise<Response> {
   if (!attendee || (attendee.state !== 'AWAITING_PAYMENT' && attendee.state !== 'REJECTED')) {
     return json(404, { ok: false, message: 'We could not find a registration waiting for a payment with that pass id. If your 90 minutes ran out, start again.' })
   }
+
+  // Two tabs racing past the hold check: the second payment is stopped here, before any email.
+  const group = await groupOf(attendee)
+  const taken = await emailTaken(
+    group.map((a) => a.email),
+    group.map((a) => a.passId),
+  )
+  if (taken) return json(409, { ok: false, message: emailTakenMessage(taken) })
 
   if (!(await screenshotExists(passId, screenshotKey))) {
     return json(400, { ok: false, field: 'shot', message: 'The screenshot did not upload. Try it again.' })

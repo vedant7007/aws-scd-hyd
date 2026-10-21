@@ -3,6 +3,8 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { Countdown, Podium } from '@/components/referral/Arcade'
+import type { BoardRow } from '@/lib/referral/store'
 import type { Tier } from '@/lib/db/types'
 import { formatCount } from '@/content/formats'
 import { passes } from '@/content/passes'
@@ -34,13 +36,15 @@ const perksOf = (tier: Tier) => passes.find((p) => p.id === tier)?.perks ?? []
 
 type Props = {
   registrationOpen: boolean
+  /** The referral leaderboard's top three, for the small cabinet. */
+  board: BoardRow[]
   /** Doors, "08:30", from content/event.ts. */
   doors: string
   /** Formatted price per tier, null while a tier is unpriced. */
   prices: Record<Tier, string | null>
 }
 
-export function Landing({ registrationOpen, doors, prices }: Props) {
+export function Landing({ registrationOpen, board, doors, prices }: Props) {
   const rootRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -514,6 +518,39 @@ export function Landing({ registrationOpen, doors, prices }: Props) {
           </div>
         </section>
 
+        <section id="refer" className="rfh" aria-labelledby="rfh-h">
+          <div className="rfh-in">
+            <div className="rfh-copy">
+              <span className="rfh-tag"><span className="gp-dot" aria-hidden="true"></span>NEW · REFER &amp; WIN</span>
+              <h2 id="rfh-h" className="rfh-h">BRING YOUR SQUAD.<br />TOP THE BOARD.</h2>
+              <p className="rfh-p">Already registered? Every friend who registers with your code is a point, a group of five is five, and the top referrers win exciting prizes.</p>
+              <ol className="rfh-steps">
+                <li><span>1</span>Pick your code</li>
+                <li><span>2</span>Send your link to friends</li>
+                <li><span>3</span>Climb the leaderboard</li>
+              </ol>
+              <div className="rfh-cta">
+                <Link href="/refer" className="att-cta">{'GET MY CODE >'}</Link>
+                <Link href="/leaderboard" className="arc-deck-link">See the full leaderboard</Link>
+              </div>
+            </div>
+            <Link href="/leaderboard" className="rfh-mini" aria-label="Open the referral leaderboard">
+              <div className="arc-marquee">
+                <span className="arc-bulbs" aria-hidden="true" />
+                <span className="arc-title">HIGH SCORES</span>
+              </div>
+              <div className="arc-screen">
+                <div className="arc-hud">
+                  <span className="arc-hud-l">Time left</span>
+                  <Countdown />
+                </div>
+                <Podium rows={board} small />
+              </div>
+              <span className="rfh-mini-foot">{board.length ? 'TAP FOR THE FULL BOARD' : 'NO SCORES YET. BE PLAYER ONE'}</span>
+            </Link>
+          </div>
+        </section>
+
         <section id="attending" className="att-sec">
           <div className="att-sec-in">
             <div className="att-copy">
@@ -806,6 +843,7 @@ export function Landing({ registrationOpen, doors, prices }: Props) {
               <span style={{fontFamily:'var(--font-mono)',fontSize:'10px',letterSpacing:'.18em',textTransform:'uppercase',color:'var(--muted)'}}>Take part</span>
               <Link href="/register" style={{color:'var(--ink)',fontFamily:'var(--font-display)',fontSize:'21.3px',minHeight:'30px',display:'inline-flex',alignItems:'center'}}>REGISTER</Link>
               <a href="#passes" style={{color:'var(--ink)',fontFamily:'var(--font-display)',fontSize:'21.3px',minHeight:'30px',display:'inline-flex',alignItems:'center'}}>PASSES</a>
+              <Link href="/leaderboard" style={{color:'var(--ink)',fontFamily:'var(--font-display)',fontSize:'21.3px',minHeight:'30px',display:'inline-flex',alignItems:'center'}}>LEADERBOARD</Link>
               <Link href="/speak" style={{color:'var(--ink)',fontFamily:'var(--font-display)',fontSize:'21.3px',minHeight:'30px',display:'inline-flex',alignItems:'center'}}>APPLY TO SPEAK</Link>
               <Link href="/sponsor" style={{color:'var(--ink)',fontFamily:'var(--font-display)',fontSize:'21.3px',minHeight:'30px',display:'inline-flex',alignItems:'center'}}>SPONSOR US</Link>
               <a href="#sponsors" style={{color:'var(--ink)',fontFamily:'var(--font-display)',fontSize:'21.3px',minHeight:'30px',display:'inline-flex',alignItems:'center'}}>OUR SPONSORS</a>
@@ -832,7 +870,7 @@ export function Landing({ registrationOpen, doors, prices }: Props) {
  * Closes on the cross, Escape or a click outside; sessionStorage remembers,
  * so it never comes back while someone browses.
  */
-const PROMO_SEEN = 'scd-group-promo'
+const PROMO_SEEN = 'scd-promo-groups-referrals'
 
 function GroupPromo() {
   const [open, setOpen] = useState(false)
@@ -874,9 +912,19 @@ function GroupPromo() {
         <div className="gp-banner-in gp-pop-in">
           <button ref={closeRef} type="button" className="gp-close" onClick={close} aria-label="Close">✕</button>
           <span className="gp-banner-tag"><span className="gp-dot" aria-hidden="true"></span>NEW</span>
-          <span id="gp-title" className="gp-banner-title">GROUP PASSES ARE LIVE</span>
-          <span className="gp-banner-sub">Come as 3, 4 or 5 and pay one total with a group discount. One person fills in everyone, and everyone gets their own pass.</span>
-          <Link href="/register?group=4" className="gp-banner-cta" onClick={close}>{'REGISTER NOW >'}</Link>
+          <span id="gp-title" className="gp-banner-title">TWO THINGS ARE LIVE</span>
+          <div className="gp-duo">
+            <div className="gp-duo-item">
+              <span className="gp-duo-h">GROUP PASSES</span>
+              <span className="gp-banner-sub">Come as 3, 4 or 5 and pay one total with a group discount. Everyone gets their own pass.</span>
+              <Link href="/register?group=4" className="gp-banner-cta" onClick={close}>{'REGISTER AS A GROUP >'}</Link>
+            </div>
+            <div className="gp-duo-item">
+              <span className="gp-duo-h">REFER &amp; WIN</span>
+              <span className="gp-banner-sub">Get your referral code, bring your friends and climb the leaderboard. Top referrers win prizes.</span>
+              <Link href="/leaderboard" className="gp-banner-cta gp-cta-alt" onClick={close}>{'CHECK IT OUT >'}</Link>
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -253,6 +253,11 @@ export async function moveHold(before: Attendee, rec: HoldRecord): Promise<HoldO
     delete set.middleName
     remove.push('middleName')
   }
+  if (!rec.referredBy) {
+    delete set.referredBy
+    delete set.referredAt
+    remove.push('referredBy', 'referredAt')
+  }
   delete set.submissionKeyHash
   const head = transitionItem(before.passId, 'AWAITING_PAYMENT', 'AWAITING_PAYMENT', {
     set,

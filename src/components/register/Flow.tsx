@@ -103,6 +103,7 @@ type Saved = {
   submissionKey: string
   size?: number
   others?: Person[]
+  ref?: string
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
@@ -209,6 +210,9 @@ export function Flow({ resume }: { resume?: Resume }) {
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState('')
   const [formKey, setFormKey] = useState(0)
+  /** The referral code as typed, and the server's answer for the code it last checked. */
+  const [ref, setRef] = useState('')
+  const [refAnswer, setRefAnswer] = useState<{ code: string; name?: string; bad?: string } | null>(null)
   const key = useRef('')
   // State, not a ref: the first save must wait for the render that carries
   // the restored draft, or it writes the empty form over it.
@@ -235,6 +239,7 @@ export function Flow({ resume }: { resume?: Resume }) {
         setUtr(s.utr)
         setSize(s.size ?? 1)
         setOthers(s.others ?? [])
+        setRef(s.ref ?? '')
         key.current = s.submissionKey
         setFormKey((k) => k + 1)
       }
@@ -247,19 +252,39 @@ export function Flow({ resume }: { resume?: Resume }) {
       setSize(wanted)
       setOthers(Array.from({ length: wanted - 1 }, () => ({ fields: EMPTY, year: '' as const, tech: '', workshop: '' })))
     }
+    // Arriving through someone's referral link: their code, ready on the review step.
+    const viaLink = new URLSearchParams(window.location.search).get('ref')
+    if (viaLink && !key.current) setRef(viaLink.toUpperCase().replace(/[^A-Z0-9]/g, ''))
     if (!key.current) key.current = newKey()
     setLoaded(true)
   }, [resume])
 
   useEffect(() => {
     if (!loaded) return
-    const s: Saved = { step, phase, tier, tech, workshop, year, fields, hold, utr, submissionKey: key.current, size, others }
+    const s: Saved = { step, phase, tier, tech, workshop, year, fields, hold, utr, submissionKey: key.current, size, others, ref }
     try {
       sessionStorage.setItem(STORE, JSON.stringify(s))
     } catch {
       // Private window with storage off: the flow still works, it just forgets on refresh.
     }
-  }, [loaded, step, phase, tier, tech, workshop, year, fields, hold, utr, size, others])
+  }, [loaded, step, phase, tier, tech, workshop, year, fields, hold, utr, size, others, ref])
+
+  // The referral code, checked as it is typed, a moment after the typing stops.
+  const refCode = ref.toUpperCase().replace(/[^A-Z0-9]/g, '')
+  useEffect(() => {
+    if (!refCode) return
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch('/api/referrals', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'check', code: refCode }) })
+        const b = (await res.json().catch(() => ({}))) as { ok?: boolean; name?: string; message?: string }
+        setRefAnswer(res.ok && b.ok ? { code: refCode, name: b.name } : { code: refCode, bad: b.message ?? 'Referral code not found.' })
+      } catch {
+        setRefAnswer({ code: refCode, bad: 'Could not check the code. Check your connection.' })
+      }
+    }, 450)
+    return () => clearTimeout(t)
+  }, [refCode])
+  const refState: 'empty' | 'checking' | 'ok' | 'bad' = !refCode ? 'empty' : refAnswer?.code !== refCode ? 'checking' : refAnswer.bad ? 'bad' : 'ok'
 
   // The hold clock. Only the payment step counts down.
   useEffect(() => {
@@ -346,7 +371,7 @@ export function Flow({ resume }: { resume?: Resume }) {
   }
 
   /** Server field names to the flow's steps, for a refusal the browser did not catch. */
-  const STEP_OF: Record<string, number> = { tier: 1, group: 1, tech: 2, workshop: 2, first: 3, middle: 3, last: 3, email: 3, phone: 3, college: 3, branch: 3, roll: 3, year: 3, dob: 3, builder: 3 }
+  const STEP_OF: Record<string, number> = { tier: 1, group: 1, tech: 2, workshop: 2, first: 3, middle: 3, last: 3, email: 3, phone: 3, college: 3, branch: 3, roll: 3, year: 3, dob: 3, builder: 3, ref: 4 }
   /** The step a server field belongs to. Anyone after the first person, and a full session in a group, is step three. */
   const stepOf = (field: string): number | undefined => {
     if (/^m\d+\./.test(field)) return 3
@@ -369,12 +394,14 @@ export function Flow({ resume }: { resume?: Resume }) {
                 members: [personBody(fields, year, tech, workshop, lvl >= 2), ...others.map((o) => personBody(o.fields, o.year, o.tech, o.workshop, lvl >= 2))],
                 submissionKey: key.current,
                 ...(hold ? { passId: hold.passId } : {}),
+                ...(refCode ? { referralCode: refCode } : {}),
               }
             : {
                 tier,
                 ...personBody(fields, year, tech, workshop, lvl >= 2),
                 submissionKey: key.current,
                 ...(hold ? { passId: hold.passId } : {}),
+                ...(refCode ? { referralCode: refCode } : {}),
               },
         ),
       })
@@ -517,7 +544,11 @@ export function Flow({ resume }: { resume?: Resume }) {
     }
     // Every visit to the payment step goes through the server: the first
     // makes the hold, a later one after an edit moves it and keeps the clock.
-    if (step === 4) return void placeHold()
+    if (step === 4) {
+      if (refState === 'checking') return setErr({ ref: 'Checking the referral code, one moment.' })
+      if (refState === 'bad') return setErr({ ref: refAnswer?.bad ?? 'Referral code not found.' })
+      return void placeHold()
+    }
 
     const e: Record<string, string> = {}
     if (!utrCompact) e.utr = 'Enter the UTR from your UPI app.'
@@ -860,6 +891,36 @@ export function Flow({ resume }: { resume?: Resume }) {
                     </span>
                     {group && tier ? <GroupTotal was={price(tier) * size} now={amount} size="26px" /> : <span style={{ fontFamily: 'var(--font-mono)', fontWeight: '600', fontSize: '26px', color: 'var(--ink)' }}>{money(amount)}</span>}
                   </div>
+                </div>
+                <div style={{ border: `3px solid ${refState === 'ok' ? 'var(--ok)' : refState === 'bad' ? 'var(--err-ink)' : 'var(--line)'}`, background: refState === 'ok' ? 'var(--panel-mint)' : 'var(--surface)', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label htmlFor="rg-ref" style={{ ...S.rowL, letterSpacing: '.16em', color: 'var(--ink)' }}>
+                    Referral code <span style={{ color: 'var(--muted)' }}>· optional</span>
+                  </label>
+                  <input
+                    id="rg-ref"
+                    className="inp inp-num"
+                    value={ref}
+                    onChange={(e) => {
+                      setRef(e.currentTarget.value.toUpperCase().replace(/[^A-Za-z0-9]/g, '').slice(0, 12))
+                      clearErr('ref')
+                    }}
+                    placeholder="FRIENDS CODE"
+                    autoComplete="off"
+                    autoCapitalize="characters"
+                    spellCheck={false}
+                    aria-invalid={refState === 'bad'}
+                    aria-describedby="rg-ref-note"
+                  />
+                  {refState === 'ok' ? <span className="ref-joined">★ PLAYER JOINED</span> : null}
+                  <span id="rg-ref-note" role="status" style={{ fontSize: '13px', lineHeight: '1.5', color: refState === 'ok' ? 'var(--mint-ink)' : refState === 'bad' || err.ref ? 'var(--err-ink)' : 'var(--muted)' }}>
+                    {refState === 'ok'
+                      ? `✓ Referral code valid. You were referred by ${refAnswer?.name}${group ? `, and all ${size} of you count for them` : ''}.`
+                      : refState === 'bad'
+                        ? refAnswer?.bad
+                        : refState === 'checking'
+                          ? 'Checking…'
+                          : (err.ref ?? 'Did someone tell you about the event? Enter their code so they get the credit.')}
+                  </span>
                 </div>
                 <div style={{ border: '3px dashed var(--line-dash)', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <span style={{ ...S.rowL, letterSpacing: '.16em', color: 'var(--mint-ink)' }}>What happens next</span>

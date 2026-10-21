@@ -16,6 +16,8 @@ export const keys = {
   /** One per UTR ever submitted. Its existence is the uniqueness rule. */
   utr: (utr: string) => ({ PK: `UTR#${utr}`, SK: 'CLAIM' }),
   subscriber: (email: string) => ({ PK: `SUB#${normaliseEmail(email)}`, SK: 'PROFILE' }),
+  /** One per referral code ever claimed. Its existence is the uniqueness rule; it points at the owner's pass. */
+  refCode: (code: string) => ({ PK: `REFCODE#${code}`, SK: 'CODE' }),
   /**
    * Traffic, one partition per IST day. SK is TOTAL, PATH#<route> or
    * REF#<host>, so one Query on the day returns everything the traffic page

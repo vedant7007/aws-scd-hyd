@@ -48,6 +48,7 @@ const FIELDS = [
   'builderId',
   'submissionKey',
   'passId',
+  'referralCode',
 ] as const
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
@@ -69,7 +70,7 @@ export function normaliseUtr(raw: string): string | null {
 /** A person as the hold needs them: everything but the tier, which the group shares. */
 export type PersonInput = Omit<HoldInput, 'tier'>
 
-const PERSON_FIELDS = FIELDS.filter((f) => f !== 'tier' && f !== 'submissionKey' && f !== 'passId')
+const PERSON_FIELDS = FIELDS.filter((f) => f !== 'tier' && f !== 'submissionKey' && f !== 'passId' && f !== 'referralCode')
 
 /**
  * One person's sessions and details, read from `b`. Error fields are the
@@ -155,14 +156,16 @@ function readTier(b: Record<string, unknown>): Tier | null {
   return typeof b.tier === 'string' && tierIds.includes(b.tier as Tier) ? (b.tier as Tier) : null
 }
 
-function readKey(b: Record<string, unknown>): { submissionKey: string; passId?: string } | null {
+function readKey(b: Record<string, unknown>): { submissionKey: string; passId?: string; referralCode?: string } | null {
   const submissionKey = b.submissionKey
   if (typeof submissionKey !== 'string' || !SUBMISSION_KEY.test(submissionKey)) return null
   const passId = typeof b.passId === 'string' && b.passId ? b.passId : undefined
-  return { submissionKey, ...(passId ? { passId } : {}) }
+  // Optional, as typed. The hold route looks it up; a code nobody holds is refused there.
+  const referralCode = typeof b.referralCode === 'string' && b.referralCode.trim() ? b.referralCode.trim() : undefined
+  return { submissionKey, ...(passId ? { passId } : {}), ...(referralCode ? { referralCode } : {}) }
 }
 
-export function validateHold(body: unknown): { input: HoldInput; submissionKey: string; passId?: string } | { error: Invalid } {
+export function validateHold(body: unknown): { input: HoldInput; submissionKey: string; passId?: string; referralCode?: string } | { error: Invalid } {
   if (typeof body !== 'object' || body === null) return { error: { field: 'body', message: 'Send a JSON object.' } }
   const b = body as Record<string, unknown>
 
@@ -189,11 +192,11 @@ export type GroupInput = { tier: Tier; members: PersonInput[] }
  * people in a group may not share an email or a roll number: each gets their
  * own pass and their own mail.
  */
-export function validateGroupHold(body: unknown): { group: GroupInput; submissionKey: string; passId?: string } | { error: Invalid } {
+export function validateGroupHold(body: unknown): { group: GroupInput; submissionKey: string; passId?: string; referralCode?: string } | { error: Invalid } {
   if (typeof body !== 'object' || body === null) return { error: { field: 'body', message: 'Send a JSON object.' } }
   const b = body as Record<string, unknown>
   for (const key of Object.keys(b)) {
-    if (!['tier', 'members', 'submissionKey', 'passId'].includes(key)) return { error: { field: key, message: `"${key}" is not accepted.` } }
+    if (!['tier', 'members', 'submissionKey', 'passId', 'referralCode'].includes(key)) return { error: { field: key, message: `"${key}" is not accepted.` } }
   }
   const tier = readTier(b)
   if (!tier) return { error: { field: 'tier', message: 'Pick a pass to continue.' } }
