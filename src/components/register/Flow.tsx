@@ -914,7 +914,7 @@ export function Flow({ resume }: { resume?: Resume }) {
                   {refState === 'ok' ? <span className="ref-joined">★ PLAYER JOINED</span> : null}
                   <span id="rg-ref-note" role="status" style={{ fontSize: '13px', lineHeight: '1.5', color: refState === 'ok' ? 'var(--mint-ink)' : refState === 'bad' || err.ref ? 'var(--err-ink)' : 'var(--muted)' }}>
                     {refState === 'ok'
-                      ? `✓ Referral code valid. You were referred by ${refAnswer?.name}${group ? `, and all ${size} of you count for them` : ''}.`
+                      ? `✓ Referral code valid. You were referred by ${refAnswer?.name?.replace(/\.$/, '')}${group ? `, and all ${size} of you count for them` : ''}.`
                       : refState === 'bad'
                         ? refAnswer?.bad
                         : refState === 'checking'

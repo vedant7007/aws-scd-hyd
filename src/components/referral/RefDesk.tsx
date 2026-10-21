@@ -236,7 +236,7 @@ function ReferredBy({ who, me, onAdded }: { who: Record<string, string>; me: Me;
     return (
       <p className="hint">
         You registered with <strong>{me.referredBy.code}</strong>
-        {me.referredBy.name ? `, ${me.referredBy.name}'s code` : ''}. You count for them.
+        {me.referredBy.name ? `, the code of ${me.referredBy.name.replace(/\.$/, '')}` : ''}. You count for them.
       </p>
     )
   }
