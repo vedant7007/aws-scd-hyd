@@ -26,7 +26,7 @@ export const LEVELS = [
 ] as const
 
 export function levelOf(count: number) {
-  const i = LEVELS.findLastIndex((l) => count >= l.at)
+  const i = LEVELS.filter((l) => count >= l.at).length - 1
   const next = LEVELS[i + 1]
   return { level: LEVELS[i]!, next: next ?? null, toNext: next ? next.at - count : 0, progress: next ? (count - LEVELS[i]!.at) / (next.at - LEVELS[i]!.at) : 1 }
 }
