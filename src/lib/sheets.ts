@@ -66,7 +66,7 @@ export async function registrationsCsv(): Promise<string> {
       x.name.localeCompare(y.name),
   )
   return toCsv([
-    ['#', 'Status', 'Pass ID', 'Name', 'College', 'Pass', 'Technical session', 'Workshop', 'Their price (₹)', 'Group', 'Group pays (₹)', 'UTR', 'AWS Builder ID', 'Email', 'Phone', 'Roll number', 'Branch', 'Year', 'Date of birth', 'Registered (IST)', 'Verified (IST)', 'Ticket sent', 'Checked in', 'Swag', 'Rejected because', 'Referred by', 'Their code'],
+    ['#', 'Status', 'Pass ID', 'Name', 'College', 'Pass', 'Technical session', 'Workshop', 'Their price (₹)', 'Group', 'Group pays (₹)', 'UTR', 'AWS Builder ID', 'Email', 'Phone', 'Roll number', 'Branch', 'Year', 'Date of birth', 'Registered (IST)', 'Verified (IST)', 'Ticket sent', 'Checked in', 'Swag', 'Rejected because', 'Referred by', 'Their code', 'Called'],
     ...rows.map((a, i) => {
       const payer = a.groupId === a.passId
       return [
@@ -97,6 +97,7 @@ export async function registrationsCsv(): Promise<string> {
         a.rejectionReason ?? '',
         a.referredBy ?? '',
         a.refCode ?? '',
+        a.calledAt ? `${tick(a.calledAt)} by ${a.calledBy?.split('@')[0] ?? ''}` : '',
       ]
     }),
   ])

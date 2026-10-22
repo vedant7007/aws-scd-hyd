@@ -51,6 +51,25 @@ export async function sendTicketAction(_prev: ActionState, formData: FormData): 
   return { ok: true, message: `Ticket sent to ${a.email}.` }
 }
 
+/** Ticks (or unticks) "we phoned this person", with who and when, so the team does not call anyone twice. */
+export async function calledAction(passId: string, called: boolean): Promise<{ ok: boolean; at: string | null; by: string | null }> {
+  const { email } = await requireAdmin()
+  const pid = normalisePassId(passId)
+  if (!pid) return { ok: false, at: null, by: null }
+  const at = new Date().toISOString()
+  await ddb.send(
+    new UpdateCommand({
+      TableName: tableName(),
+      Key: keys.attendee(pid),
+      ...(called
+        ? { UpdateExpression: 'SET calledAt = :at, calledBy = :by', ExpressionAttributeValues: { ':at': at, ':by': email } }
+        : { UpdateExpression: 'REMOVE calledAt, calledBy' }),
+      ConditionExpression: 'attribute_exists(PK)',
+    }),
+  )
+  return called ? { ok: true, at, by: email } : { ok: true, at: null, by: null }
+}
+
 export async function verifyAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const { email } = await requireAdmin()
   const passId = id(formData)

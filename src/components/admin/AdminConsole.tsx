@@ -1,7 +1,7 @@
 'use client'
 
-import { useActionState, useMemo, useState } from 'react'
-import { deleteAction, rejectAction, sendTicketAction, verifyAction, type ActionState } from '@/app/admin/(secure)/actions'
+import { useActionState, useMemo, useState, useTransition } from 'react'
+import { calledAction, deleteAction, rejectAction, sendTicketAction, verifyAction, type ActionState } from '@/app/admin/(secure)/actions'
 import type { RegistrationState, Tier } from '@/lib/db/types'
 import { REJECTION_REASONS, rejectionCodes } from '@/lib/registration/reasons'
 
@@ -38,6 +38,9 @@ export type Row = {
   /** Their own referral code, and the code they registered with. */
   refCode: string | null
   referredBy: string | null
+  /** The team phoned them: when and by whom. */
+  calledAt: string | null
+  calledBy: string | null
 }
 
 /** Everything about one other person in a group, shown on the payer's card. */
@@ -58,9 +61,9 @@ export type GroupMember = {
 
 type Tab = 'queue' | 'verified' | 'rejected' | 'awaiting' | 'all'
 type Sort = 'new' | 'old' | 'name' | 'amount'
-type Filters = { tier: '' | Tier; kind: '' | 'solo' | 'group'; ticket: '' | 'sent' | 'unsent'; checkin: '' | 'in' | 'out'; builder: '' | 'missing'; college: string }
+type Filters = { tier: '' | Tier; kind: '' | 'solo' | 'group'; ticket: '' | 'sent' | 'unsent'; checkin: '' | 'in' | 'out'; builder: '' | 'missing'; called: '' | 'yes' | 'no'; college: string }
 
-const NO_FILTERS: Filters = { tier: '', kind: '', ticket: '', checkin: '', builder: '', college: '' }
+const NO_FILTERS: Filters = { tier: '', kind: '', ticket: '', checkin: '', builder: '', called: '', college: '' }
 const PAGE = 40
 
 const STATE_LABEL: Record<RegistrationState, string> = {
@@ -115,13 +118,16 @@ const Status = ({ state }: { state: ActionState }) =>
  * across every field, filters that stack, and a slim line per person that
  * opens into the full card with its actions. Forty at a time.
  */
-export function AdminConsole({ rows }: { rows: Row[] }) {
+export function AdminConsole({ rows, sheetUrl }: { rows: Row[]; sheetUrl: string | null }) {
   const [tab, setTab] = useState<Tab>('queue')
   const [query, setQuery] = useState('')
   const [f, setF] = useState<Filters>(NO_FILTERS)
   const [sort, setSort] = useState<Sort>('new')
   const [limit, setLimit] = useState(PAGE)
   const [open, setOpen] = useState<Set<string>>(new Set())
+  /** Called ticks made on this page, ahead of the next server render. */
+  const [calls, setCalls] = useState<Record<string, { at: string | null; by: string | null }>>({})
+  const calledOf = (r: Row) => (r.passId in calls ? calls[r.passId]! : { at: r.calledAt, by: r.calledBy })
 
   const real = useMemo(() => rows.filter((r) => !r.preview), [rows])
   const kpi = useMemo(() => {
@@ -155,6 +161,7 @@ export function AdminConsole({ rows }: { rows: Row[] }) {
     if (f.ticket) list = list.filter((r) => r.state === 'VERIFIED' && (f.ticket === 'sent' ? Boolean(r.ticketSentAt) : !r.ticketSentAt))
     if (f.checkin) list = list.filter((r) => (f.checkin === 'in' ? r.checkedIn : !r.checkedIn))
     if (f.builder) list = list.filter((r) => !r.builderId)
+    if (f.called) list = list.filter((r) => Boolean((r.passId in calls ? calls[r.passId]!.at : r.calledAt)) === (f.called === 'yes'))
     if (f.college) list = list.filter((r) => r.college.trim() === f.college)
     const by: Record<Sort, (a: Row, b: Row) => number> = {
       new: (a, b) => b.createdAt.localeCompare(a.createdAt),
@@ -163,7 +170,7 @@ export function AdminConsole({ rows }: { rows: Row[] }) {
       amount: (a, b) => b.sharePaise - a.sharePaise,
     }
     return [...list].sort(by[sort])
-  }, [rows, tab, query, f, sort])
+  }, [rows, tab, query, f, sort, calls])
 
   const filtered = Object.values(f).some(Boolean)
   const unsentShown = shown.filter((r) => r.state === 'VERIFIED' && !r.ticketSentAt && !r.preview)
@@ -248,6 +255,11 @@ export function AdminConsole({ rows }: { rows: Row[] }) {
               <option value="in">Checked in</option>
               <option value="out">Not checked in</option>
             </select>
+            <select className="inp adm-sel" value={f.called} onChange={(e) => setF({ ...f, called: e.target.value as Filters['called'] })} aria-label="Called">
+              <option value="">Called or not</option>
+              <option value="no">Not called yet</option>
+              <option value="yes">Called</option>
+            </select>
             <select className="inp adm-sel" value={f.builder} onChange={(e) => setF({ ...f, builder: e.target.value as Filters['builder'] })} aria-label="Builder ID">
               <option value="">Any Builder ID</option>
               <option value="missing">Builder ID missing</option>
@@ -285,6 +297,11 @@ export function AdminConsole({ rows }: { rows: Row[] }) {
                   CLEAR
                 </button>
               ) : null}
+              {sheetUrl ? (
+                <a href={sheetUrl} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-mint">
+                  OPEN GOOGLE SHEET
+                </a>
+              ) : null}
               <button type="button" className="btn btn-sm" onClick={exportView} disabled={!shown.length}>
                 EXPORT VIEW
               </button>
@@ -296,7 +313,8 @@ export function AdminConsole({ rows }: { rows: Row[] }) {
         {shown.length === 0 ? <p className="row-body">Nobody here{filtered || query ? ' with these filters' : ''}.</p> : null}
         <ul className="adm-list">
           {shown.slice(0, limit).map((r) => (
-            <li key={r.passId}>
+            <li key={r.passId} className="adm-li">
+              <div className="adm-li-line">
               <button type="button" className="adm-row" data-state={r.state} aria-expanded={open.has(r.passId)} onClick={() => toggle(r.passId)}>
                 <span className="adm-row-main">
                   <span className="adm-row-name">{r.name}</span>
@@ -322,6 +340,8 @@ export function AdminConsole({ rows }: { rows: Row[] }) {
                   {open.has(r.passId) ? '−' : '+'}
                 </span>
               </button>
+              <CallCell row={r} called={calledOf(r)} onChange={(c) => setCalls((m) => ({ ...m, [r.passId]: c }))} />
+              </div>
               {open.has(r.passId) ? <RowCard row={r} /> : null}
             </li>
           ))}
@@ -332,6 +352,48 @@ export function AdminConsole({ rows }: { rows: Row[] }) {
           </button>
         ) : null}
       </div>
+    </div>
+  )
+}
+
+/** Beside each row: the phone number to tap, and the "called" tick the whole team sees. */
+function CallCell({ row, called, onChange }: { row: Row; called: { at: string | null; by: string | null }; onChange: (c: { at: string | null; by: string | null }) => void }) {
+  const [pending, start] = useTransition()
+  const [failed, setFailed] = useState(false)
+  const flip = () =>
+    start(async () => {
+      const before = called
+      const next = !called.at
+      onChange(next ? { at: new Date().toISOString(), by: 'you' } : { at: null, by: null })
+      setFailed(false)
+      try {
+        const out = await calledAction(row.passId, next)
+        if (!out.ok) throw new Error()
+        onChange({ at: out.at, by: out.by })
+      } catch {
+        onChange(before)
+        setFailed(true)
+      }
+    })
+  const who = called.by ? called.by.split('@')[0] : ''
+  return (
+    <div className="adm-call">
+      <a className="adm-call-tel" href={`tel:${row.phone}`} title={`Call ${row.phone}`} aria-label={`Call ${row.name}, ${row.phone}`}>
+        📞
+      </a>
+      <button
+        type="button"
+        className="adm-call-btn"
+        data-on={called.at ? '1' : undefined}
+        data-failed={failed ? '1' : undefined}
+        aria-pressed={Boolean(called.at)}
+        disabled={pending}
+        onClick={flip}
+        title={called.at ? `Called by ${called.by ?? 'someone'}, ${when(called.at)}. Click to undo.` : 'Tick once you have called them'}
+      >
+        {failed ? 'RETRY' : called.at ? '✓ CALLED' : 'CALLED?'}
+        {called.at && who ? <small>{who}</small> : null}
+      </button>
     </div>
   )
 }

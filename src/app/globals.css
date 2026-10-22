@@ -1263,3 +1263,15 @@ option { background: var(--color-surface); color: var(--color-ink); }
 .gp-cta-alt { background: var(--mint-fill); }
 .gp-pop:has(.gp-duo) { width: min(100%, 660px); }
 .gp-duo { align-self: stretch; }
+
+/* Admin: the phone and the "called" tick beside each registration. */
+.adm-li-line { display: flex; align-items: stretch; }
+.adm-li-line > .adm-row { flex: 1 1 auto; min-width: 0; }
+.adm-call { flex: none; display: flex; align-items: center; gap: 6px; padding: 6px 10px 6px 0; }
+.adm-call-tel { display: grid; place-items: center; width: 38px; height: 38px; border: 2px solid var(--color-line-soft); font-size: 16px; text-decoration: none; }
+.adm-call-tel:hover { border-color: var(--color-orange); }
+.adm-call-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 86px; min-height: 38px; padding: 2px 8px; border: 2px dashed var(--color-line-dash); background: none; color: var(--color-muted); font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; letter-spacing: .1em; cursor: pointer; }
+.adm-call-btn small { font-size: 9px; font-weight: 400; letter-spacing: .04em; text-transform: none; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.adm-call-btn[data-on] { border-style: solid; border-color: var(--color-ok); background: var(--color-panel-mint); color: var(--color-ok); }
+.adm-call-btn[data-failed] { border-color: var(--color-err); color: var(--color-err); }
+.adm-call-btn:disabled { opacity: .6; cursor: progress; }

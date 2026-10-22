@@ -108,6 +108,9 @@ export type Attendee = Keyed & {
   ticketSentAt?: string
   checkedInAt?: string
   swagIssuedAt?: string
+  /** The team phoned them: when, and who ticked it. Cleared by unticking. */
+  calledAt?: string
+  calledBy?: string
   /** Their own referral code, once they pick one. Unique through a REFCODE# item. */
   refCode?: string
   /** The code they registered with, and when it was put on the record. Counted on the leaderboard while the record is live. */

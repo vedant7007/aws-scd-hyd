@@ -86,6 +86,8 @@ export default async function AdminDashboardPage() {
     checkedIn: Boolean(a.checkedInAt),
     refCode: a.refCode ?? null,
     referredBy: a.referredBy ?? null,
+    calledAt: a.calledAt ?? null,
+    calledBy: a.calledBy ?? null,
   }))
 
   const sized = d.sessions.filter((s) => s.sellable !== null).length
@@ -140,7 +142,8 @@ export default async function AdminDashboardPage() {
         <h2 id="queue-h" className="h2">
           REGISTRATIONS
         </h2>
-        <AdminConsole rows={rows} />
+        {/* The live Google Sheet. Its address is in the server environment only: the repo is public and the sheet holds contact details. */}
+        <AdminConsole rows={rows} sheetUrl={process.env.SCD_SHEET_URL?.startsWith('https://docs.google.com/') ? process.env.SCD_SHEET_URL : null} />
       </section>
 
       <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))]">
