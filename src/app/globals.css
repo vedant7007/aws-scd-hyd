@@ -1276,3 +1276,4 @@ option { background: var(--color-surface); color: var(--color-ink); }
 .adm-call { gap: 6px; }
 .adm-wa { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
 .adm-wa:hover { border-color: var(--color-ok); color: var(--color-ok); }
+.adm-call-in { padding: 4px 0; justify-content: flex-start; }

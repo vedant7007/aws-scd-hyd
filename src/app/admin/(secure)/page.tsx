@@ -73,6 +73,10 @@ export default async function AdminDashboardPage() {
               builderId: m?.builderId ?? null,
               technical: m ? (programSession(m.technicalSession)?.title ?? m.technicalSession) : '',
               workshop: m?.workshop ? (programSession(m.workshop)?.title ?? m.workshop) : null,
+              calledAt: m?.calledAt ?? null,
+              calledBy: m?.calledBy ?? null,
+              messagedAt: m?.messagedAt ?? null,
+              messagedBy: m?.messagedBy ?? null,
             }
           }),
         }

@@ -60,7 +60,17 @@ export type GroupMember = {
   builderId: string | null
   technical: string
   workshop: string | null
+  calledAt: string | null
+  calledBy: string | null
+  messagedAt: string | null
+  messagedBy: string | null
 }
+
+/** What the Called and WhatsApp buttons need about one person: a row, or someone inside a group's card. */
+type Contact = Pick<Row, 'passId' | 'name' | 'phone' | 'builderId' | 'state'>
+type Tick = { at: string | null; by: string | null }
+/** The team's ticks, shared by every place a person's buttons appear, so a row and a group card never disagree. */
+type Ticks = { called: (id: string, fallback: Tick) => Tick; messaged: (id: string, fallback: Tick) => Tick; setCalled: (id: string, t: Tick) => void; setMessaged: (id: string, t: Tick) => void }
 
 type Tab = 'queue' | 'verified' | 'rejected' | 'awaiting' | 'all'
 type Sort = 'new' | 'old' | 'name' | 'amount'
@@ -131,6 +141,12 @@ export function AdminConsole({ rows, sheetUrl }: { rows: Row[]; sheetUrl: string
   /** Called ticks made on this page, ahead of the next server render. */
   const [calls, setCalls] = useState<Record<string, { at: string | null; by: string | null }>>({})
   const calledOf = (r: Row) => (r.passId in calls ? calls[r.passId]! : { at: r.calledAt, by: r.calledBy })
+  const ticks: Ticks = {
+    called: (id, fb) => calls[id] ?? fb,
+    messaged: (id, fb) => msgs[id] ?? fb,
+    setCalled: (id, t) => setCalls((m) => ({ ...m, [id]: t })),
+    setMessaged: (id, t) => setMsgs((m) => ({ ...m, [id]: t })),
+  }
   const [msgs, setMsgs] = useState<Record<string, { at: string | null; by: string | null }>>({})
   const messagedOf = (r: Row) => (r.passId in msgs ? msgs[r.passId]! : { at: r.messagedAt, by: r.messagedBy })
 
@@ -156,7 +172,8 @@ export function AdminConsole({ rows, sheetUrl }: { rows: Row[]; sheetUrl: string
     return [...m].sort((a, b) => b[1] - a[1]).map(([c]) => c)
   }, [rows])
 
-  const shown = useMemo(() => {
+  // Recomputed each render: a few hundred rows, and the React compiler memoises it anyway.
+  const shown = (() => {
     const q = norm(query)
     let list = q
       ? rows.filter((r) => [r.name, r.email, r.phone, r.passId, r.utr ?? '', r.rollNumber, r.college, r.builderId ?? ''].some((v) => norm(v).includes(q)))
@@ -176,7 +193,7 @@ export function AdminConsole({ rows, sheetUrl }: { rows: Row[]; sheetUrl: string
       amount: (a, b) => b.sharePaise - a.sharePaise,
     }
     return [...list].sort(by[sort])
-  }, [rows, tab, query, f, sort, calls, msgs])
+  })()
 
   const filtered = Object.values(f).some(Boolean)
   const unsentShown = shown.filter((r) => r.state === 'VERIFIED' && !r.ticketSentAt && !r.preview)
@@ -356,7 +373,7 @@ export function AdminConsole({ rows, sheetUrl }: { rows: Row[]; sheetUrl: string
                 <CallCell row={r} called={calledOf(r)} onChange={(c) => setCalls((m) => ({ ...m, [r.passId]: c }))} />
               </div>
               </div>
-              {open.has(r.passId) ? <RowCard row={r} /> : null}
+              {open.has(r.passId) ? <RowCard row={r} ticks={ticks} /> : null}
             </li>
           ))}
         </ul>
@@ -371,7 +388,7 @@ export function AdminConsole({ rows, sheetUrl }: { rows: Row[]; sheetUrl: string
 }
 
 /** Beside each row: the "called" tick the whole team sees. Calls are made by hand; this only keeps the record. */
-function CallCell({ row, called, onChange }: { row: Row; called: { at: string | null; by: string | null }; onChange: (c: { at: string | null; by: string | null }) => void }) {
+function CallCell({ row, called, onChange }: { row: Contact; called: { at: string | null; by: string | null }; onChange: (c: { at: string | null; by: string | null }) => void }) {
   const [pending, start] = useTransition()
   const [failed, setFailed] = useState(false)
   const flip = () =>
@@ -411,7 +428,7 @@ function CallCell({ row, called, onChange }: { row: Row; called: { at: string | 
  * when the ticket comes, their referral page, and the Builder ID if missing.
  * Sent by hand from the admin's own WhatsApp; this only opens the chat.
  */
-function whatsAppText(r: Row, origin: string): string {
+function whatsAppText(r: Contact, origin: string): string {
   const first = r.name.split(' ')[0]
   const status = 'Your registration is confirmed ✅ You will receive your ticket by email on *28 October*, two days before the event.'
   return [
@@ -428,7 +445,7 @@ function whatsAppText(r: Row, origin: string): string {
 }
 
 /** Opens WhatsApp on this person's chat with the message typed, and marks it sent for the team. Click the green one to undo. */
-function WhatsAppCell({ row, sent, onChange }: { row: Row; sent: { at: string | null; by: string | null }; onChange: (c: { at: string | null; by: string | null }) => void }) {
+function WhatsAppCell({ row, sent, onChange }: { row: Contact; sent: { at: string | null; by: string | null }; onChange: (c: { at: string | null; by: string | null }) => void }) {
   const [pending, start] = useTransition()
   const [failed, setFailed] = useState(false)
   const digits = row.phone.replace(/\D/g, '')
@@ -525,7 +542,7 @@ function BulkTickets({ rows }: { rows: Row[] }) {
   )
 }
 
-function RowCard({ row }: { row: Row }) {
+function RowCard({ row, ticks }: { row: Row; ticks: Ticks }) {
   const [verifyState, verify, verifying] = useActionState(verifyAction, null)
   const [rejectState, reject, rejecting] = useActionState(rejectAction, null)
   const [deleteState, del, deleting] = useActionState(deleteAction, null)
@@ -629,6 +646,15 @@ function RowCard({ row }: { row: Row }) {
                 </span>
                 <span className="num text-[12px] text-muted">
                   {m.email} · {m.phone}
+                </span>
+                {/* Each person is called and messaged on their own, not through the payer. */}
+                <span className="adm-call adm-call-in">
+                  <WhatsAppCell
+                    row={{ ...m, state: row.state }}
+                    sent={ticks.messaged(m.passId, { at: m.messagedAt, by: m.messagedBy })}
+                    onChange={(t) => ticks.setMessaged(m.passId, t)}
+                  />
+                  <CallCell row={{ ...m, state: row.state }} called={ticks.called(m.passId, { at: m.calledAt, by: m.calledBy })} onChange={(t) => ticks.setCalled(m.passId, t)} />
                 </span>
                 <span className="hint">
                   {m.college} · {m.branch} · {m.rollNumber} · year {m.yearOfStudy} · born {m.dateOfBirth}
