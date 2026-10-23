@@ -1,7 +1,7 @@
 'use client'
 
 import { useActionState, useMemo, useState, useTransition } from 'react'
-import { calledAction, deleteAction, rejectAction, sendTicketAction, verifyAction, type ActionState } from '@/app/admin/(secure)/actions'
+import { calledAction, messagedAction, deleteAction, rejectAction, sendTicketAction, verifyAction, type ActionState } from '@/app/admin/(secure)/actions'
 import type { RegistrationState, Tier } from '@/lib/db/types'
 import { REJECTION_REASONS, rejectionCodes } from '@/lib/registration/reasons'
 
@@ -41,6 +41,9 @@ export type Row = {
   /** The team phoned them: when and by whom. */
   calledAt: string | null
   calledBy: string | null
+  /** The personal WhatsApp message went: when and by whom. */
+  messagedAt: string | null
+  messagedBy: string | null
 }
 
 /** Everything about one other person in a group, shown on the payer's card. */
@@ -61,9 +64,9 @@ export type GroupMember = {
 
 type Tab = 'queue' | 'verified' | 'rejected' | 'awaiting' | 'all'
 type Sort = 'new' | 'old' | 'name' | 'amount'
-type Filters = { tier: '' | Tier; kind: '' | 'solo' | 'group'; ticket: '' | 'sent' | 'unsent'; checkin: '' | 'in' | 'out'; builder: '' | 'missing'; called: '' | 'yes' | 'no'; college: string }
+type Filters = { tier: '' | Tier; kind: '' | 'solo' | 'group'; ticket: '' | 'sent' | 'unsent'; checkin: '' | 'in' | 'out'; builder: '' | 'missing'; called: '' | 'yes' | 'no'; messaged: '' | 'yes' | 'no'; college: string }
 
-const NO_FILTERS: Filters = { tier: '', kind: '', ticket: '', checkin: '', builder: '', called: '', college: '' }
+const NO_FILTERS: Filters = { tier: '', kind: '', ticket: '', checkin: '', builder: '', called: '', messaged: '', college: '' }
 const PAGE = 40
 
 const STATE_LABEL: Record<RegistrationState, string> = {
@@ -128,6 +131,8 @@ export function AdminConsole({ rows, sheetUrl }: { rows: Row[]; sheetUrl: string
   /** Called ticks made on this page, ahead of the next server render. */
   const [calls, setCalls] = useState<Record<string, { at: string | null; by: string | null }>>({})
   const calledOf = (r: Row) => (r.passId in calls ? calls[r.passId]! : { at: r.calledAt, by: r.calledBy })
+  const [msgs, setMsgs] = useState<Record<string, { at: string | null; by: string | null }>>({})
+  const messagedOf = (r: Row) => (r.passId in msgs ? msgs[r.passId]! : { at: r.messagedAt, by: r.messagedBy })
 
   const real = useMemo(() => rows.filter((r) => !r.preview), [rows])
   const kpi = useMemo(() => {
@@ -162,6 +167,7 @@ export function AdminConsole({ rows, sheetUrl }: { rows: Row[]; sheetUrl: string
     if (f.checkin) list = list.filter((r) => (f.checkin === 'in' ? r.checkedIn : !r.checkedIn))
     if (f.builder) list = list.filter((r) => !r.builderId)
     if (f.called) list = list.filter((r) => Boolean((r.passId in calls ? calls[r.passId]!.at : r.calledAt)) === (f.called === 'yes'))
+    if (f.messaged) list = list.filter((r) => Boolean((r.passId in msgs ? msgs[r.passId]!.at : r.messagedAt)) === (f.messaged === 'yes'))
     if (f.college) list = list.filter((r) => r.college.trim() === f.college)
     const by: Record<Sort, (a: Row, b: Row) => number> = {
       new: (a, b) => b.createdAt.localeCompare(a.createdAt),
@@ -170,7 +176,7 @@ export function AdminConsole({ rows, sheetUrl }: { rows: Row[]; sheetUrl: string
       amount: (a, b) => b.sharePaise - a.sharePaise,
     }
     return [...list].sort(by[sort])
-  }, [rows, tab, query, f, sort, calls])
+  }, [rows, tab, query, f, sort, calls, msgs])
 
   const filtered = Object.values(f).some(Boolean)
   const unsentShown = shown.filter((r) => r.state === 'VERIFIED' && !r.ticketSentAt && !r.preview)
@@ -254,6 +260,11 @@ export function AdminConsole({ rows, sheetUrl }: { rows: Row[]; sheetUrl: string
               <option value="">Any check in</option>
               <option value="in">Checked in</option>
               <option value="out">Not checked in</option>
+            </select>
+            <select className="inp adm-sel" value={f.messaged} onChange={(e) => setF({ ...f, messaged: e.target.value as Filters['messaged'] })} aria-label="WhatsApp">
+              <option value="">WhatsApp sent or not</option>
+              <option value="no">Not messaged yet</option>
+              <option value="yes">Messaged</option>
             </select>
             <select className="inp adm-sel" value={f.called} onChange={(e) => setF({ ...f, called: e.target.value as Filters['called'] })} aria-label="Called">
               <option value="">Called or not</option>
@@ -340,7 +351,10 @@ export function AdminConsole({ rows, sheetUrl }: { rows: Row[]; sheetUrl: string
                   {open.has(r.passId) ? '−' : '+'}
                 </span>
               </button>
-              <CallCell row={r} called={calledOf(r)} onChange={(c) => setCalls((m) => ({ ...m, [r.passId]: c }))} />
+              <div className="adm-call">
+                <WhatsAppCell row={r} sent={messagedOf(r)} onChange={(c) => setMsgs((m) => ({ ...m, [r.passId]: c }))} />
+                <CallCell row={r} called={calledOf(r)} onChange={(c) => setCalls((m) => ({ ...m, [r.passId]: c }))} />
+              </div>
               </div>
               {open.has(r.passId) ? <RowCard row={r} /> : null}
             </li>
@@ -376,7 +390,6 @@ function CallCell({ row, called, onChange }: { row: Row; called: { at: string | 
       }
     })
   return (
-    <div className="adm-call">
       <button
         type="button"
         className="adm-call-btn"
@@ -390,7 +403,69 @@ function CallCell({ row, called, onChange }: { row: Row; called: { at: string | 
       >
         {failed ? 'RETRY' : called.at ? '✓ CALLED' : 'CALLED'}
       </button>
-    </div>
+  )
+}
+
+/**
+ * The personal WhatsApp message, typed for this person: their name, pass ID,
+ * when the ticket comes, their referral page, and the Builder ID if missing.
+ * Sent by hand from the admin's own WhatsApp; this only opens the chat.
+ */
+function whatsAppText(r: Row, origin: string): string {
+  const first = r.name.split(' ')[0]
+  const status = 'Your registration is confirmed ✅ You will receive your ticket by email on *28 October*, two days before the event.'
+  return [
+    `Hello ${first}, greetings from the AWS Student Community Day Hyderabad 2026 team 👋`,
+    'Thank you for registering. We are glad to have you with us.',
+    status,
+    `Your pass ID is *${r.passId}*. Please keep it handy.`,
+    `🏆 *Referral leaderboard:* we are expanding our seat limit, so you can now refer your friends to join you. Share your referral code, and the top 3 referrers will win exciting tech prizes. Get your code here (open until 24 October, 11:59 PM): ${origin}/refer?pass=${r.passId}`,
+    ...(r.builderId ? [] : [`🆔 *Action needed:* please add your AWS Builder ID to your registration, as it is required at entry: ${origin}/builder-id?pass=${r.passId}`]),
+    `📸 *Share that you are attending:* create your "I'm attending" post and share it on LinkedIn, Instagram and your other social media, tagging @awssbg_vjit: ${origin}/attending`,
+    '📲 Follow us on Instagram for event updates: https://www.instagram.com/awssbg_vjit',
+    'We look forward to seeing you on *30 October at VJIT, Hyderabad*.',
+  ].join('\n')
+}
+
+/** Opens WhatsApp on this person's chat with the message typed, and marks it sent for the team. Click the green one to undo. */
+function WhatsAppCell({ row, sent, onChange }: { row: Row; sent: { at: string | null; by: string | null }; onChange: (c: { at: string | null; by: string | null }) => void }) {
+  const [pending, start] = useTransition()
+  const [failed, setFailed] = useState(false)
+  const digits = row.phone.replace(/\D/g, '')
+  const mark = (on: boolean) =>
+    start(async () => {
+      const before = sent
+      onChange(on ? { at: new Date().toISOString(), by: 'you' } : { at: null, by: null })
+      setFailed(false)
+      try {
+        const out = await messagedAction(row.passId, on)
+        if (!out.ok) throw new Error()
+        onChange({ at: out.at, by: out.by })
+      } catch {
+        onChange(before)
+        setFailed(true)
+      }
+    })
+  if (sent.at) {
+    return (
+      <button type="button" className="adm-call-btn" data-on="1" disabled={pending} onClick={() => mark(false)} title={`Messaged by ${sent.by ?? 'someone'}, ${when(sent.at)}. Click to undo.`} aria-label={`WhatsApp sent to ${row.name}, undo`}>
+        ✓ WA SENT
+      </button>
+    )
+  }
+  return (
+    <a
+      className="adm-call-btn adm-wa"
+      data-failed={failed ? '1' : undefined}
+      href={`https://wa.me/${digits}?text=${encodeURIComponent(whatsAppText(row, typeof window === 'undefined' ? 'https://awsscdhyd.in' : window.location.origin))}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={() => mark(true)}
+      title={`Open WhatsApp to ${row.phone} with the message typed`}
+      aria-label={`WhatsApp ${row.name}`}
+    >
+      {failed ? 'RETRY' : 'WHATSAPP'}
+    </a>
   )
 }
 

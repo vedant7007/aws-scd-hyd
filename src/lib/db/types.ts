@@ -111,6 +111,9 @@ export type Attendee = Keyed & {
   /** The team phoned them: when, and who ticked it. Cleared by unticking. */
   calledAt?: string
   calledBy?: string
+  /** The team sent them the personal WhatsApp message: when, and who. Cleared by unticking. */
+  messagedAt?: string
+  messagedBy?: string
   /** Their own referral code, once they pick one. Unique through a REFCODE# item. */
   refCode?: string
   /** The code they registered with, and when it was put on the record. Counted on the leaderboard while the record is live. */

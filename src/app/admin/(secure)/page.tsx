@@ -88,6 +88,8 @@ export default async function AdminDashboardPage() {
     referredBy: a.referredBy ?? null,
     calledAt: a.calledAt ?? null,
     calledBy: a.calledBy ?? null,
+    messagedAt: a.messagedAt ?? null,
+    messagedBy: a.messagedBy ?? null,
   }))
 
   const sized = d.sessions.filter((s) => s.sellable !== null).length

@@ -53,6 +53,15 @@ export async function sendTicketAction(_prev: ActionState, formData: FormData): 
 
 /** Ticks (or unticks) "we phoned this person", with who and when, so the team does not call anyone twice. */
 export async function calledAction(passId: string, called: boolean): Promise<{ ok: boolean; at: string | null; by: string | null }> {
+  return tick(passId, 'called', called)
+}
+
+/** The same record for the personal WhatsApp message: sent, by whom, when. */
+export async function messagedAction(passId: string, sent: boolean): Promise<{ ok: boolean; at: string | null; by: string | null }> {
+  return tick(passId, 'messaged', sent)
+}
+
+async function tick(passId: string, what: 'called' | 'messaged', on: boolean): Promise<{ ok: boolean; at: string | null; by: string | null }> {
   const { email } = await requireAdmin()
   const pid = normalisePassId(passId)
   if (!pid) return { ok: false, at: null, by: null }
@@ -61,13 +70,12 @@ export async function calledAction(passId: string, called: boolean): Promise<{ o
     new UpdateCommand({
       TableName: tableName(),
       Key: keys.attendee(pid),
-      ...(called
-        ? { UpdateExpression: 'SET calledAt = :at, calledBy = :by', ExpressionAttributeValues: { ':at': at, ':by': email } }
-        : { UpdateExpression: 'REMOVE calledAt, calledBy' }),
+      ExpressionAttributeNames: { '#at': `${what}At`, '#by': `${what}By` },
+      ...(on ? { UpdateExpression: 'SET #at = :at, #by = :by', ExpressionAttributeValues: { ':at': at, ':by': email } } : { UpdateExpression: 'REMOVE #at, #by' }),
       ConditionExpression: 'attribute_exists(PK)',
     }),
   )
-  return called ? { ok: true, at, by: email } : { ok: true, at: null, by: null }
+  return on ? { ok: true, at, by: email } : { ok: true, at: null, by: null }
 }
 
 export async function verifyAction(_prev: ActionState, formData: FormData): Promise<ActionState> {

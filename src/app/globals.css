@@ -1273,3 +1273,6 @@ option { background: var(--color-surface); color: var(--color-ink); }
 .adm-call-btn[data-on] { border-color: var(--color-ok); background: var(--color-ok-fill); color: var(--color-on-fill); }
 .adm-call-btn[data-failed] { border-color: var(--color-err); color: var(--color-err); }
 .adm-call-btn:disabled { opacity: .6; cursor: progress; }
+.adm-call { gap: 6px; }
+.adm-wa { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
+.adm-wa:hover { border-color: var(--color-ok); color: var(--color-ok); }
