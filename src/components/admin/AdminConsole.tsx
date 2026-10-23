@@ -356,7 +356,7 @@ export function AdminConsole({ rows, sheetUrl }: { rows: Row[]; sheetUrl: string
   )
 }
 
-/** Beside each row: the phone number to tap, and the "called" tick the whole team sees. */
+/** Beside each row: the "called" tick the whole team sees. Calls are made by hand; this only keeps the record. */
 function CallCell({ row, called, onChange }: { row: Row; called: { at: string | null; by: string | null }; onChange: (c: { at: string | null; by: string | null }) => void }) {
   const [pending, start] = useTransition()
   const [failed, setFailed] = useState(false)
@@ -375,24 +375,20 @@ function CallCell({ row, called, onChange }: { row: Row; called: { at: string | 
         setFailed(true)
       }
     })
-  const who = called.by ? called.by.split('@')[0] : ''
   return (
     <div className="adm-call">
-      <a className="adm-call-tel" href={`tel:${row.phone}`} title={`Call ${row.phone}`} aria-label={`Call ${row.name}, ${row.phone}`}>
-        📞
-      </a>
       <button
         type="button"
         className="adm-call-btn"
         data-on={called.at ? '1' : undefined}
         data-failed={failed ? '1' : undefined}
         aria-pressed={Boolean(called.at)}
+        aria-label={`Called ${row.name}`}
         disabled={pending}
         onClick={flip}
         title={called.at ? `Called by ${called.by ?? 'someone'}, ${when(called.at)}. Click to undo.` : 'Tick once you have called them'}
       >
-        {failed ? 'RETRY' : called.at ? '✓ CALLED' : 'CALLED?'}
-        {called.at && who ? <small>{who}</small> : null}
+        {failed ? 'RETRY' : called.at ? '✓ CALLED' : 'CALLED'}
       </button>
     </div>
   )
