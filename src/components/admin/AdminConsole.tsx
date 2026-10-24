@@ -2,6 +2,7 @@
 
 import { useActionState, useMemo, useState, useTransition } from 'react'
 import { calledAction, messagedAction, deleteAction, rejectAction, sendTicketAction, verifyAction, type ActionState } from '@/app/admin/(secure)/actions'
+import { REFERRAL_CUTOFF_LABEL } from '@/content/referral'
 import type { RegistrationState, Tier } from '@/lib/db/types'
 import { REJECTION_REASONS, rejectionCodes } from '@/lib/registration/reasons'
 
@@ -436,7 +437,7 @@ function whatsAppText(r: Contact, origin: string): string {
     'Thank you for registering. We are glad to have you with us.',
     status,
     `Your pass ID is *${r.passId}*. Please keep it handy.`,
-    `🏆 *Referral leaderboard:* we are expanding our seat limit, so you can now refer your friends to join you. Share your referral code, and the top 3 referrers will win exciting tech prizes. Get your code here (open until 24 October, 11:59 PM): ${origin}/refer?pass=${r.passId}`,
+    `🏆 *Referral leaderboard:* we are expanding our seat limit, so you can now refer your friends to join you. Share your referral code, and the top 3 referrers will win exciting tech prizes. Get your code here (open until ${REFERRAL_CUTOFF_LABEL}): ${origin}/refer?pass=${r.passId}`,
     ...(r.builderId ? [] : [`🆔 *Action needed:* please add your AWS Builder ID to your registration, as it is required at entry: ${origin}/builder-id?pass=${r.passId}`]),
     `📸 *Share that you are attending:* create your "I'm attending" post and share it on LinkedIn, Instagram and your other social media, tagging @awssbg_vjit: ${origin}/attending`,
     '📲 Follow us on Instagram for event updates: https://www.instagram.com/awssbg_vjit',

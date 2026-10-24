@@ -5,9 +5,13 @@
  * out on their own, because the count is read from the live records.
  */
 
-/** Counting stops at the end of 24 October 2026, IST. Later registrations still go through; they just do not count. */
-export const REFERRAL_CUTOFF = '2026-10-24T18:29:59.999Z'
-export const REFERRAL_CUTOFF_LABEL = '24 October, 11:59 PM'
+/**
+ * Counting stops at the end of 26 October 2026, IST (extended from the 24th
+ * with registrations, by the organisers on 24 October). Later registrations
+ * still go through; they just do not count.
+ */
+export const REFERRAL_CUTOFF = '2026-10-26T18:29:59.999Z'
+export const REFERRAL_CUTOFF_LABEL = '26 October, 11:59 PM'
 
 export const referralOpen = (at = new Date().toISOString()) => at <= REFERRAL_CUTOFF
 
