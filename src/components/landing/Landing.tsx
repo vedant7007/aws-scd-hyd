@@ -4,6 +4,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { Countdown, Podium } from '@/components/referral/Arcade'
+import { Speakers } from './Speakers'
 import type { BoardRow } from '@/lib/referral/store'
 import type { Tier } from '@/lib/db/types'
 import { formatCount } from '@/content/formats'
@@ -582,63 +583,7 @@ export function Landing({ registrationOpen, board, doors, prices }: Props) {
           </div>
         </section>
 
-        <section id="speakers" style={{position:'relative',zIndex:'10',borderTop:'4px solid var(--line)',background:'var(--panel)'}}>
-          <div style={{maxWidth:'1240px',margin:'0 auto',padding:'clamp(52px,10vh,124px) clamp(18px,5vw,56px)'}}>
-            <div data-rv="1" style={{display:'flex',alignItems:'flex-end',justifyContent:'space-between',gap:'14px',flexWrap:'wrap',paddingBottom:'20px'}}>
-              <div style={{display:'flex',flexDirection:'column',gap:'10px'}}>
-                <span style={{fontFamily:'var(--font-mono)',fontSize:'10.5px',letterSpacing:'.22em',textTransform:'uppercase',color:'var(--mint-ink)'}}>{'// THE LINE-UP'}</span>
-                <h2 style={{margin:'0',fontFamily:'var(--font-display)',fontSize:'clamp(37.5px,9.5vw,77.5px)',lineHeight:'.94',color:'var(--ink)'}}>NOT ANNOUNCED YET</h2>
-              </div>
-              <span style={{fontFamily:'var(--font-display)',fontSize:'21.3px',background:'#FF9900',color:'var(--on-fill)',padding:'6px 10px'}}>FIRST NAMES DROP SOON</span>
-            </div>
-            <div data-rv="1" data-grid4="1" style={{display:'grid',gap:'clamp(16px,2.2vw,24px)'}}>
-              <div className="dh-h10" style={{border:'3px solid var(--line)',background:'var(--surface)',padding:'18px',display:'flex',flexDirection:'column',gap:'12px',transition:'transform .14s steps(3),border-color .14s steps(2)'}}>
-                <div data-px="1" tabIndex={0} role="button" aria-label="Reveal the session" style={{aspectRatio:'3/4',background:'var(--slot)',position:'relative',overflow:'hidden'}}>
-                  <div data-px-front="1" style={{position:'absolute',inset:'0',display:'flex',alignItems:'flex-end',justifyContent:'center'}}>
-                    <div style={{width:'52%',height:'44%',background:'var(--slot2)',clipPath:'polygon(20% 100%,20% 30%,35% 30%,35% 15%,65% 15%,65% 30%,80% 30%,80% 100%)'}}></div>
-                    <span style={{position:'absolute',inset:'0',backgroundImage:'radial-gradient(rgba(159,227,182,.18) 1px,transparent 1px)',backgroundSize:'6px 6px',animation:'bm-flick 4s steps(2) infinite'}}></span>
-                    <span style={{position:'absolute',top:'10px',left:'10px',fontFamily:'var(--font-display)',fontSize:'17.5px',color:'var(--mint-ink)'}}>???</span>
-                  </div>
-                  <div data-px-back="1" style={{position:'absolute',inset:'0',display:'none',flexDirection:'column',justifyContent:'center',gap:'8px',padding:'14px',background:'#9FE3B6'}}><span style={{fontFamily:'var(--font-mono)',fontSize:'9.5px',letterSpacing:'.18em',color:'#14161C'}}>KEYNOTE</span>{' '}<span style={{fontFamily:'var(--font-display)',fontSize:'25px',lineHeight:'1.05',color:'#14161C'}}>OPENING TALK</span>{' '}<span style={{fontFamily:'var(--font-mono)',fontSize:'9px',letterSpacing:'.16em',color:'#14161C',opacity:'.75'}}>SPEAKER SOON</span></div>
-                  <div data-px-grid="1" style={{position:'absolute',inset:'0',pointerEvents:'none'}}></div>
-                </div>
-                <div style={{height:'12px',width:'72%',background:'var(--slot2)'}}></div>
-                <div style={{height:'9px',width:'44%',background:'var(--bar)'}}></div>
-              </div>
-              <div className="dh-h10" style={{border:'3px solid var(--line)',background:'var(--surface)',padding:'18px',display:'flex',flexDirection:'column',gap:'12px',transition:'transform .14s steps(3),border-color .14s steps(2)'}}>
-                <div data-px="1" tabIndex={0} role="button" aria-label="Reveal the session" style={{aspectRatio:'3/4',background:'var(--slot)',position:'relative',overflow:'hidden'}}>
-                  <div data-px-front="1" style={{position:'absolute',inset:'0',display:'flex',alignItems:'flex-end',justifyContent:'center'}}>
-                    <div style={{width:'52%',height:'44%',background:'var(--slot2)',clipPath:'polygon(20% 100%,20% 30%,35% 30%,35% 15%,65% 15%,65% 30%,80% 30%,80% 100%)'}}></div>
-                    <span style={{position:'absolute',inset:'0',backgroundImage:'radial-gradient(rgba(255,153,0,.16) 1px,transparent 1px)',backgroundSize:'6px 6px',animation:'bm-flick 5.5s steps(2) infinite'}}></span>
-                    <span style={{position:'absolute',top:'10px',left:'10px',fontFamily:'var(--font-display)',fontSize:'17.5px',color:'var(--amber-ink)'}}>???</span>
-                  </div>
-                  <div data-px-back="1" style={{position:'absolute',inset:'0',display:'none',flexDirection:'column',justifyContent:'center',gap:'8px',padding:'14px',background:'#FF9900'}}><span style={{fontFamily:'var(--font-mono)',fontSize:'9.5px',letterSpacing:'.18em',color:'#14161C'}}>TECHNICAL</span>{' '}<span style={{fontFamily:'var(--font-display)',fontSize:'25px',lineHeight:'1.05',color:'#14161C'}}>CLOUD ENGINEERING</span>{' '}<span style={{fontFamily:'var(--font-mono)',fontSize:'9px',letterSpacing:'.16em',color:'#14161C',opacity:'.75'}}>SPEAKER SOON</span></div>
-                  <div data-px-grid="1" style={{position:'absolute',inset:'0',pointerEvents:'none'}}></div>
-                </div>
-                <div style={{height:'12px',width:'56%',background:'var(--slot2)'}}></div>
-                <div style={{height:'9px',width:'60%',background:'var(--bar)'}}></div>
-              </div>
-              <div className="dh-h10" style={{border:'3px solid var(--line)',background:'var(--surface)',padding:'18px',display:'flex',flexDirection:'column',gap:'12px',transition:'transform .14s steps(3),border-color .14s steps(2)'}}>
-                <div data-px="1" tabIndex={0} role="button" aria-label="Reveal the session" style={{aspectRatio:'3/4',background:'var(--slot)',position:'relative',overflow:'hidden'}}>
-                  <div data-px-front="1" style={{position:'absolute',inset:'0',display:'flex',alignItems:'flex-end',justifyContent:'center'}}>
-                    <div style={{width:'52%',height:'44%',background:'var(--slot2)',clipPath:'polygon(20% 100%,20% 30%,35% 30%,35% 15%,65% 15%,65% 30%,80% 30%,80% 100%)'}}></div>
-                    <span style={{position:'absolute',inset:'0',backgroundImage:'radial-gradient(rgba(154,141,255,.18) 1px,transparent 1px)',backgroundSize:'6px 6px',animation:'bm-flick 4.8s steps(2) infinite'}}></span>
-                    <span style={{position:'absolute',top:'10px',left:'10px',fontFamily:'var(--font-display)',fontSize:'17.5px',color:'var(--violet-ink)'}}>???</span>
-                  </div>
-                  <div data-px-back="1" style={{position:'absolute',inset:'0',display:'none',flexDirection:'column',justifyContent:'center',gap:'8px',padding:'14px',background:'#C4AEF2'}}><span style={{fontFamily:'var(--font-mono)',fontSize:'9.5px',letterSpacing:'.18em',color:'#14161C'}}>PANEL</span>{' '}<span style={{fontFamily:'var(--font-display)',fontSize:'25px',lineHeight:'1.05',color:'#14161C'}}>PANEL DISCUSSION</span>{' '}<span style={{fontFamily:'var(--font-mono)',fontSize:'9px',letterSpacing:'.16em',color:'#14161C',opacity:'.75'}}>SPEAKER SOON</span></div>
-                  <div data-px-grid="1" style={{position:'absolute',inset:'0',pointerEvents:'none'}}></div>
-                </div>
-                <div style={{height:'12px',width:'64%',background:'var(--slot2)'}}></div>
-                <div style={{height:'9px',width:'38%',background:'var(--bar)'}}></div>
-              </div>
-              <div className="dh-h13" style={{border:'3px solid #9FE3B6',background:'var(--panel-mint)',padding:'16px',display:'flex',flexDirection:'column',gap:'12px',justifyContent:'center',transition:'transform .14s steps(3),box-shadow .14s steps(3)'}}>
-                <div style={{fontFamily:'var(--font-display)',fontSize:'31.3px',lineHeight:'1.05',color:'var(--ink)'}}>WANT TO SPEAK?</div>
-                <p style={{margin:'0',fontSize:'13.5px',lineHeight:'1.55',color:'var(--body)'}}>Call for speakers is open: students and working engineers both.</p>
-                <Link className="dh-h20 dh-a4" href="/speak" style={{display:'inline-flex',alignItems:'center',justifyContent:'center',minHeight:'48px',background:'#9FE3B6',color:'var(--on-fill)',fontFamily:'var(--font-display)',fontSize:'22.5px',boxShadow:'5px 5px 0 var(--line)',cursor:'pointer',transition:'transform .1s steps(2),box-shadow .1s steps(2)'}}>APPLY TO SPEAK</Link>
-              </div>
-            </div>
-          </div>
-        </section>
+        <Speakers />
 
         <section id="sponsors" style={{position:'relative',zIndex:'10',borderTop:'3px solid var(--line)'}}>
           <div style={{maxWidth:'1240px',margin:'0 auto',padding:'clamp(52px,10vh,124px) clamp(18px,5vw,56px)',display:'flex',flexDirection:'column',gap:'clamp(18px,3.4vh,32px)'}}>
@@ -723,6 +668,21 @@ export function Landing({ registrationOpen, board, doors, prices }: Props) {
                 <span style={{fontSize:'13.5px',lineHeight:'1.55',color:'var(--body)'}}>The AWS community in Hyderabad.</span>
                 <span style={{marginTop:'auto',fontFamily:'var(--font-mono)',fontSize:'10px',letterSpacing:'.16em',textTransform:'uppercase',color:'var(--mint-ink)'}}>Visit awsughyd.com →</span>
               </a>
+              <div className="dh-h21" style={{border:'3px solid var(--line)',background:'var(--surface)',padding:'24px 22px',display:'flex',flexDirection:'column',gap:'14px',color:'var(--ink)',transition:'transform .14s steps(3),border-color .14s steps(2),box-shadow .14s steps(3)'}}>
+                <span style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:'10px'}}>
+                  <span style={{fontFamily:'var(--font-mono)',fontSize:'9.5px',letterSpacing:'.2em',textTransform:'uppercase',color:'var(--mint-ink)'}}>Community partner</span>
+                  <span style={{display:'flex',gap:'3px'}} aria-hidden="true">
+                    <span style={{width:'8px',height:'8px',background:'#9FE3B6'}}></span>
+                    <span style={{width:'8px',height:'8px',background:'#9FE3B6'}}></span>
+                    <span style={{width:'8px',height:'8px',background:'var(--bar)'}}></span>
+                  </span>
+                </span>
+                <span style={{background:'#FDFAF5',border:'2px solid var(--line-soft)',display:'flex',alignItems:'center',justifyContent:'center',padding:'8px',minHeight:'200px'}}>
+                  <Image src="/assets/orbit-logo.png" alt="The Orbit Community" width={2000} height={2000} sizes="220px" style={{width:'100%',maxWidth:'220px',height:'auto',display:'block',imageRendering:'auto'}} />
+                </span>
+                <span style={{fontFamily:'var(--font-display)',fontSize:'32.5px',color:'var(--ink)'}}>THE ORBIT</span>
+                <span style={{fontSize:'13.5px',lineHeight:'1.55',color:'var(--body)'}}>Our new community partner.</span>
+              </div>
               <div className="dh-h22" style={{border:'3px dashed var(--line-dash)',background:'var(--surface)',padding:'24px 22px',display:'flex',flexDirection:'column',gap:'12px',transition:'transform .14s steps(3),border-color .14s steps(2)'}}>
                 <span style={{fontFamily:'var(--font-mono)',fontSize:'9.5px',letterSpacing:'.2em',textTransform:'uppercase',color:'var(--muted)'}}>Slot open</span>
                 <span style={{background:'var(--panel)',border:'2px solid var(--line-soft)',display:'flex',alignItems:'center',justifyContent:'center',minHeight:'200px',fontFamily:'var(--font-display)',fontSize:'70px',color:'#D6CFC5'}}>?</span>
