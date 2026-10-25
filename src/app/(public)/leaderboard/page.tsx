@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Countdown, Podium, ScoreTable } from '@/components/referral/Arcade'
+import { Prizes } from '@/components/referral/Prizes'
 import { event } from '@/content/event'
 import { REFERRAL_CUTOFF_LABEL, referralOpen } from '@/content/referral'
 import { leaderboard } from '@/lib/referral/store'
@@ -53,7 +54,7 @@ export default async function LeaderboardPage() {
             <span className="arc-button-cap">GET MY CODE</span>
           </Link>
           <div className="arc-deck-copy">
-            <p>Every friend who registers with your code is a point. A group of five is five points. Top referrers win exciting prizes, revealed soon.</p>
+            <p>Every friend who registers with your code is a point. A group of five is five points. The top 3 win the prizes below, and anyone who brings 25 or more unlocks the secret level.</p>
             <Link href="/register" className="arc-deck-link">
               Not registered yet? Register first
             </Link>
@@ -61,9 +62,12 @@ export default async function LeaderboardPage() {
         </div>
       </section>
 
+      <Prizes />
+
       <p className="hint">
-        A referral counts once the registration is made and the payment submitted. Rejected registrations do not count. Registrations made by{' '}
-        {REFERRAL_CUTOFF_LABEL} count. The board updates every minute. Organisers&apos; decision is final.
+        A referral shows on the board once the registration is made and the payment submitted, and counts for prizes only once that payment is
+        verified. Rejected registrations do not count, and the organisers review the top referrals and may remove any that look wrong.
+        Registrations made by {REFERRAL_CUTOFF_LABEL} count. The board updates every minute. Organisers&apos; decision is final.
       </p>
     </div>
   )

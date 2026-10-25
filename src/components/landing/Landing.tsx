@@ -4,6 +4,8 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { Countdown, Podium } from '@/components/referral/Arcade'
+import { Prizes } from '@/components/referral/Prizes'
+import { SbgLogo } from './SbgLogo'
 import { Speakers } from './Speakers'
 import type { BoardRow } from '@/lib/referral/store'
 import type { Tier } from '@/lib/db/types'
@@ -524,7 +526,7 @@ export function Landing({ registrationOpen, board, doors, prices }: Props) {
             <div className="rfh-copy">
               <span className="rfh-tag"><span className="gp-dot" aria-hidden="true"></span>NEW · REFER &amp; WIN</span>
               <h2 id="rfh-h" className="rfh-h">BRING YOUR SQUAD.<br />TOP THE BOARD.</h2>
-              <p className="rfh-p">Already registered? Every friend who registers with your code is a point, a group of five is five, and the top referrers win exciting prizes.</p>
+              <p className="rfh-p">Already registered? Every friend who registers with your code is a point, a group of five is five, and the top 3 win headphones, a smartwatch and a speaker. Bring 25 and unlock the secret gamer loot.</p>
               <ol className="rfh-steps">
                 <li><span>1</span>Pick your code</li>
                 <li><span>2</span>Send your link to friends</li>
@@ -549,6 +551,9 @@ export function Landing({ registrationOpen, board, doors, prices }: Props) {
               </div>
               <span className="rfh-mini-foot">{board.length ? 'TAP FOR THE FULL BOARD' : 'NO SCORES YET. BE PLAYER ONE'}</span>
             </Link>
+          </div>
+          <div className="rfh-loot">
+            <Prizes compact />
           </div>
         </section>
 
@@ -599,6 +604,22 @@ export function Landing({ registrationOpen, board, doors, prices }: Props) {
                 <span style={{display:'inline-flex'}}>S<span data-exp="1" style={{display:'inline-block',maxWidth:'0',overflow:'hidden',color:'var(--gold2)'}}>ervices</span></span>
               </h2>
             </div>
+            <a data-rv="1" className="org" href="https://www.instagram.com/awssbg_vjit/" target="_blank" rel="noopener noreferrer">
+              <span className="org-mark" aria-hidden="true">
+                <SbgLogo className="org-logo" />
+              </span>
+              <span className="org-copy">
+                <span className="org-eye">Organised by</span>
+                <span className="org-name">AWS STUDENT BUILDER GROUP</span>
+                <span className="org-at">VJIT · HYDERABAD</span>
+                <span className="org-line">An official AWS Student Community Day, organised by the AWS Student Builder Group at VJIT with AWS as title sponsor. By students, for students.</span>
+                <span className="org-chips">
+                  <span>Student-run</span>
+                  <span>First edition</span>
+                  <span>@awssbg_vjit</span>
+                </span>
+              </span>
+            </a>
             <a data-rv="1" className="dh-h21" href="https://vjit.ac.in/" style={{position:'relative',border:'3px solid var(--line)',background:'var(--surface)',display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,280px),1fr))',boxShadow:'6px 6px 0 var(--sh)',overflow:'hidden',color:'var(--ink)',transition:'transform .14s steps(3),border-color .14s steps(2),box-shadow .14s steps(3)'}}>
               <span style={{background:'#FFFFFF',borderRight:'2px solid var(--line-soft)',display:'flex',alignItems:'center',justifyContent:'center',padding:'clamp(22px,4vw,36px)',minHeight:'150px'}}>
                 <Image src="/assets/vjit-logo.png" alt="Vidya Jyothi Institute of Technology" width={320} height={90} sizes="320px" style={{width:'100%',maxWidth:'320px',height:'auto',display:'block',imageRendering:'auto'}} />
@@ -610,27 +631,6 @@ export function Landing({ registrationOpen, board, doors, prices }: Props) {
                 <span style={{fontFamily:'var(--font-mono)',fontSize:'10px',letterSpacing:'.16em',textTransform:'uppercase',color:'var(--mint-ink)'}}>Visit vjit.ac.in →</span>
               </span>
             </a>
-            <div data-rv="1" style={{position:'relative',border:'3px solid var(--line)',background:'var(--surface)',display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,280px),1fr))',boxShadow:'6px 6px 0 var(--sh)',overflow:'hidden'}}>
-              <div style={{position:'relative',background:'#14161C',color:'#FFFFFF',padding:'clamp(20px,3.4vw,30px)',display:'flex',flexDirection:'column',justifyContent:'center',gap:'10px',overflow:'hidden'}}>
-                <span aria-hidden="true" style={{position:'absolute',inset:'0',backgroundImage:'linear-gradient(rgba(159,227,182,.12) 1px,transparent 1px),linear-gradient(90deg,rgba(159,227,182,.12) 1px,transparent 1px)',backgroundSize:'16px 16px'}}></span>
-                <span style={{position:'relative',fontFamily:'var(--font-mono)',fontSize:'10.5px',letterSpacing:'.24em',textTransform:'uppercase',color:'#9FE3B6'}}>Organised by</span>
-                <span style={{position:'relative',fontFamily:'var(--font-display)',fontSize:'clamp(40px,9vw,64px)',lineHeight:'.88',letterSpacing:'.01em'}}>AWS SBG<br /><span style={{color:'#FF9900'}}>VJIT</span></span>
-                <span style={{position:'relative',display:'flex',gap:'4px'}} aria-hidden="true">
-                  <span style={{width:'10px',height:'10px',background:'#9FE3B6'}}></span>
-                  <span style={{width:'10px',height:'10px',background:'#C4AEF2'}}></span>
-                  <span style={{width:'10px',height:'10px',background:'#F2A7C3'}}></span>
-                  <span style={{width:'10px',height:'10px',background:'#F6C899'}}></span>
-                </span>
-              </div>
-              <div style={{padding:'clamp(20px,3.4vw,30px)',display:'flex',flexDirection:'column',justifyContent:'center',gap:'12px'}}>
-                <span style={{fontFamily:'var(--font-display)',fontSize:'clamp(26px,5vw,34px)',lineHeight:'1',color:'var(--ink)'}}>BY STUDENTS, FOR STUDENTS</span>
-                <div style={{display:'flex',flexWrap:'wrap',gap:'8px',fontFamily:'var(--font-mono)',fontSize:'10.5px',letterSpacing:'.14em',textTransform:'uppercase'}}>
-                  <span style={{border:'2px solid var(--line)',padding:'6px 9px',color:'var(--ink)'}}>Student-run</span>
-                  <span style={{border:'2px solid var(--line)',padding:'6px 9px',color:'var(--ink)'}}>VJIT · Hyderabad</span>
-                  <span style={{border:'2px solid var(--line)',padding:'6px 9px',color:'var(--ink)'}}>First edition</span>
-                </div>
-              </div>
-            </div>
             <div data-rv="1" style={{display:'flex',alignItems:'flex-end',justifyContent:'space-between',gap:'14px',flexWrap:'wrap',paddingTop:'6px'}}>
               <div style={{display:'flex',flexDirection:'column',gap:'10px'}}>
                 <span style={{fontFamily:'var(--font-mono)',fontSize:'10.5px',letterSpacing:'.22em',textTransform:'uppercase',color:'var(--mint-ink)'}}>{'// COMMUNITY SPONSORS'}</span>

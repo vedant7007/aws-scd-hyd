@@ -15,6 +15,26 @@ export const REFERRAL_CUTOFF_LABEL = '26 October, 11:59 PM'
 
 export const referralOpen = (at = new Date().toISOString()) => at <= REFERRAL_CUTOFF
 
+/**
+ * What the referral leaderboard wins, shown on the site. Decided by the
+ * organisers on 25 October 2026. No prices are shown, by their decision.
+ * The special prize goes to anyone with SPECIAL_PRIZE_AT or more verified
+ * referrals, on top of any top 3 place.
+ */
+export type Prize = { rank: 1 | 2 | 3; name: string; kind: string; photo: string }
+export const PRIZES: Prize[] = [
+  { rank: 1, name: 'Noise Airwave Max 4', kind: 'Wireless ENC headphones', photo: '/assets/prizes/headphones.jpg' },
+  { rank: 2, name: 'boAt Storm Blaze', kind: 'HD smartwatch with BT calling', photo: '/assets/prizes/watch.jpg' },
+  { rank: 3, name: 'Dubstep Pop 1400', kind: '14W Bluetooth speaker', photo: '/assets/prizes/speaker.jpg' },
+]
+export const SPECIAL_PRIZE_AT = 25
+export const SPECIAL_LOOT: { name: string; photo: string }[] = [
+  { name: 'Ant Esports NC150 cooling pad', photo: '/assets/prizes/pad.jpg' },
+  { name: 'Cosmic Byte wireless controller', photo: '/assets/prizes/controller.jpg' },
+  { name: 'Ant Esports GM700 gaming mouse', photo: '/assets/prizes/mouse.jpg' },
+  { name: 'Gaming mouse pad', photo: '/assets/prizes/mat.jpg' },
+]
+
 /** The share link people send around. /r/CODE lands on registration with the code filled in. */
 export const referralPath = (code: string) => `/r/${code}`
 

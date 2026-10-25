@@ -1,6 +1,8 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
+  /** 90 is for the prize photos, which are product shots and show compression at 75. */
+  images: { qualities: [75, 90] },
   /**
    * /schedule, /speakers and /sponsors were separate pages before the v3
    * handoff, which folds all three into the home page. Old links, shared

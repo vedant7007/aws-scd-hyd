@@ -3,7 +3,6 @@ import { tierLabel } from '../content/passes'
 import { collegeOf } from '../content/colleges'
 import { programSession } from '../content/program'
 import { listAttendees } from './db/queries'
-import { board } from './referral/store'
 import { toCsv } from './db/stats'
 import { fieldLabel, listForms } from './forms'
 import { SPEAKER_FORM } from './forms-options'
@@ -66,7 +65,7 @@ export async function registrationsCsv(): Promise<string> {
       x.name.localeCompare(y.name),
   )
   return toCsv([
-    ['#', 'Status', 'Pass ID', 'Name', 'College', 'Pass', 'Technical session', 'Workshop', 'Their price (₹)', 'Group', 'Group pays (₹)', 'UTR', 'AWS Builder ID', 'Email', 'Phone', 'Roll number', 'Branch', 'Year', 'Date of birth', 'Registered (IST)', 'Verified (IST)', 'Ticket sent', 'Checked in', 'Swag', 'Rejected because', 'Referred by', 'Their code'],
+    ['#', 'Status', 'Pass ID', 'Name', 'College', 'Pass', 'Technical session', 'Workshop', 'Their price (₹)', 'Group', 'Group pays (₹)', 'UTR', 'AWS Builder ID', 'Email', 'Phone', 'Roll number', 'Branch', 'Year', 'Date of birth', 'Registered (IST)', 'Verified (IST)', 'Ticket sent', 'Checked in', 'Swag', 'Rejected because'],
     ...rows.map((a, i) => {
       const payer = a.groupId === a.passId
       return [
@@ -95,8 +94,6 @@ export async function registrationsCsv(): Promise<string> {
         tick(a.checkedInAt),
         tick(a.swagIssuedAt),
         a.rejectionReason ?? '',
-        a.referredBy ?? '',
-        a.refCode ?? '',
       ]
     }),
   ])
@@ -145,20 +142,7 @@ export async function summaryCsv(): Promise<string> {
   ])
 }
 
-/** The referral leaderboard as a sheet: every code with a referral, with the owner's pass and email for the prizes. */
-export async function referralsCsv(): Promise<string> {
-  const all = await listAttendees()
-  const owner = new Map(all.filter((a) => a.refCode).map((a) => [a.refCode!, a]))
-  return toCsv([
-    ['Rank', 'Code', 'Name', 'College', 'Referrals', 'Pass ID', 'Email', 'Phone'],
-    ...board(all).map((r) => {
-      const o = owner.get(r.code)!
-      return [r.rank, r.code, o.name, o.college, r.count, o.passId, o.email, asText(o.phone)]
-    }),
-  ])
-}
-
-export const SHEETS = { speakers: speakersCsv, registrations: registrationsCsv, summary: summaryCsv, referrals: referralsCsv } as const
+export const SHEETS = { speakers: speakersCsv, registrations: registrationsCsv, summary: summaryCsv } as const
 export type SheetKind = keyof typeof SHEETS
 
 /** The feed key from the server environment, compared in constant time. False while it is unset. */

@@ -1427,3 +1427,187 @@ option { background: var(--color-surface); color: var(--color-ink); }
    background through, like the speakers, instead of a flat fill. */
 .rfh { background: linear-gradient(180deg, color-mix(in srgb, var(--panel-gold) 70%, transparent), color-mix(in srgb, var(--panel-gold) 35%, transparent)); }
 .att-sec { background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 55%, transparent), color-mix(in srgb, var(--panel) 20%, transparent)); }
+
+/* Organised by: the club's own pixel chip, large, on a dark grid; the title sponsor sits above, the venue below. */
+.org { position: relative; display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr); border: 3px solid var(--line); background: var(--surface); box-shadow: 6px 6px 0 var(--sh); overflow: hidden; color: var(--ink); transition: transform .14s steps(3), box-shadow .14s steps(3), border-color .14s steps(2); }
+.org:hover { color: var(--ink); transform: translate3d(-3px,-3px,0); box-shadow: 9px 9px 0 var(--sh); border-color: var(--orange); }
+@media (max-width: 720px) { .org { grid-template-columns: 1fr; } }
+.org-mark { display: grid; place-items: center; min-height: 240px; padding: 28px; background: linear-gradient(rgba(255,153,0,.08) 1px, transparent 1px) 0 0 / 20px 20px, linear-gradient(90deg, rgba(255,153,0,.08) 1px, transparent 1px) 0 0 / 20px 20px, #0B0D12; border-right: 3px solid var(--line); }
+@media (max-width: 720px) { .org-mark { border-right: 0; border-bottom: 3px solid var(--line); min-height: 200px; } }
+.org-logo { width: clamp(120px, 18vw, 170px); height: auto; color: var(--orange); filter: drop-shadow(6px 6px 0 #000); }
+.org:hover .org-logo { animation: org-blip .5s steps(2) 2; }
+.org-copy { display: flex; flex-direction: column; justify-content: center; gap: 10px; padding: clamp(22px,4vw,36px); min-width: 0; }
+.org-eye { align-self: flex-start; padding: 5px 10px; background: var(--orange); color: var(--on-fill); font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; letter-spacing: .24em; text-transform: uppercase; }
+.org-name { font-family: var(--font-display); font-size: clamp(32px,5.6vw,56px); line-height: .92; color: var(--ink); text-shadow: 4px 4px 0 var(--h-sh); }
+.org-at { font-family: var(--font-display); font-size: clamp(22px,3.6vw,30px); line-height: 1; color: var(--amber-ink); }
+.org-line { max-width: 56ch; font-size: 14px; line-height: 1.6; color: var(--body); }
+.org-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.org-chips span { border: 2px solid var(--line); padding: 6px 9px; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink); }
+.org-chips span:last-child { border-color: var(--orange); color: var(--amber-ink); text-transform: none; letter-spacing: .06em; }
+@keyframes org-blip { 50% { transform: translate3d(0,-4px,0); } }
+@media (prefers-reduced-motion: reduce) { .org:hover .org-logo { animation: none; } }
+
+.rfh-loot { max-width: 1180px; margin: clamp(32px,5vh,56px) auto 0; }
+
+/* ==========================================================================
+   Referral prizes as an arcade claw machine. A cabinet with a lit marquee,
+   glass with the three prizes in capsules, a pixel claw that drifts to each
+   prize in turn and dips while that capsule lifts and glows, a control deck
+   whose PLAY button goes to /refer. The 25+ jackpot sits beside it in gold.
+   The claw and the lift share one 9 second cycle.
+   ========================================================================== */
+.cm { display: flex; flex-direction: column; gap: clamp(16px,3vw,26px); }
+.cm-head { display: flex; flex-direction: column; gap: 6px; }
+.cm-eye { align-self: flex-start; padding: 4px 9px; background: var(--orange); color: var(--on-fill); font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; letter-spacing: .24em; }
+.cm-h { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: clamp(38px,8vw,72px); line-height: .92; color: var(--ink); text-shadow: 4px 4px 0 var(--h-sh); }
+.cm-wrap { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: clamp(16px,3vw,28px); align-items: stretch; }
+@media (max-width: 860px) { .cm-wrap { grid-template-columns: 1fr; } }
+
+/* The cabinet */
+.cm-machine { display: flex; flex-direction: column; background: #2A1640; border: 4px solid #000; box-shadow: 0 0 0 4px #C4AEF2, 10px 10px 0 4px #000; color: #F4F7FB; }
+.cm-top { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 18px 12px 14px; background: #14161C; border-bottom: 4px solid #000; overflow: hidden; }
+.cm-bulbs { position: absolute; inset: 5px 6px auto; height: 8px; background: radial-gradient(circle, #F2A7C3 0 2.5px, transparent 3px) 0 0 / 16px 8px repeat-x; animation: arc-chase .5s steps(2) infinite; }
+.cm-brand { margin-top: 6px; font-family: var(--font-display); font-size: clamp(34px,6vw,54px); line-height: .9; color: #F2A7C3; text-shadow: 0 0 16px rgba(242,167,195,.6), 4px 4px 0 #5A1F3A; }
+.cm-sub { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .3em; color: #F6D27A; }
+.cm-glass { position: relative; margin: 14px 14px 0; padding: 0 10px 14px; height: clamp(330px, 34vw, 380px); display: flex; flex-direction: column; justify-content: flex-end; background: linear-gradient(rgba(159,227,182,.06) 1px, transparent 1px) 0 0 / 18px 18px, linear-gradient(90deg, rgba(159,227,182,.06) 1px, transparent 1px) 0 0 / 18px 18px, linear-gradient(180deg, #0A1222 0%, #101B33 100%); border: 4px solid #000; box-shadow: inset 0 0 0 3px #3A2A5A, inset 0 -40px 60px rgba(255,153,0,.12); overflow: hidden; }
+.cm-shine { position: absolute; top: -20%; left: 8%; width: 18%; height: 140%; background: linear-gradient(90deg, rgba(255,255,255,.07), rgba(255,255,255,.02)); transform: skewX(-14deg); pointer-events: none; }
+.cm-rail { position: absolute; left: 0; right: 0; top: 0; height: 12px; background: repeating-linear-gradient(90deg, #7E8BA3 0 10px, #4A5570 10px 12px); border-bottom: 3px solid #000; }
+.cm-carriage { position: absolute; top: 0; left: calc(16.67% - 26px); width: 52px; display: flex; flex-direction: column; align-items: center; animation: cm-move 9s ease-in-out infinite; }
+.cm-carriage::before { content: ""; width: 34px; height: 14px; background: #F6D27A; border: 3px solid #000; }
+.cm-cable { width: 4px; height: 70px; background: #B8C4D6; border-left: 1px solid #000; border-right: 1px solid #000; animation: cm-dip 9s ease-in-out infinite; }
+.cm-claw { color: #F6D27A; }
+.cm-claw-svg { display: block; width: 52px; height: auto; filter: drop-shadow(3px 3px 0 #000); }
+.cm-prizes { position: relative; margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; align-items: end; }
+.cm-prizes::after { content: ""; position: absolute; left: -10px; right: -10px; bottom: -14px; height: 10px; background: #FF9900; box-shadow: 0 0 22px #FF9900; }
+.cm-prize { --c: #CBD3DF; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; }
+.cm-prize[data-rank="1"] { --c: #F6D27A; }
+.cm-prize[data-rank="3"] { --c: #D98E5F; }
+.cm-capsule { position: relative; width: min(100%, 150px); aspect-ratio: 1 / 1; border-radius: 50%; overflow: hidden; background: #FFFFFF; border: 5px solid var(--c); box-shadow: 0 6px 0 #000, 0 0 0 3px #000; animation: cm-lift 9s ease-in-out infinite; }
+.cm-prize[data-rank="2"] .cm-capsule { animation-delay: 2.7s; }
+.cm-prize[data-rank="3"] .cm-capsule { animation-delay: 5.7s; }
+.cm-capsule img { width: 100%; height: 100%; object-fit: contain; padding: 10%; box-sizing: border-box; }
+.cm-capsule::after { content: ""; position: absolute; left: 14%; top: 8%; width: 36%; height: 22%; border-radius: 50%; background: rgba(255,255,255,.75); filter: blur(2px); transform: rotate(-24deg); pointer-events: none; }
+.cm-tag { margin-top: 6px; padding: 3px 8px; background: var(--c); color: #14161C; font-family: var(--font-display); font-size: 20px; line-height: 1; box-shadow: 3px 3px 0 #000; }
+.cm-name { font-family: var(--font-display); font-size: clamp(17px,2.2vw,22px); line-height: 1; color: var(--c); }
+.cm-kind { font-family: var(--font-mono); font-size: 10px; letter-spacing: .06em; color: #B8C4D6; }
+
+/* The control deck */
+.cm-panel { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 14px; padding: 14px 18px 18px; background: #1E1030; border-top: 4px solid #000; }
+.cm-stick { position: relative; width: 50px; height: 50px; flex: none; }
+.cm-stick::before { content: ""; position: absolute; left: 22px; top: 14px; width: 6px; height: 30px; background: #7E8BA3; border: 2px solid #000; }
+.cm-stick i { position: absolute; left: 11px; top: 0; width: 28px; height: 28px; border-radius: 50%; background: #FF9E9A; border: 3px solid #000; animation: cm-wobble 9s ease-in-out infinite; }
+.cm-slot { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 12px; background: #0B0D12; border: 3px solid #000; font-family: var(--font-mono); font-size: 9.5px; letter-spacing: .2em; color: #7E8BA3; }
+.cm-slot b { font-family: var(--font-display); font-weight: 400; font-size: 18px; letter-spacing: .04em; color: #9FE3B6; animation: gp-blink 1.2s steps(2) infinite; }
+.cm-play { flex: none; display: grid; place-items: center; width: 78px; height: 78px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #FFC266 0 18%, #FF9900 19% 100%); border: 4px solid #000; box-shadow: 0 7px 0 #8A4E00, 0 10px 0 #000; font-family: var(--font-display); font-size: 24px; color: #14161C; transition: transform .08s steps(2), box-shadow .08s steps(2); }
+.cm-play:hover { color: #14161C; transform: translate3d(0,-2px,0); }
+.cm-play:active { transform: translate3d(0,6px,0); box-shadow: 0 1px 0 #8A4E00, 0 4px 0 #000; }
+
+/* The jackpot */
+.cm-jackpot { display: flex; flex-direction: column; gap: 12px; padding: clamp(18px,3vw,26px); background: radial-gradient(ellipse at 50% 0%, #3A2A10 0%, #0B0D12 70%); border: 4px solid #F6D27A; box-shadow: 10px 10px 0 #000, 0 0 40px rgba(246,210,122,.2); color: #F4F7FB; }
+.cm-jp-flash { align-self: flex-start; padding: 6px 12px; background: #F6D27A; color: #14161C; font-family: var(--font-display); font-size: 22px; line-height: 1; box-shadow: 4px 4px 0 #000; animation: cm-flash 1.6s steps(2) infinite; }
+.cm-jp-h { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: clamp(42px,6vw,64px); line-height: .88; color: #F6D27A; text-shadow: 4px 4px 0 #6B4A10; }
+.cm-jp-p { margin: 0; font-size: 14px; line-height: 1.55; color: #DDE5EF; }
+.cm-jp-loot { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.cm-jp-loot li { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; line-height: 1.3; color: #F4F7FB; }
+.cm-jp-pic { display: grid; place-items: center; aspect-ratio: 4 / 3; background: #FFFFFF; border: 3px solid #F6D27A; box-shadow: 4px 4px 0 #000; overflow: hidden; }
+.cm-jp-pic img { width: 100%; height: 100%; object-fit: contain; padding: 6%; box-sizing: border-box; }
+.cm-jp-pic b { font-family: var(--font-display); font-size: 40px; color: #8A5A12; }
+.cm-fine { margin: 0; font-size: 12.5px; color: var(--muted); }
+.cm[data-compact] .cm-h { font-size: clamp(30px,6vw,48px); }
+.cm[data-compact] .cm-fine { display: none; }
+
+@keyframes cm-move { 0%,8% { left: calc(16.67% - 26px); } 30%,41% { left: calc(50% - 26px); } 63%,74% { left: calc(83.33% - 26px); } 96%,100% { left: calc(16.67% - 26px); } }
+@keyframes cm-dip { 0% { height: 120px; } 8% { height: 120px; } 13%,25% { height: 70px; } 30% { height: 70px; } 34%,38% { height: 120px; } 46%,58% { height: 70px; } 63% { height: 70px; } 67%,71% { height: 120px; } 79%,100% { height: 70px; } }
+@keyframes cm-lift { 0% { transform: translate3d(0,0,0); } 3%,9% { transform: translate3d(0,-14px,0); box-shadow: 0 6px 0 #000, 0 0 0 3px #000, 0 0 30px var(--c); } 14%,100% { transform: translate3d(0,0,0); } }
+@keyframes cm-wobble { 0%,100% { transform: translate3d(0,0,0); } 20% { transform: translate3d(6px,0,0); } 52% { transform: translate3d(6px,0,0); } 60% { transform: translate3d(-6px,0,0); } 85% { transform: translate3d(-6px,0,0); } }
+@keyframes cm-flash { 0%,100% { background: #F6D27A; } 50% { background: #FFF4CF; } }
+@media (prefers-reduced-motion: reduce) { .cm-carriage, .cm-cable, .cm-capsule, .cm-stick i, .cm-bulbs, .cm-slot b, .cm-jp-flash { animation: none !important; } }
+
+/* Claw machine, bigger: the machine takes the full width with large
+   capsules, and the 25+ jackpot is its own horizontal band above it. */
+.cm-wrap { grid-template-columns: 1fr; }
+.cm-glass { height: clamp(380px, 42vw, 520px); padding: 0 clamp(10px,3vw,40px) 18px; }
+.cm-prizes { gap: clamp(10px,3vw,40px); }
+.cm-capsule { width: min(100%, 260px); border-width: 6px; }
+.cm-capsule img { padding: 7%; }
+.cm-tag { font-size: 24px; padding: 4px 10px; }
+.cm-name { font-size: clamp(18px,2.6vw,28px); }
+.cm-kind { font-size: 11px; }
+.cm-claw-svg { width: 64px; }
+.cm-carriage { width: 64px; left: calc(16.67% - 32px); }
+.cm-jackpot { position: relative; display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: clamp(18px,3vw,36px); align-items: center; overflow: hidden; padding: clamp(26px,4vw,40px) clamp(18px,3vw,36px); }
+@media (max-width: 860px) { .cm-jackpot { grid-template-columns: 1fr; } }
+.cm-jp-bulbs { position: absolute; inset: 6px 8px auto; height: 8px; background: radial-gradient(circle, #F6D27A 0 2.5px, transparent 3px) 0 0 / 16px 8px repeat-x; animation: arc-chase .5s steps(2) infinite; }
+.cm-jp-copy { display: flex; flex-direction: column; gap: 12px; }
+.cm-jp-loot { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: clamp(10px,2vw,18px); }
+@media (max-width: 700px) { .cm-jp-loot { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.cm-jp-pic { aspect-ratio: 1 / 1; border-width: 4px; }
+.cm-jp-loot li { font-size: 13.5px; text-align: center; align-items: center; }
+@keyframes cm-move { 0%,8% { left: calc(16.67% - 32px); } 30%,41% { left: calc(50% - 32px); } 63%,74% { left: calc(83.33% - 32px); } 96%,100% { left: calc(16.67% - 32px); } }
+@keyframes cm-dip { 0% { height: 200px; } 8% { height: 200px; } 13%,25% { height: 90px; } 30% { height: 90px; } 34%,38% { height: 200px; } 46%,58% { height: 90px; } 63% { height: 90px; } 67%,71% { height: 200px; } 79%,100% { height: 90px; } }
+@media (prefers-reduced-motion: reduce) { .cm-jp-bulbs { animation: none !important; } }
+.cm-jp-pic { width: 100%; box-sizing: border-box; }
+.cm-jp-pic b { font-size: 72px; }
+
+/* Prize photos turn slowly on their stand: two faces back to back, the
+   back mirrored so the product always reads the right way round. */
+.cm-capsule { perspective: 700px; }
+.cm-spin { position: absolute; inset: 0; transform-style: preserve-3d; animation: cm-turn 10s linear infinite; }
+.cm-face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.cm-face-back { transform: rotateY(180deg); }
+.cm-face img { width: 100%; height: 100%; object-fit: contain; padding: 7%; box-sizing: border-box; }
+.cm-prize[data-rank="2"] .cm-spin { animation-delay: -3.3s; }
+.cm-prize[data-rank="3"] .cm-spin { animation-delay: -6.6s; }
+@keyframes cm-turn { to { transform: rotateY(360deg); } }
+@media (prefers-reduced-motion: reduce) { .cm-spin { animation: none !important; } }
+/* The jackpot band and machine size to their own width, not the screen's:
+   on the narrower /refer and leaderboard pages the band stacks. */
+.cm { container-type: inline-size; }
+@container (max-width: 900px) {
+  .cm-jackpot { grid-template-columns: 1fr; }
+  .cm-jp-loot { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@container (max-width: 560px) {
+  .cm-jp-loot { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cm-glass { height: 360px; }
+}
+
+/* ==========================================================================
+   The 25+ jackpot as a slot machine. Bulbs chase round the frame, the lever
+   pulls, four reels spin through the gamer kit and land one after another,
+   each on its own item, and the windows flash gold when the last one lands.
+   One 6 second cycle; each reel starts a quarter second after the last.
+   ========================================================================== */
+.jp { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); gap: clamp(18px,3vw,36px); align-items: center; padding: clamp(28px,4vw,44px) clamp(22px,4vw,44px); background: radial-gradient(ellipse at 20% 30%, #4A1A12 0%, #1A0B08 55%, #0B0D12 100%); border: 4px solid #F6D27A; box-shadow: 0 0 0 4px #000, 10px 10px 0 4px #000, 0 0 50px rgba(246,210,122,.22); color: #F4F7FB; overflow: hidden; }
+.jp-lights { position: absolute; inset: 6px; pointer-events: none; background:
+  radial-gradient(circle, #F6D27A 0 3px, transparent 3.5px) 0 0 / 20px 10px repeat-x,
+  radial-gradient(circle, #FF9E9A 0 3px, transparent 3.5px) 10px 100% / 20px 10px repeat-x,
+  radial-gradient(circle, #FF9E9A 0 3px, transparent 3.5px) 0 10px / 10px 20px repeat-y,
+  radial-gradient(circle, #F6D27A 0 3px, transparent 3.5px) 100% 0 / 10px 20px repeat-y;
+  animation: jp-chase .45s steps(2) infinite; }
+.jp-sign { position: relative; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.jp-flash { align-self: flex-start; padding: 6px 12px; background: #F6D27A; color: #14161C; font-family: var(--font-display); font-size: 22px; line-height: 1; box-shadow: 4px 4px 0 #000; animation: cm-flash 1.2s steps(2) infinite; }
+.jp-h { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: clamp(30px,4.4vw,46px); line-height: .9; color: #F4F7FB; text-shadow: 3px 3px 0 #000; }
+.jp-h span { display: block; font-size: clamp(76px,11vw,128px); line-height: .82; color: #F6D27A; text-shadow: 0 0 22px rgba(246,210,122,.55), 6px 6px 0 #8A2A12, 10px 10px 0 #000; animation: jp-pulse 1.6s steps(2) infinite; }
+.jp-p { margin: 0; max-width: 40ch; font-size: 14px; line-height: 1.55; color: #E8DCCB; }
+.jp-machine { position: relative; display: flex; align-items: center; gap: 0; }
+.jp-reels { flex: 1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: clamp(6px,1.2vw,12px); padding: clamp(10px,1.6vw,16px); background: #14161C; border: 4px solid #F6D27A; box-shadow: inset 0 0 0 3px #000, 6px 6px 0 #000; }
+.jp-reel { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.jp-window { position: relative; display: block; aspect-ratio: 1 / 1; overflow: hidden; background: #FFFFFF; border: 3px solid #000; animation: jp-win 6s linear infinite; }
+.jp-window::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, rgba(0,0,0,.45) 0%, transparent 22%, transparent 78%, rgba(0,0,0,.45) 100%); }
+.jp-strip { position: absolute; left: 0; right: 0; top: 0; height: 800%; display: flex; flex-direction: column; animation: jp-spin 6s cubic-bezier(.3,.1,.2,1) infinite; animation-delay: calc(var(--i) * .25s); }
+.jp-cell { flex: 1; display: block; position: relative; }
+.jp-cell img { width: 100%; height: 100%; object-fit: contain; padding: 8%; box-sizing: border-box; }
+.jp-label { font-size: 11.5px; line-height: 1.3; text-align: center; color: #F4F7FB; }
+.jp-lever { position: relative; flex: none; width: 34px; height: 130px; margin-left: -4px; }
+.jp-lever::before { content: ""; position: absolute; left: 0; top: 58px; width: 16px; height: 34px; background: #7E8BA3; border: 3px solid #000; }
+.jp-lever i { position: absolute; left: 14px; top: 8px; width: 8px; height: 66px; background: #B8C4D6; border: 2px solid #000; transform-origin: 50% 100%; animation: jp-pull 6s ease-in-out infinite; }
+.jp-lever i::before { content: ""; position: absolute; left: -10px; top: -22px; width: 24px; height: 24px; border-radius: 50%; background: #FF4D4D; border: 3px solid #000; }
+@container (max-width: 900px) { .jp { grid-template-columns: 1fr; } }
+@container (max-width: 560px) { .jp-reels { grid-template-columns: repeat(2, minmax(0, 1fr)); } .jp-lever { display: none; } }
+@keyframes jp-chase { to { background-position: 10px 0, 0 100%, 0 0, 100% 10px; } }
+@keyframes jp-spin { 0% { transform: translate3d(0,0,0); filter: blur(0); } 10% { filter: blur(3px); } 42% { filter: blur(1px); } 50% { transform: translate3d(0,-87.5%,0); filter: blur(0); } 100% { transform: translate3d(0,-87.5%,0); } }
+@keyframes jp-win { 0%,58% { box-shadow: none; } 62%,70%,78% { box-shadow: 0 0 0 3px #F6D27A, 0 0 24px #F6D27A; } 66%,74% { box-shadow: none; } 82%,100% { box-shadow: 0 0 0 3px #F6D27A; } }
+@keyframes jp-pull { 0%,100% { transform: rotate(0); } 3% { transform: rotate(0) scaleY(.35); } 8% { transform: rotate(0); } }
+@keyframes jp-pulse { 50% { color: #FFF4CF; } }
+@media (prefers-reduced-motion: reduce) { .jp-lights, .jp-flash, .jp-h span, .jp-window, .jp-strip, .jp-lever i { animation: none !important; } .jp-strip { transform: translate3d(0,-87.5%,0); } }

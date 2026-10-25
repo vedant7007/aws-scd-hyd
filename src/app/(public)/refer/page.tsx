@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { Prizes } from '@/components/referral/Prizes'
 import { RefDesk } from '@/components/referral/RefDesk'
 import { event } from '@/content/event'
 import { REFERRAL_CUTOFF_LABEL } from '@/content/referral'
@@ -25,10 +26,11 @@ export default async function ReferPage({ searchParams }: PageProps<'/refer'>) {
         <h1 className="h1 h1-lg">YOUR REFERRAL CODE</h1>
         <p className="lede">
           Pick a code, share your link, and every friend who registers with it is a point on the{' '}
-          <Link href="/leaderboard">leaderboard</Link>. Top referrers win exciting prizes. Counting ends {REFERRAL_CUTOFF_LABEL}.
+          <Link href="/leaderboard">leaderboard</Link>. The top 3 win the prizes below. Counting ends {REFERRAL_CUTOFF_LABEL}.
         </p>
       </div>
       <RefDesk initialPass={pass} />
+      <Prizes compact />
     </div>
   )
 }
