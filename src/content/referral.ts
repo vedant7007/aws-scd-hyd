@@ -21,6 +21,8 @@ export const referralOpen = (at = new Date().toISOString()) => at <= REFERRAL_CU
  * The special prize goes to anyone with SPECIAL_PRIZE_AT or more verified
  * referrals, on top of any top 3 place.
  */
+/** Off until the organisers reveal the prizes: the site shows mystery capsules instead. */
+export const PRIZES_REVEALED = false
 export type Prize = { rank: 1 | 2 | 3; name: string; kind: string; photo: string }
 export const PRIZES: Prize[] = [
   { rank: 1, name: 'Noise Airwave Max 4', kind: 'Wireless ENC headphones', photo: '/assets/prizes/headphones.jpg' },

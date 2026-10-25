@@ -1,14 +1,14 @@
 import Image from 'next/image'
 import type { CSSProperties } from 'react'
 import Link from 'next/link'
-import { PRIZES, SPECIAL_LOOT, SPECIAL_PRIZE_AT, ordinal } from '@/content/referral'
+import { PRIZES, PRIZES_REVEALED, SPECIAL_LOOT, SPECIAL_PRIZE_AT, ordinal } from '@/content/referral'
 
 /**
  * The referral prizes as an arcade claw machine. The three prizes sit in
  * capsules behind the glass while a pixel claw drifts from one to the next,
  * dips, and the one under it lifts and glows; the cycle never ends. Beside
- * it, the jackpot: the 25+ gamer kit in a gold capsule. No prices, by the
- * organisers' decision.
+ * it, the jackpot: the 25+ gamer kit on slot reels. No prices, by the
+ * organisers' decision, and until PRIZES_REVEALED every prize is a "?".
  */
 
 /** The claw, block by block on a 12 by 10 grid, in currentColor. */
@@ -51,7 +51,7 @@ export function Prizes({ compact = false }: { compact?: boolean }) {
           <h3 id="jp-h" className="jp-h">
             <span>{SPECIAL_PRIZE_AT}+</span> REFERRALS
           </h3>
-          <p className="jp-p">Bring {SPECIAL_PRIZE_AT} or more friends and the reels pay out the whole gamer kit. Anyone can hit it, and it stacks on a top 3 prize.</p>
+          <p className="jp-p">Bring {SPECIAL_PRIZE_AT} or more friends and the reels pay out {PRIZES_REVEALED ? 'the whole gamer kit' : 'a mystery loot bundle, revealing soon'}. Anyone can hit it, and it stacks on a top 3 prize.</p>
         </div>
         <div className="jp-machine">
           <div className="jp-reels">
@@ -62,12 +62,12 @@ export function Prizes({ compact = false }: { compact?: boolean }) {
                     {/* Every item, rotated so this reel stops on its own, then once more to spin through. */}
                     {[...SPECIAL_LOOT.slice(i + 1), ...SPECIAL_LOOT, ...SPECIAL_LOOT.slice(0, i + 1)].map((x, k) => (
                       <span key={k} className="jp-cell">
-                        <Image src={x.photo} alt={k === SPECIAL_LOOT.length * 2 - 1 ? l.name : ''} width={1000} height={1000} quality={90} sizes="160px" />
+                        {PRIZES_REVEALED ? <Image src={x.photo} alt={k === SPECIAL_LOOT.length * 2 - 1 ? l.name : ''} width={1000} height={1000} quality={90} sizes="160px" /> : <b className="pz-q">?</b>}
                       </span>
                     ))}
                   </span>
                 </span>
-                <span className="jp-label">{l.name}</span>
+                <span className="jp-label">{PRIZES_REVEALED ? l.name : 'Revealing soon'}</span>
               </div>
             ))}
           </div>
@@ -101,16 +101,16 @@ export function Prizes({ compact = false }: { compact?: boolean }) {
                   <span className="cm-capsule">
                     <span className="cm-spin">
                       <span className="cm-face">
-                        <Image src={p.photo} alt={p.name} width={1000} height={1000} quality={90} sizes="(max-width: 700px) 30vw, 320px" />
+                        {PRIZES_REVEALED ? <Image src={p.photo} alt={p.name} width={1000} height={1000} quality={90} sizes="(max-width: 700px) 30vw, 320px" /> : <b className="pz-q">?</b>}
                       </span>
                       <span className="cm-face cm-face-back" aria-hidden="true">
-                        <Image src={p.photo} alt="" width={1000} height={1000} quality={90} sizes="(max-width: 700px) 30vw, 320px" />
+                        {PRIZES_REVEALED ? <Image src={p.photo} alt="" width={1000} height={1000} quality={90} sizes="(max-width: 700px) 30vw, 320px" /> : <b className="pz-q">?</b>}
                       </span>
                     </span>
                   </span>
                   <span className="cm-tag">{ordinal(p.rank)}</span>
-                  <span className="cm-name">{p.name}</span>
-                  <span className="cm-kind">{p.kind}</span>
+                  <span className="cm-name">{PRIZES_REVEALED ? p.name : 'MYSTERY PRIZE'}</span>
+                  <span className="cm-kind">{PRIZES_REVEALED ? p.kind : 'Revealing soon'}</span>
                 </li>
               ))}
             </ul>

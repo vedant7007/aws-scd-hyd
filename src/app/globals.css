@@ -1611,3 +1611,15 @@ option { background: var(--color-surface); color: var(--color-ink); }
 @keyframes jp-pull { 0%,100% { transform: rotate(0); } 3% { transform: rotate(0) scaleY(.35); } 8% { transform: rotate(0); } }
 @keyframes jp-pulse { 50% { color: #FFF4CF; } }
 @media (prefers-reduced-motion: reduce) { .jp-lights, .jp-flash, .jp-h span, .jp-window, .jp-strip, .jp-lever i { animation: none !important; } .jp-strip { transform: translate3d(0,-87.5%,0); } }
+
+/* Unrevealed prizes: a pixel "?" in each capsule and on each reel cell,
+   the reel cells in alternating colours so the spin still reads. */
+.pz-q { display: grid; place-items: center; width: 100%; height: 100%; background: #14161C; font-family: var(--font-display); font-weight: 400; line-height: 1; color: var(--c, #F6D27A); text-shadow: 4px 4px 0 #000; }
+.cm-face .pz-q { font-size: clamp(64px,12cqi,150px); }
+.jp-cell .pz-q { font-size: clamp(40px,8cqi,88px); }
+.jp-cell:nth-child(4n+2) .pz-q { color: #FF9E9A; }
+.jp-cell:nth-child(4n+3) .pz-q { color: #9FE3B6; }
+.jp-cell:nth-child(4n) .pz-q { color: #C4AEF2; }
+.cm-capsule:has(.pz-q) { background: #14161C; }
+.cm-face .pz-q { border-radius: 50%; }
+.jp-cell .pz-q { font-size: clamp(56px,9cqi,110px); }

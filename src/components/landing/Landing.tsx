@@ -526,7 +526,7 @@ export function Landing({ registrationOpen, board, doors, prices }: Props) {
             <div className="rfh-copy">
               <span className="rfh-tag"><span className="gp-dot" aria-hidden="true"></span>NEW · REFER &amp; WIN</span>
               <h2 id="rfh-h" className="rfh-h">BRING YOUR SQUAD.<br />TOP THE BOARD.</h2>
-              <p className="rfh-p">Already registered? Every friend who registers with your code is a point, a group of five is five, and the top 3 win headphones, a smartwatch and a speaker. Bring 25 and unlock the secret gamer loot.</p>
+              <p className="rfh-p">Already registered? Every friend who registers with your code is a point, a group of five is five, and the top 3 win mystery tech prizes, revealing soon. Bring 25 and unlock the jackpot.</p>
               <ol className="rfh-steps">
                 <li><span>1</span>Pick your code</li>
                 <li><span>2</span>Send your link to friends</li>
