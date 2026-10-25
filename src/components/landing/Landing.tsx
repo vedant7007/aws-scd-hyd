@@ -569,6 +569,9 @@ export function Landing({ registrationOpen, board, doors, prices }: Props) {
                 <span className="att-chip" data-tone="violet">The Orbit</span>
                 <span className="att-chip" data-tone="mint">CSXIA</span>
                 <span className="att-chip" data-tone="pink">AWS User Group Hyderabad</span>
+                <span className="att-chip" data-tone="orange">Creativee Community</span>
+                <span className="att-chip" data-tone="violet">Brain O Vision</span>
+                <span className="att-chip" data-tone="mint">CSI Hyderabad</span>
               </div>
               <Link href="/attending" className="att-cta">{'MAKE YOURS >'}</Link>
             </div>
@@ -683,6 +686,54 @@ export function Landing({ registrationOpen, board, doors, prices }: Props) {
                 <span style={{fontFamily:'var(--font-display)',fontSize:'32.5px',color:'var(--ink)'}}>THE ORBIT</span>
                 <span style={{fontSize:'13.5px',lineHeight:'1.55',color:'var(--body)'}}>Our new community partner.</span>
               </div>
+              <a className="dh-h21" href="https://www.instagram.com/thecreativeecommunity/" target="_blank" rel="noopener noreferrer" style={{border:'3px solid var(--line)',background:'var(--surface)',padding:'24px 22px',display:'flex',flexDirection:'column',gap:'14px',color:'var(--ink)',transition:'transform .14s steps(3),border-color .14s steps(2),box-shadow .14s steps(3)'}}>
+                <span style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:'10px'}}>
+                  <span style={{fontFamily:'var(--font-mono)',fontSize:'9.5px',letterSpacing:'.2em',textTransform:'uppercase',color:'var(--mint-ink)'}}>Community partner</span>
+                  <span style={{display:'flex',gap:'3px'}} aria-hidden="true">
+                    <span style={{width:'8px',height:'8px',background:'#9FE3B6'}}></span>
+                    <span style={{width:'8px',height:'8px',background:'#9FE3B6'}}></span>
+                    <span style={{width:'8px',height:'8px',background:'var(--bar)'}}></span>
+                  </span>
+                </span>
+                <span style={{background:'#000000',border:'2px solid var(--line-soft)',display:'flex',alignItems:'center',justifyContent:'center',padding:'20px',minHeight:'200px'}}>
+                  <Image src="/assets/creativee-logo.png" alt="Creativee Community" width={400} height={280} sizes="240px" style={{width:'100%',maxWidth:'240px',height:'auto',display:'block',imageRendering:'auto'}} />
+                </span>
+                <span style={{fontFamily:'var(--font-display)',fontSize:'32.5px',color:'var(--ink)'}}>CREATIVEE COMMUNITY</span>
+                <span style={{fontSize:'13.5px',lineHeight:'1.55',color:'var(--body)'}}>Official community partner.</span>
+                <span style={{marginTop:'auto',fontFamily:'var(--font-mono)',fontSize:'10px',letterSpacing:'.16em',textTransform:'uppercase',color:'var(--mint-ink)'}}>Follow on Instagram →</span>
+              </a>
+              <a className="dh-h21" href="https://www.instagram.com/brainovision/" target="_blank" rel="noopener noreferrer" style={{border:'3px solid var(--line)',background:'var(--surface)',padding:'24px 22px',display:'flex',flexDirection:'column',gap:'14px',color:'var(--ink)',transition:'transform .14s steps(3),border-color .14s steps(2),box-shadow .14s steps(3)'}}>
+                <span style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:'10px'}}>
+                  <span style={{fontFamily:'var(--font-mono)',fontSize:'9.5px',letterSpacing:'.2em',textTransform:'uppercase',color:'var(--mint-ink)'}}>Echo partner</span>
+                  <span style={{display:'flex',gap:'3px'}} aria-hidden="true">
+                    <span style={{width:'8px',height:'8px',background:'#9FE3B6'}}></span>
+                    <span style={{width:'8px',height:'8px',background:'#9FE3B6'}}></span>
+                    <span style={{width:'8px',height:'8px',background:'var(--bar)'}}></span>
+                  </span>
+                </span>
+                <span style={{background:'#FFFFFF',border:'2px solid var(--line-soft)',display:'flex',alignItems:'center',justifyContent:'center',padding:'20px',minHeight:'200px'}}>
+                  <Image src="/assets/brainovision-logo.png" alt="Brain O Vision" width={464} height={208} sizes="240px" style={{width:'100%',maxWidth:'240px',height:'auto',display:'block',imageRendering:'auto'}} />
+                </span>
+                <span style={{fontFamily:'var(--font-display)',fontSize:'32.5px',color:'var(--ink)'}}>BRAIN O VISION</span>
+                <span style={{fontSize:'13.5px',lineHeight:'1.55',color:'var(--body)'}}>Official echo partner.</span>
+                <span style={{marginTop:'auto',fontFamily:'var(--font-mono)',fontSize:'10px',letterSpacing:'.16em',textTransform:'uppercase',color:'var(--mint-ink)'}}>Follow on Instagram →</span>
+              </a>
+              <a className="dh-h21" href="https://www.instagram.com/csi_hyderabad/" target="_blank" rel="noopener noreferrer" style={{border:'3px solid var(--line)',background:'var(--surface)',padding:'24px 22px',display:'flex',flexDirection:'column',gap:'14px',color:'var(--ink)',transition:'transform .14s steps(3),border-color .14s steps(2),box-shadow .14s steps(3)'}}>
+                <span style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:'10px'}}>
+                  <span style={{fontFamily:'var(--font-mono)',fontSize:'9.5px',letterSpacing:'.2em',textTransform:'uppercase',color:'var(--mint-ink)'}}>Outreach partner</span>
+                  <span style={{display:'flex',gap:'3px'}} aria-hidden="true">
+                    <span style={{width:'8px',height:'8px',background:'#9FE3B6'}}></span>
+                    <span style={{width:'8px',height:'8px',background:'#9FE3B6'}}></span>
+                    <span style={{width:'8px',height:'8px',background:'var(--bar)'}}></span>
+                  </span>
+                </span>
+                <span style={{background:'#FFFFFF',border:'2px solid var(--line-soft)',display:'flex',alignItems:'center',justifyContent:'center',padding:'20px',minHeight:'200px'}}>
+                  <Image src="/assets/csi-logo.png" alt="Computer Society of India" width={300} height={300} sizes="240px" style={{width:'100%',maxWidth:'240px',height:'auto',display:'block',imageRendering:'auto'}} />
+                </span>
+                <span style={{fontFamily:'var(--font-display)',fontSize:'32.5px',color:'var(--ink)'}}>COMPUTER SOCIETY OF INDIA</span>
+                <span style={{fontSize:'13.5px',lineHeight:'1.55',color:'var(--body)'}}>Official outreach partner, CSI Hyderabad chapter.</span>
+                <span style={{marginTop:'auto',fontFamily:'var(--font-mono)',fontSize:'10px',letterSpacing:'.16em',textTransform:'uppercase',color:'var(--mint-ink)'}}>Follow on Instagram →</span>
+              </a>
               <div className="dh-h22" style={{border:'3px dashed var(--line-dash)',background:'var(--surface)',padding:'24px 22px',display:'flex',flexDirection:'column',gap:'12px',transition:'transform .14s steps(3),border-color .14s steps(2)'}}>
                 <span style={{fontFamily:'var(--font-mono)',fontSize:'9.5px',letterSpacing:'.2em',textTransform:'uppercase',color:'var(--muted)'}}>Slot open</span>
                 <span style={{background:'var(--panel)',border:'2px solid var(--line-soft)',display:'flex',alignItems:'center',justifyContent:'center',minHeight:'200px',fontFamily:'var(--font-display)',fontSize:'70px',color:'#D6CFC5'}}>?</span>

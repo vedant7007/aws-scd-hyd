@@ -44,7 +44,7 @@ A full day of cloud and AI with students from across Hyderabad: keynote, technic
 
 Join me: ${siteUrl()}
 
-@AWS Student Builders Group VJIT @The Orbit @CSXIA @AWS User Group Hyderabad
+@AWS Student Builders Group VJIT @The Orbit @CSXIA @AWS User Group Hyderabad @Creativee Community @Brain O Vision @CSI Hyderabad
 
 #AWSSCDHyderabad #AWSStudentCommunityDay #AWS #CloudComputing #Hyderabad`
 

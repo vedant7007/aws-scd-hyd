@@ -1,8 +1,8 @@
 /**
  * The line-up: only people the organisers have announced on Instagram
  * (@awssbg_vjit), as of 25 October 2026. Names, titles and expertise follow
- * those posts; the website calls Seshu Venkata chief guest, by the
- * organisers' decision. Photos are their LinkedIn profile photos.
+ * those posts; Seshu Venkata is the guest speaker, as announced.
+ * Photos are their LinkedIn profile photos.
  *
  * Technical speakers and hands-on leads are not announced yet; the section
  * shows them as revealing soon until they are added here.

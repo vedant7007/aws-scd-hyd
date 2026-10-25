@@ -12,7 +12,7 @@ import { speakers, type Speaker } from '@/content/speakers'
 
 function Chief({ s }: { s: Speaker }) {
   return (
-    <article className="cg" aria-label={`Chief guest: ${s.name}`}>
+    <article className="cg" aria-label={`Guest speaker: ${s.name}`}>
       <span className="cg-corner cg-tl" aria-hidden="true" />
       <span className="cg-corner cg-tr" aria-hidden="true" />
       <span className="cg-corner cg-bl" aria-hidden="true" />
@@ -21,7 +21,7 @@ function Chief({ s }: { s: Speaker }) {
         <span className="cg-frame">{s.photo ? <Image src={s.photo} alt={s.name} fill sizes="(max-width: 720px) 70vw, 340px" style={{ objectFit: 'cover' }} priority={false} /> : null}</span>
       </div>
       <div className="cg-copy">
-        <span className="cg-ribbon">★ CHIEF GUEST ★</span>
+        <span className="cg-ribbon">★ GUEST SPEAKER ★</span>
         <h3 className="cg-name">{s.name}</h3>
         <span className="cg-title">{s.designation}</span>
         <span className="cg-org">{s.org}</span>
