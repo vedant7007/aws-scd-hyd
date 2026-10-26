@@ -4,10 +4,7 @@ import { connection } from 'next/server'
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
 import { Flow } from '@/components/register/Flow'
 import { LockedHero } from '@/components/register/LockedHero'
-import { NotifyForm, type PassChip } from '@/components/register/NotifyForm'
-import { REGISTRATION_OPEN, event } from '@/content/event'
-import { formatInr, passes } from '@/content/passes'
-import type { Tier } from '@/lib/db/types'
+import { REGISTRATION_OPEN, doorsLabel, event } from '@/content/event'
 import { registrationIsOpen } from '@/lib/tickets/launch'
 
 export const metadata: Metadata = {
@@ -17,9 +14,9 @@ export const metadata: Metadata = {
 
 /**
  * The closed registration screen, ported from the v3 handoff's
- * Register.dc.html. Registration is off at the source (REGISTRATION_OPEN in
- * content/event.ts) and this is what every REGISTER and NOTIFY ME control
- * points at: a locked padlock, an email field and nothing to pay for.
+ * Register.dc.html. Since 27 October 2026 it says registration has closed
+ * for good (it said "opening soon" before launch): the padlock, a thank you,
+ * when tickets go out, and nothing to sign up for.
  *
  * Departures from the handoff: the background is the site's drifting grid
  * without the hover-lit cells (the organiser asked for them to go); the copy
@@ -27,10 +24,7 @@ export const metadata: Metadata = {
  * content/passes.ts.
  */
 
-/** The chip swatches, the handoff's own. */
-const SWATCH: Record<Tier, string> = { basic: '#D98E5F', premium: '#E8C052', ultra: '#CBD3DF', vip: '#C9B6F5' }
-
-const TICKER = ['REGISTRATION · LOCKED', 'OPENING SOON', '30.10.2026 · VJIT HYDERABAD', 'GET NOTIFIED FIRST']
+const TICKER = ['REGISTRATIONS · CLOSED', 'SEATS LOCKED IN', '30.10.2026 · VJIT HYDERABAD', 'TICKETS OUT 28 OCTOBER', 'SEE YOU THERE']
 
 /** One run of the ticker. Two sit side by side so the -50% march loops without a seam. */
 function TickerRun() {
@@ -54,13 +48,6 @@ export default async function RegisterPage() {
     await connection()
     if (await registrationIsOpen()) return <Flow />
   }
-
-  const chips: PassChip[] = passes.map((p) => ({
-    id: p.id,
-    name: p.name,
-    price: p.pricePaise === null ? 'TBA' : formatInr(p.pricePaise),
-    swatch: SWATCH[p.id],
-  }))
 
   return (
     <div data-dc="1" style={{ position: 'relative', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -97,42 +84,54 @@ export default async function RegisterPage() {
         <LockedHero />
         <section style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(18px,3vh,26px)', minWidth: '0' }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px', fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '.2em', textTransform: 'uppercase' }}>
-            <span style={{ background: '#FF9900', color: '#14161C', padding: '5px 8px', fontWeight: '600', whiteSpace: 'nowrap', animation: 'rg-glow 2.4s ease-in-out infinite' }}>STATUS: LOCKED</span>
+            <span style={{ background: '#FF9900', color: '#14161C', padding: '5px 8px', fontWeight: '600', whiteSpace: 'nowrap', animation: 'rg-glow 2.4s ease-in-out infinite' }}>STATUS: CLOSED</span>
             <span style={{ color: 'var(--muted)', whiteSpace: 'nowrap' }}>
-              OPENING SOON<span style={{ animation: 'rg-blink 1s steps(1) infinite', color: 'var(--mint-ink)' }}>_</span>
+              SEATS LOCKED IN<span style={{ animation: 'rg-blink 1s steps(1) infinite', color: 'var(--mint-ink)' }}>_</span>
             </span>
           </div>
           <h1 style={{ margin: '0', fontFamily: 'var(--font-display)', fontSize: 'clamp(40px,7.2vw,92px)', lineHeight: '.9', minWidth: '0', overflowWrap: 'anywhere', color: 'var(--ink)', textShadow: '4px 4px 0 var(--h-sh)' }}>
             REGISTRATIONS
             <br />
-            <span style={{ color: 'var(--amber-ink)' }}>OPEN SOON</span>
+            <span style={{ color: 'var(--amber-ink)' }}>CLOSED</span>
           </h1>
           <p style={{ margin: '0', maxWidth: '46ch', fontSize: 'clamp(15px,3.8vw,17.5px)', lineHeight: '1.62', color: 'var(--body)', textWrap: 'pretty' }}>
-            We are still finalising the sessions and how registration will work. Leave your email and we will write to you the moment it opens, nothing
-            else.
+            Registrations for {event.name} are now closed. Thank you to everyone who signed up. If you registered, your seat is locked in: your ticket
+            reaches your inbox on 28 October, two days before the event.
           </p>
-          <NotifyForm chips={chips} />
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px' }}>
+            <Link
+              href="/#speakers"
+              className="btn btn-primary"
+              style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(19px,4.6vw,22px)' }}
+            >
+              MEET THE SPEAKERS →
+            </Link>
+            <a href="https://www.instagram.com/awssbg_vjit" target="_blank" rel="noopener noreferrer" className="btn" style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(19px,4.6vw,22px)' }}>
+              FOLLOW @AWSSBG_VJIT
+            </a>
+          </div>
+          <p style={{ margin: '0', fontSize: '13.5px', lineHeight: '1.55', color: 'var(--muted)' }}>
+            Registered but cannot find your mail? Write to <a href={`mailto:${event.contactEmail}`}>{event.contactEmail}</a> with your pass ID.
+          </p>
         </section>
       </main>
 
       <section style={{ position: 'relative', zIndex: '10', borderTop: '3px solid var(--line)', background: 'var(--panel)' }}>
         <div style={{ maxWidth: '1180px', margin: '0 auto', padding: 'clamp(28px,5vh,52px) clamp(16px,5vw,56px)', display: 'grid', gap: '14px', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,240px),1fr))' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', border: '3px solid var(--line)', background: 'var(--surface)', padding: '16px 18px' }}>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', letterSpacing: '.2em', color: 'var(--mint-ink)' }}>✓ PASSES</span>
-            <span style={{ fontFamily: 'var(--font-display)', fontSize: '24px', color: 'var(--ink)' }}>PRICED · {passes.length} TIERS</span>
-            <Link href="/#passes" style={{ fontSize: '13.5px' }}>
-              See what each pass includes →
-            </Link>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', letterSpacing: '.2em', color: 'var(--mint-ink)' }}>✓ REGISTRATION</span>
+            <span style={{ fontFamily: 'var(--font-display)', fontSize: '24px', color: 'var(--ink)' }}>CLOSED · SEATS LOCKED IN</span>
+            <span style={{ fontSize: '13.5px', color: 'var(--body)' }}>Thank you for the response.</span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', border: '3px solid var(--line)', background: 'var(--surface)', padding: '16px 18px' }}>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', letterSpacing: '.2em', color: 'var(--amber-ink)' }}>… SESSIONS</span>
-            <span style={{ fontFamily: 'var(--font-display)', fontSize: '24px', color: 'var(--ink)' }}>BEING LINED UP</span>
-            <span style={{ fontSize: '13.5px', color: 'var(--body)' }}>Keynote, technical, workshops, panel, Q&amp;A.</span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', letterSpacing: '.2em', color: 'var(--amber-ink)' }}>🎟 TICKETS</span>
+            <span style={{ fontFamily: 'var(--font-display)', fontSize: '24px', color: 'var(--ink)' }}>OUT 28 OCTOBER</span>
+            <span style={{ fontSize: '13.5px', color: 'var(--body)' }}>By email, to the address you registered with.</span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', border: '3px solid var(--line)', background: 'var(--surface)', padding: '16px 18px' }}>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', letterSpacing: '.2em', color: 'var(--amber-ink)' }}>… REGISTRATION</span>
-            <span style={{ fontFamily: 'var(--font-display)', fontSize: '24px', color: 'var(--ink)' }}>OPENING SOON</span>
-            <span style={{ fontSize: '13.5px', color: 'var(--body)' }}>You will hear from us first.</span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', letterSpacing: '.2em', color: 'var(--mint-ink)' }}>◆ THE DAY</span>
+            <span style={{ fontFamily: 'var(--font-display)', fontSize: '24px', color: 'var(--ink)' }}>30 OCTOBER · VJIT</span>
+            <span style={{ fontSize: '13.5px', color: 'var(--body)' }}>Doors at {doorsLabel}. Bring your ticket QR.</span>
           </div>
         </div>
       </section>

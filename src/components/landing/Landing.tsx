@@ -134,7 +134,7 @@ export function Landing({ registrationOpen, board, doors, prices }: Props) {
           <a className="dh-h2" href="#what" style={{color:'var(--ink)',transition:'color .12s steps(2)'}}>ABOUT</a>
           <a className="dh-h2" href="#prog" style={{color:'var(--ink)',transition:'color .12s steps(2)'}}>SESSIONS</a>
           <a className="dh-h2" href="#passes" style={{color:'var(--ink)',transition:'color .12s steps(2)'}}>PASSES</a>
-          <Link className="dh-h3 dh-a4" href="/register" style={{display:'inline-flex',alignItems:'center',minHeight:'44px',padding:'0 16px',background:'#FF9900',color:'var(--on-fill)',fontWeight:'700',boxShadow:'4px 4px 0 var(--line)',cursor:'pointer',transition:'transform .1s steps(2),box-shadow .1s steps(2)'}}>REGISTER</Link>
+          <Link className="dh-h3 dh-a4" href="/register" style={{display:'inline-flex',alignItems:'center',minHeight:'44px',padding:'0 16px',background:'#FF9900',color:'var(--on-fill)',fontWeight:'700',boxShadow:'4px 4px 0 var(--line)',cursor:'pointer',transition:'transform .1s steps(2),box-shadow .1s steps(2)'}}>{registrationOpen ? 'REGISTER' : 'CLOSED'}</Link>
         </nav>
       </header>
 
@@ -170,7 +170,7 @@ export function Landing({ registrationOpen, board, doors, prices }: Props) {
           </div>
           <p data-in="1" style={{margin:'0',maxWidth:'50ch',fontSize:'clamp(15px,4vw,18.5px)',lineHeight:'1.6',color:'var(--body)'}}>Keynote, technical sessions, hands-on workshops, a panel and open Q&A, one Friday. Open to students from any college in Hyderabad, lunch included on every pass.</p>
           <div data-in="1" style={{display:'flex',flexWrap:'wrap',gap:'16px',alignItems:'stretch'}}>
-            <Link className="dh-h7 dh-a8" href="/register" style={{boxSizing:'border-box',display:'inline-flex',alignItems:'center',justifyContent:'center',height:'56px',padding:'0 24px',fontFamily:'var(--font-display)',fontSize:'clamp(21.3px,5.5vw,26.3px)',lineHeight:'1',boxShadow:'6px 6px 0 var(--line)',cursor:'pointer',transition:'transform .1s steps(2),box-shadow .1s steps(2),background .1s steps(2),color .1s steps(2)',border:'3px solid #FF9900',background:'#FF9900',color:'var(--on-fill)'}}>{registrationOpen ? '> REGISTER' : '> GET NOTIFIED'}</Link>
+            <Link className="dh-h7 dh-a8" href="/register" style={{boxSizing:'border-box',display:'inline-flex',alignItems:'center',justifyContent:'center',height:'56px',padding:'0 24px',fontFamily:'var(--font-display)',fontSize:'clamp(21.3px,5.5vw,26.3px)',lineHeight:'1',boxShadow:'6px 6px 0 var(--line)',cursor:'pointer',transition:'transform .1s steps(2),box-shadow .1s steps(2),background .1s steps(2),color .1s steps(2)',border:'3px solid #FF9900',background:'#FF9900',color:'var(--on-fill)'}}>{registrationOpen ? '> REGISTER' : '> REGISTRATIONS CLOSED'}</Link>
             <a className="dh-h9 dh-a8" href="#prog" style={{boxSizing:'border-box',display:'inline-flex',alignItems:'center',justifyContent:'center',height:'56px',padding:'0 24px',fontFamily:'var(--font-display)',fontSize:'clamp(21.3px,5.5vw,26.3px)',lineHeight:'1',boxShadow:'6px 6px 0 var(--line)',cursor:'pointer',transition:'transform .1s steps(2),box-shadow .1s steps(2),background .1s steps(2),color .1s steps(2)',border:'3px solid #9FE3B6',background:'var(--surface)',color:'var(--ink)'}}>VIEW PROGRAMME</a>
           </div>
           <div data-in="1" style={{display:'flex',alignItems:'center',gap:'10px',fontFamily:'var(--font-mono)',fontSize:'clamp(9.5px,2.6vw,11px)',letterSpacing:'.18em',textTransform:'uppercase',color:'var(--muted)'}}>
@@ -181,7 +181,7 @@ export function Landing({ registrationOpen, board, doors, prices }: Props) {
               <span style={{width:'9px',height:'9px',background:'#D6CFC5'}}></span>
             </span>
             {registrationOpen ? (<>Registration is open</>) : null}
-            {!registrationOpen ? (<>Registrations open soon · <Link href="/register" style={{color:'var(--mint-ink)'}}>Get notified</Link></>) : null}
+            {!registrationOpen ? (<>Registrations closed · Seats locked in · Tickets out 28 Oct</>) : null}
           </div>
         </section>
 
@@ -412,7 +412,7 @@ export function Landing({ registrationOpen, board, doors, prices }: Props) {
                     ))}
                   </ul>
                 </div>
-                <Link className="dh-h15 dh-a16" href="/register" style={{position:'relative',marginTop:'auto',display:'inline-flex',alignItems:'center',justifyContent:'center',minHeight:'52px',background:'#14161C',color:'#FFFFFF',fontFamily:'var(--font-display)',fontSize:'24px',boxShadow:'4px 4px 0 rgba(255,255,255,.7)',cursor:'pointer',transition:'transform .1s steps(2),box-shadow .1s steps(2)'}}>{registrationOpen ? 'REGISTER' : 'NOTIFY ME'}</Link>
+                <Link className="dh-h15 dh-a16" href="/register" style={{position:'relative',marginTop:'auto',display:'inline-flex',alignItems:'center',justifyContent:'center',minHeight:'52px',background:'#14161C',color:'#FFFFFF',fontFamily:'var(--font-display)',fontSize:'24px',boxShadow:'4px 4px 0 rgba(255,255,255,.7)',cursor:'pointer',transition:'transform .1s steps(2),box-shadow .1s steps(2)'}}>{registrationOpen ? 'REGISTER' : 'CLOSED'}</Link>
               </article>
               <article className="dh-h17" data-rv="1" data-pass="1" data-spark="#FFF6C8|#E8C052|#FFFFFF" style={{position:'relative',overflow:'hidden',border:'4px solid #5E3F04',background:'linear-gradient(135deg,#FFF2BF 0%,#E8C052 26%,#FFF7D6 46%,#C5921A 70%,#F2D370 100%)',padding:'26px 24px',display:'flex',flexDirection:'column',gap:'14px',minHeight:'380px',color:'#14161C',boxShadow:'6px 6px 0 var(--sh)',transition:'transform .2s cubic-bezier(.2,.9,.3,1.2),box-shadow .2s ease',willChange:'transform'}}>
                 <span aria-hidden="true" style={{position:'absolute',inset:'0',zIndex:'1',pointerEvents:'none',opacity:'var(--glow,0)',transition:'opacity .25s ease',background:'radial-gradient(240px 220px at var(--px,50%) var(--py,50%),rgba(255,255,255,.7),rgba(255,255,255,0) 70%)',mixBlendMode:'soft-light'}}></span>
@@ -438,7 +438,7 @@ export function Landing({ registrationOpen, board, doors, prices }: Props) {
                     ))}
                   </ul>
                 </div>
-                <Link className="dh-h15 dh-a16" href="/register" style={{position:'relative',marginTop:'auto',display:'inline-flex',alignItems:'center',justifyContent:'center',minHeight:'52px',background:'#14161C',color:'#FFFFFF',fontFamily:'var(--font-display)',fontSize:'24px',boxShadow:'4px 4px 0 rgba(255,255,255,.7)',cursor:'pointer',transition:'transform .1s steps(2),box-shadow .1s steps(2)'}}>{registrationOpen ? 'REGISTER' : 'NOTIFY ME'}</Link>
+                <Link className="dh-h15 dh-a16" href="/register" style={{position:'relative',marginTop:'auto',display:'inline-flex',alignItems:'center',justifyContent:'center',minHeight:'52px',background:'#14161C',color:'#FFFFFF',fontFamily:'var(--font-display)',fontSize:'24px',boxShadow:'4px 4px 0 rgba(255,255,255,.7)',cursor:'pointer',transition:'transform .1s steps(2),box-shadow .1s steps(2)'}}>{registrationOpen ? 'REGISTER' : 'CLOSED'}</Link>
               </article>
               <article className="dh-h18" data-rv="1" data-pass="1" data-spark="#FFFFFF|#A3AFC1|#E8F8FF" style={{position:'relative',overflow:'hidden',border:'4px solid #3E4758',background:'linear-gradient(135deg,#F8FAFD 0%,#CBD3DF 26%,#FFFFFF 46%,#A3AFC1 70%,#E4E9F1 100%)',padding:'26px 24px',display:'flex',flexDirection:'column',gap:'14px',minHeight:'380px',color:'#14161C',boxShadow:'6px 6px 0 var(--sh)',transition:'transform .2s cubic-bezier(.2,.9,.3,1.2),box-shadow .2s ease',willChange:'transform'}}>
                 <span aria-hidden="true" style={{position:'absolute',inset:'0',zIndex:'1',pointerEvents:'none',opacity:'var(--glow,0)',transition:'opacity .25s ease',background:'radial-gradient(240px 220px at var(--px,50%) var(--py,50%),rgba(255,255,255,.7),rgba(255,255,255,0) 70%)',mixBlendMode:'soft-light'}}></span>
@@ -464,7 +464,7 @@ export function Landing({ registrationOpen, board, doors, prices }: Props) {
                     ))}
                   </ul>
                 </div>
-                <Link className="dh-h15 dh-a16" href="/register" style={{position:'relative',marginTop:'auto',display:'inline-flex',alignItems:'center',justifyContent:'center',minHeight:'52px',background:'#14161C',color:'#FFFFFF',fontFamily:'var(--font-display)',fontSize:'24px',boxShadow:'4px 4px 0 rgba(255,255,255,.7)',cursor:'pointer',transition:'transform .1s steps(2),box-shadow .1s steps(2)'}}>{registrationOpen ? 'REGISTER' : 'NOTIFY ME'}</Link>
+                <Link className="dh-h15 dh-a16" href="/register" style={{position:'relative',marginTop:'auto',display:'inline-flex',alignItems:'center',justifyContent:'center',minHeight:'52px',background:'#14161C',color:'#FFFFFF',fontFamily:'var(--font-display)',fontSize:'24px',boxShadow:'4px 4px 0 rgba(255,255,255,.7)',cursor:'pointer',transition:'transform .1s steps(2),box-shadow .1s steps(2)'}}>{registrationOpen ? 'REGISTER' : 'CLOSED'}</Link>
               </article>
               <article className="dh-h19" data-rv="1" data-pass="1" data-spark="#F5B5CF|#A9E3FF|#FFF0B8|#C9B6F5|#FFFFFF" style={{position:'relative',overflow:'hidden',border:'4px solid #14161C',background:'linear-gradient(115deg,#E8F8FF,#C9B6F5 16%,#F5B5CF 30%,#FFF0B8 44%,#A8EBC4 58%,#A9E3FF 72%,#D9C9FF 86%,#E8F8FF)',backgroundSize:'260% 260%',animation:'bm-holo 7s ease-in-out infinite alternate',padding:'26px 24px',display:'flex',flexDirection:'column',gap:'14px',minHeight:'380px',color:'#14161C',boxShadow:'6px 6px 0 var(--sh)',transition:'transform .2s cubic-bezier(.2,.9,.3,1.2),box-shadow .2s ease',willChange:'transform'}}>
                 <span aria-hidden="true" style={{position:'absolute',inset:'0',zIndex:'1',pointerEvents:'none',opacity:'var(--glow,0)',transition:'opacity .25s ease',background:'radial-gradient(240px 220px at var(--px,50%) var(--py,50%),rgba(255,255,255,.7),rgba(255,255,255,0) 70%)',mixBlendMode:'soft-light'}}></span>
@@ -501,7 +501,7 @@ export function Landing({ registrationOpen, board, doors, prices }: Props) {
                     ))}
                   </ul>
                 </div>
-                <Link className="dh-h15 dh-a16" href="/register" style={{position:'relative',marginTop:'auto',display:'inline-flex',alignItems:'center',justifyContent:'center',minHeight:'52px',background:'#14161C',color:'#FFFFFF',fontFamily:'var(--font-display)',fontSize:'24px',boxShadow:'4px 4px 0 rgba(255,255,255,.7)',cursor:'pointer',transition:'transform .1s steps(2),box-shadow .1s steps(2)'}}>{registrationOpen ? 'REGISTER' : 'NOTIFY ME'}</Link>
+                <Link className="dh-h15 dh-a16" href="/register" style={{position:'relative',marginTop:'auto',display:'inline-flex',alignItems:'center',justifyContent:'center',minHeight:'52px',background:'#14161C',color:'#FFFFFF',fontFamily:'var(--font-display)',fontSize:'24px',boxShadow:'4px 4px 0 rgba(255,255,255,.7)',cursor:'pointer',transition:'transform .1s steps(2),box-shadow .1s steps(2)'}}>{registrationOpen ? 'REGISTER' : 'CLOSED'}</Link>
               </article>
             </div>
             <div data-rv="1" style={{display:'flex',alignItems:'center',gap:'12px',paddingTop:'20px'}}>
@@ -819,7 +819,7 @@ export function Landing({ registrationOpen, board, doors, prices }: Props) {
               </details>
               <details style={{border:'3px solid var(--line)',background:'var(--surface)'}}>
                 <summary style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:'14px',padding:'20px 22px',cursor:'pointer',fontFamily:'var(--font-display)',fontSize:'clamp(21.3px,5.3vw,26.3px)',color:'var(--ink)'}}>How do I register?<span data-faq-plus="1" style={{flex:'none',fontFamily:'var(--font-mono)',fontSize:'18px',color:'var(--amber-ink)',transition:'transform .16s steps(3)'}}>+</span></summary>
-                <div style={{padding:'0 22px 22px',fontSize:'15px',lineHeight:'1.65',color:'var(--body)',maxWidth:'68ch'}}>Registrations are not open yet. Leave your email on the register page and we will write to you the moment they open.</div>
+                <div style={{padding:'0 22px 22px',fontSize:'15px',lineHeight:'1.65',color:'var(--body)',maxWidth:'68ch'}}>Registrations are closed. If you registered, your seat is locked in and your ticket reaches your inbox on 28 October.</div>
               </details>
               <details style={{border:'3px solid var(--line)',background:'var(--surface)'}}>
                 <summary style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:'14px',padding:'20px 22px',cursor:'pointer',fontFamily:'var(--font-display)',fontSize:'clamp(21.3px,5.3vw,26.3px)',color:'var(--ink)'}}>What time does it start?<span data-faq-plus="1" style={{flex:'none',fontFamily:'var(--font-mono)',fontSize:'18px',color:'var(--amber-ink)',transition:'transform .16s steps(3)'}}>+</span></summary>
