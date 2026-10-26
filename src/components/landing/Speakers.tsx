@@ -1,5 +1,5 @@
 import Image from 'next/image'
-import { technicalSessions, workshops } from '@/content/program'
+import { workshops } from '@/content/program'
 import { speakers, type Speaker } from '@/content/speakers'
 
 /**
@@ -31,9 +31,9 @@ function Chief({ s }: { s: Speaker }) {
   )
 }
 
-function Seat({ s }: { s: Speaker }) {
+function Seat({ s, as = 'Panelist' }: { s: Speaker; as?: string }) {
   return (
-    <article className="pd-seat" aria-label={`Panelist: ${s.name}`}>
+    <article className="pd-seat" aria-label={`${as}: ${s.name}`}>
       <div className="pd-pic">
         {s.photo ? <Image src={s.photo} alt={s.name} fill sizes="(max-width: 720px) 80vw, 320px" style={{ objectFit: 'cover' }} /> : null}
       </div>
@@ -78,8 +78,9 @@ const STACK: string[][] = [
 export function Speakers() {
   const chief = speakers.filter((s) => s.role === 'chief')
   const panel = speakers.filter((s) => s.role === 'panel')
+  const talks = speakers.filter((s) => s.role === 'speaker')
   const named = speakers.filter((s) => s.session)
-  const slots = [...technicalSessions, ...workshops]
+  const slots = workshops
 
   return (
     <section id="speakers" className="spk" aria-labelledby="spk-h">
@@ -116,7 +117,7 @@ export function Speakers() {
           <div className="pd">
             <div className="pd-banner">
               <span>PANEL DISCUSSION</span>
-              <small>Cloud, AI &amp; beyond</small>
+              <small>Cloud, AI &amp; Beyond: Building the Next Generation of Technology</small>
             </div>
             <div className="pd-seats">
               {panel.map((s) => (
@@ -126,10 +127,24 @@ export function Speakers() {
           </div>
         ) : null}
 
+        {talks.length ? (
+          <div className="pd" data-kind="talks">
+            <div className="pd-banner">
+              <span>SPEAKERS</span>
+              <small>Tech talks &amp; hands-on</small>
+            </div>
+            <div className="pd-seats">
+              {talks.map((s) => (
+                <Seat key={s.name} s={s} as="Speaker" />
+              ))}
+            </div>
+          </div>
+        ) : null}
+
         <div className="tl">
           <div className="tl-head">
-            <span className="tl-h">TECH TALKS &amp; HANDS-ON</span>
-            <span className="tl-sub">Speakers revealing soon. Follow @awssbg_vjit for every drop.</span>
+            <span className="tl-h">HANDS-ON SESSIONS</span>
+            <span className="tl-sub">Workshop leads revealing soon. Follow @awssbg_vjit for every drop.</span>
           </div>
           <div className="tl-grid">
             {slots.map((x) => {

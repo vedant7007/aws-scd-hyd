@@ -1,7 +1,9 @@
 /** Students type their college every which way. These fold the common ones together for counting. */
 // ponytail: a hand list, add a line when a new college shows up spelt five ways.
 const COLLEGES: [RegExp, string][] = [
-  [/^(vjit|vidh?ya\s*jyoth?i)/i, 'VJIT'],
+  [/^(vjit|vidh?ya\s*jy)/i, 'VJIT'],
+  [/^(klu\b|kl\s*university)/i, 'KL University'],
+  [/^kg\s*reddy/i, 'KG Reddy College of Engineering and Technology'],
   [/^(cbit|chaitanya\s*bharathi)/i, 'CBIT'],
   [/^stanley/i, 'Stanley College of Engineering and Technology'],
   [/^geethanjali/i, 'Geethanjali College of Engineering and Technology'],

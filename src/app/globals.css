@@ -1623,3 +1623,14 @@ option { background: var(--color-surface); color: var(--color-ink); }
 .cm-capsule:has(.pz-q) { background: #14161C; }
 .cm-face .pz-q { border-radius: 50%; }
 .jp-cell .pz-q { font-size: clamp(56px,9cqi,110px); }
+
+/* Announced speakers not yet tied to a session: the panel block in mint. */
+.pd[data-kind="talks"] { --vio: #9FE3B6; }
+.pd[data-kind="talks"] .pd-tent-org { color: #1F6540; }
+
+/* Seats in centred rows of equal width, so an odd last row sits in the middle
+   instead of hanging off the left: 3 + 2 on desktop, 2 + 2 + 1 on tablets,
+   one per row on phones. */
+.pd-seats { display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; }
+.pd-seat { flex: 0 1 280px; min-width: 0; }
+.pd-pic { max-width: none; }

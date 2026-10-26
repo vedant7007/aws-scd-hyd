@@ -1,13 +1,14 @@
 /**
  * The line-up: only people the organisers have announced on Instagram
- * (@awssbg_vjit), as of 25 October 2026. Names, titles and expertise follow
+ * (@awssbg_vjit), as of 26 October 2026. Names, titles and expertise follow
  * those posts; Seshu Venkata is the guest speaker, as announced.
- * Photos are their LinkedIn profile photos.
+ * Photos: LinkedIn profile photos, and for the 'speaker' role, cropped from
+ * their announcement posters.
  *
- * Technical speakers and hands-on leads are not announced yet; the section
- * shows them as revealing soon until they are added here.
+ * 'speaker' is announced but not yet tied to a session. Which talk or
+ * workshop each takes is not announced; give them a session id once it is.
  */
-export type SpeakerRole = 'chief' | 'panel' | 'technical' | 'workshop'
+export type SpeakerRole = 'chief' | 'panel' | 'speaker' | 'technical' | 'workshop'
 
 export type Speaker = {
   name: string
@@ -60,5 +61,50 @@ export const speakers: Speaker[] = [
     line: 'The hiring side of the table, and where Gen AI is taking it.',
     tags: ['People & Culture', 'Talent Acquisition', 'Gen AI in HR'],
     photo: '/assets/speakers/hari.jpg',
+  },
+  {
+    name: 'Tirupathi Kumar Chandra',
+    role: 'speaker',
+    designation: 'Senior Engineering Manager',
+    org: 'Lloyds Banking',
+    line: 'Engineering leader at Lloyds Banking and a Certified Toastmasters member.',
+    tags: ['Engineering Leadership', 'Toastmasters'],
+    photo: '/assets/speakers/tirupathi-v3.jpg',
+  },
+  {
+    name: 'Varsha Verma',
+    role: 'speaker',
+    designation: 'Lead Cloud Engineer · AWS Community Builder',
+    org: 'Accenture',
+    line: 'Tech speaker, blogger and AWS cloud trainer.',
+    tags: ['AWS', 'Linux', 'DevOps', 'Terraform'],
+    photo: '/assets/speakers/varsha-cut.jpg',
+  },
+  {
+    name: 'Pushkar Prasad',
+    role: 'speaker',
+    designation: 'Senior Vice President',
+    org: 'DBS Bank India',
+    line: 'Keeps banking systems reliable, from SRE to technology risk management.',
+    tags: ['SRE', 'DevOps', 'Technology Risk'],
+    photo: '/assets/speakers/pushkar-cut.jpg',
+  },
+  {
+    name: 'Naveen Kumar Kalapala',
+    role: 'speaker',
+    designation: 'Cloud Infrastructure & DevSecOps Lead',
+    org: 'Infosys',
+    line: 'Technical writer on platform engineering and AI infrastructure.',
+    tags: ['Azure', 'AWS', 'Terraform', 'Cloud Security'],
+    photo: '/assets/speakers/naveen-cut.jpg',
+  },
+  {
+    name: 'Dr. Madhu Oruganti',
+    role: 'speaker',
+    designation: 'Data Scientist · AWS Certified Machine Learning Engineer',
+    org: 'KL University Hyderabad',
+    line: 'Works across computer vision, data science and machine learning on AWS.',
+    tags: ['Computer Vision', 'Machine Learning', 'AWS'],
+    photo: '/assets/speakers/madhu-v3.jpg',
   },
 ]

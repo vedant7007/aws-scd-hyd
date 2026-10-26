@@ -100,6 +100,22 @@ export default async function AdminDashboardPage() {
 
   const tiers: Tier[] = ['basic', 'premium', 'ultra', 'vip']
 
+  // Revenue by tier and price paid per person (group rates are their own lines). Payment submitted counts; rejected and unpaid do not.
+  const money = new Map<string, { tier: Tier; paise: number; verified: number; pending: number }>()
+  for (const a of d.attendees) {
+    if (a.source === 'preview' || (a.state !== 'VERIFIED' && a.state !== 'PENDING_VERIFICATION')) continue
+    const k = `${a.tier}|${a.amountPaise}`
+    const m = money.get(k) ?? { tier: a.tier, paise: a.amountPaise, verified: 0, pending: 0 }
+    if (a.state === 'VERIFIED') m.verified++
+    else m.pending++
+    money.set(k, m)
+  }
+  const revenue = [...money.values()].sort((x, y) => y.paise - x.paise)
+  const sum = (pick: (m: (typeof revenue)[number]) => number) => revenue.reduce((n, m) => n + pick(m) * m.paise, 0)
+  const revTotal = sum((m) => m.verified + m.pending)
+  const revVerified = sum((m) => m.verified)
+  const revPeople = revenue.reduce((n, m) => n + m.verified + m.pending, 0)
+
   return (
     <div className="page page-1180 rise">
       <div className="flex flex-wrap items-end justify-between gap-3.5">
@@ -150,6 +166,49 @@ export default async function AdminDashboardPage() {
         </h2>
         {/* The live Google Sheet. Its address is in the server environment only: the repo is public and the sheet holds contact details. */}
         <AdminConsole rows={rows} sheetUrl={process.env.SCD_SHEET_URL?.startsWith('https://docs.google.com/') ? process.env.SCD_SHEET_URL : null} />
+      </section>
+
+      <section className="card flex flex-col" aria-labelledby="rev-h">
+        <div className="card-head">
+          <span id="rev-h" className="card-title">
+            REVENUE
+          </span>
+          <span className="lbl">
+            {revPeople} paid &middot; {formatInr(revTotal)}
+          </span>
+        </div>
+        {revenue.map((m) => (
+          <div key={`${m.tier}${m.paise}`} className="row">
+            <span className="flex items-center gap-2.5">
+              <span className="dot" data-tier={m.tier} aria-hidden="true" />
+              <span className="copy">
+                {tierLabel(m.tier)} <span className="num">{formatInr(m.paise)}</span> &times; <span className="num">{m.verified + m.pending}</span>
+              </span>
+              <span className="hint">
+                {m.verified} verified, {m.pending} pending
+              </span>
+            </span>
+            <span className="stat-val stat-val-sm">{formatInr(m.paise * (m.verified + m.pending))}</span>
+          </div>
+        ))}
+        <div className="row">
+          <span className="copy">Verified (money matched)</span>
+          <span className="stat-val stat-val-sm" data-tone="ok">
+            {formatInr(revVerified)}
+          </span>
+        </div>
+        <div className="row">
+          <span className="copy">Pending verification</span>
+          <span className="stat-val stat-val-sm" data-tone={revTotal - revVerified ? 'warn' : undefined}>
+            {formatInr(revTotal - revVerified)}
+          </span>
+        </div>
+        <div className="row">
+          <span className="copy">
+            <strong>Total</strong>
+          </span>
+          <span className="stat-val stat-val-sm">{formatInr(revTotal)}</span>
+        </div>
       </section>
 
       <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))]">

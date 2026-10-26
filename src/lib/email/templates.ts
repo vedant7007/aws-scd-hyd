@@ -2,7 +2,7 @@ import { BUILDER_SIGNUP, BUILDER_STEPS } from '../../content/builder'
 import { event, venue } from '../../content/event'
 import { programSession } from '../../content/program'
 import { formatInr, passes, tierLabel } from '../../content/passes'
-import { REFERRAL_CUTOFF_LABEL } from '../../content/referral'
+import { REFERRAL_CUTOFF_LABEL, referralOpen } from '../../content/referral'
 import type { Attendee } from '../db/types'
 import { siteUrl } from '../site'
 import type { Mail } from './send'
@@ -34,7 +34,7 @@ export const RECEIPT_FORBIDDEN_WORDS = ['successful', 'success', 'confirmed', 'c
 
 export const SUBJECTS = {
   receipt: `We have your details, ${event.shortName}`,
-  confirmation: `Payment verified, ${event.shortName}`,
+  confirmation: `You're in! Payment verified, ${event.shortName}`,
   rejection: `We could not match your payment, ${event.shortName}`,
   dayBefore: `Tomorrow: ${event.shortName}`,
   ticket: `Your ticket: ${event.shortName}`,
@@ -222,18 +222,60 @@ ${footerText}`,
   }
 }
 
-/** EMAIL 2, on entering VERIFIED: the payment is verified. No ticket yet, by the organiser's decision (29 September 2026). */
-export function confirmation(r: Person, g?: GroupNote): Body {
+/**
+ * EMAIL 2, on entering VERIFIED: the payment is verified and the seat is
+ * theirs. No ticket yet, by the organisers' decision: it follows on
+ * TICKET_DAY_LABEL to the same address. After that day the ticket goes out
+ * by hand from admin, so the mail just says it follows shortly.
+ */
+export function confirmation(r: Person & Partial<Pick<Attendee, 'email' | 'builderId'>>, g?: GroupNote, at = new Date().toISOString()): Body {
+  const first = r.name.split(' ')[0]
   const lines = sessionLines(r)
+  const ticketDayPassed = at > TICKET_DAY_END
+  const when = ticketDayPassed ? 'in a separate email shortly' : `by email on ${TICKET_DAY_LABEL}, two days before the event`
+  const to = r.email ? ` at this same address, ${r.email}` : ' at this same email address'
+  const ticketNote = `Your ticket with your entry QR will reach you ${when}${to}. Keep an eye on your inbox, and check Spam or Promotions if you do not see it. There is nothing you need to do until then.`
+  const steps: { icon: string; title: string; text: string; href: string; label: string; accent: string }[] = [
+    ...(r.builderId
+      ? []
+      : [{ icon: '🆔', title: 'Add your AWS Builder ID', text: 'Needed for every attendee. Your @username is in AWS Builder Center under Manage profile.', href: link(`/builder-id?pass=${encodeURIComponent(r.passId)}`), label: 'ADD MY BUILDER ID &rarr;', accent: '#F6D27A' }]),
+    ...(referralOpen(at)
+      ? [{ icon: '🏆', title: 'Bring your friends, win prizes', text: esc(referText), href: referLink(r.passId), label: 'GET MY CODE &rarr;', accent: ORANGE }]
+      : []),
+    { icon: '📸', title: "Tell everyone you're coming", text: "Put your photo in our I'm attending frame and share it on LinkedIn, Instagram or WhatsApp. Tag @awssbg_vjit.", href: link('/attending'), label: 'MAKE MY POST &rarr;', accent: '#9FE3B6' },
+    { icon: '📲', title: 'Follow us for updates', text: 'Speaker reveals, session news and day-of updates go up on our Instagram first.', href: INSTAGRAM, label: 'FOLLOW @AWSSBG_VJIT &rarr;', accent: '#C4AEF2' },
+  ]
+  const hero = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 18px;background:${INK};border:3px solid ${INK}"><tr><td align="center" style="padding:24px 16px 22px">
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 12px"><tr><td width="56" height="56" align="center" valign="middle" style="width:56px;height:56px;background:#9FE3B6;border:3px solid #FFFFFF;font-family:${SANS};font-size:30px;font-weight:bold;line-height:56px;color:${INK}">&#10003;</td></tr></table>
+<p style="margin:0 0 6px;font-family:${MONO};font-size:11px;letter-spacing:3px;color:#9FE3B6">PAYMENT VERIFIED &middot; SEAT CONFIRMED</p>
+<p style="margin:0 0 10px;font-family:${MONO};font-size:28px;font-weight:bold;letter-spacing:2px;color:${ORANGE}">YOU&rsquo;RE IN!</p>
+<p style="margin:0;font-family:${SANS};font-size:14px;line-height:1.55;color:#E8F2EC">See you on ${esc(event.dateLabel)} at ${esc(venue.name)}.</p>
+</td></tr></table>`
+  const tracker = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 18px;border:3px solid ${INK};background:#FFFFFF"><tr><td style="padding:16px 8px 14px">
+<p style="margin:0 0 14px;text-align:center;font-family:${MONO};font-size:11px;letter-spacing:2px;text-transform:uppercase;color:${MUTED}">Where your registration is</p>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+${trackStep('✓', 'Registered', 'We have your details', 'done')}
+${trackStep('✓', 'Verified', 'Your seat is confirmed', 'done')}
+${trackStep('🎟', 'Ticket', ticketDayPassed ? 'Coming shortly' : `Arrives ${TICKET_DAY_LABEL}`, 'now')}
+</tr></table></td></tr></table>`
+
   return {
     subject: SUBJECTS.confirmation,
     text: `Hi ${r.name},
 
-Your payment for ${event.name} is verified. Your ${tierLabel(r.tier)} registration is complete.
+YOU'RE IN!
+Your payment for ${event.name} is verified and your seat is confirmed. Thank you for registering.
+
+WHERE YOUR REGISTRATION IS
+1. Registered: done
+2. Payment verified: done
+3. Ticket: ${ticketDayPassed ? 'coming shortly' : `arrives ${TICKET_DAY_LABEL}`}
+
+YOUR TICKET
+${ticketNote}
 
 YOUR PASS ID
 ${r.passId}
-
 Keep it safe. It is how we find your registration.
 
 ${g ? groupText(g) : ''}YOUR PASS
@@ -241,22 +283,26 @@ ${tierLabel(r.tier)}, ${formatInr(r.amountPaise)}
 ${lines.join('\n')}
 Sessions are subject to change. If yours does, we will email you.
 
-When:  ${event.dateLabel}, doors ${doors} IST
-Where: ${venue.name}
+WHEN AND WHERE
+Date:  ${event.dateLabel}
+Doors: ${doors} IST
+Venue: ${venue.name}${venue.address ? `\n       ${venue.address}` : ''}
 Map:   ${venue.directionsUrl}
+Lunch is included.
 
-We will email you again before the event with everything you need at the gate.
-
-Tell your friends you're coming: put your photo in our "I'm attending" frame and share it.
-${link('/attending')}
+BEFORE THE EVENT
+${steps.map((x, i) => `${i + 1}. ${x.title.toUpperCase()}\n${x.text.replace(/&[a-z]+;/g, '')}\n${x.href}`).join('\n\n')}
 
 ${footerText}`,
     html: shell({
-      preheader: `Your payment is verified. Pass ID ${r.passId}.`,
+      preheader: `You're in! Payment verified, pass ID ${r.passId}. Your ticket arrives ${ticketDayPassed ? 'shortly' : `on ${TICKET_DAY_LABEL}`}.`,
       tag: 'Payment verified',
-      title: `Payment verified, ${r.name}`,
+      title: `You're in, ${first}!`,
       body: [
-        p(`Your payment for <strong>${esc(event.name)}</strong> is verified. Your <strong>${esc(tierLabel(r.tier))}</strong> registration is complete.`),
+        hero,
+        p(`Your payment for <strong>${esc(event.name)}</strong> is verified and your <strong>${esc(tierLabel(r.tier))}</strong> seat is confirmed. Thank you for registering, we are glad to have you with us.`),
+        tracker,
+        card(`${eyebrow('🎟 Your ticket', ORANGE)}<p style="margin:0;font-family:${SANS};font-size:15px;line-height:1.65;color:${INK}">${esc(ticketNote).replace(TICKET_DAY_LABEL, `<strong>${TICKET_DAY_LABEL}</strong>`)}</p>`, '#FFF6E8', ORANGE),
         passIdBlock(r.passId, 'Keep it safe. It is how we find your registration.'),
         ...(g ? [groupHtml(g)] : []),
         card(`${eyebrow('Your pass')}${rows([['Pass', esc(tierLabel(r.tier))], ['Amount', esc(formatInr(r.amountPaise))], ...sessionRows(r)])}`),
@@ -265,15 +311,15 @@ ${footerText}`,
           `${eyebrow('When and where')}${rows([
             ['Date', esc(event.dateLabel)],
             ['Doors', `${esc(doors)} IST`],
-            ['Venue', esc(venue.name)],
+            ['Venue', `${esc(venue.name)}${venue.address ? `<br><span style="font-size:12.5px;color:${MUTED}">${esc(venue.address)}</span>` : ''}`],
             ['Map', `<a href="${venue.directionsUrl}" style="color:${MINT};font-weight:bold">Open in Google Maps</a>`],
             ['Lunch', 'Included'],
           ])}`,
           '#E6F5EB',
         ),
-        p('We will email you again before the event with everything you need at the gate.'),
-        p('Tell your friends you&rsquo;re coming: put your photo in our &ldquo;I&rsquo;m attending&rdquo; frame and share it on LinkedIn or Instagram.'),
-        button(link('/attending'), 'MAKE MY POST &rarr;'),
+        `<p style="margin:8px 0 12px;font-family:${MONO};font-size:12px;font-weight:bold;letter-spacing:2px;text-transform:uppercase;color:${INK}">Before the event</p>`,
+        ...steps.map((x, i) => updateCard(i + 1, x.icon, x.title, x.text, x.href, x.label, x.accent)),
+        p(`See you on the 30th, ${esc(first)}!`),
       ].join('\n'),
     }),
   }
@@ -374,6 +420,9 @@ const referCard = (passId: string) =>
 
 /** When tickets go out, by the organisers' decision (21 October 2026): two days before the event. */
 export const TICKET_DAY_LABEL = '28 October'
+/** The end of ticket day, IST. Verified after it, the ticket follows by hand from admin. */
+const TICKET_DAY_END = '2026-10-28T18:29:59.999Z'
+const INSTAGRAM = 'https://www.instagram.com/awssbg_vjit'
 
 /** One step of the status tracker: a filled square when done, an outlined one when not. */
 const trackStep = (icon: string, label: string, note: string, state: 'done' | 'now' | 'later') => {
