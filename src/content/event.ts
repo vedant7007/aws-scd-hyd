@@ -30,10 +30,11 @@ export const venue: {
   address:
     'Vidya Jyothi Institute of Technology, Aziznagar Village Road, Aziznagar, Hyderabad, Telangana 500075',
   /**
-   * The authoritative pin, supplied by Vedant. Deliberately not a name search,
-   * which can resolve to a different campus and send people to the wrong gate.
+   * The VJIT Aziznagar place by its Google Maps id, not a name search, which
+   * can resolve to a different campus. The maps.app.goo.gl short link used
+   * before stopped resolving (27 October 2026).
    */
-  directionsUrl: 'https://maps.app.goo.gl/PAPnu2YHVdWE2pvQ6',
+  directionsUrl: 'https://maps.google.com/?cid=7842846765913408154',
 }
 
 /**

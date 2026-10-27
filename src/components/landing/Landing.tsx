@@ -764,7 +764,7 @@ export function Landing({ registrationOpen, board, doors, prices }: Props) {
                 <span style={{fontFamily:'var(--font-mono)',fontSize:'clamp(11px,2.6vw,13px)',letterSpacing:'.18em',textTransform:'uppercase',paddingTop:'10px',color:'var(--body)'}}>OCT<br />2026<br />{doors}</span>
               </div>
               <p style={{margin:'0',maxWidth:'40ch',fontSize:'clamp(15px,3.8vw,17px)',lineHeight:'1.65',color:'var(--body)'}}>Vidya Jyothi Institute of Technology, Aziznagar Village Road, Aziznagar, Hyderabad, Telangana 500075.</p>
-              <a className="dh-h24" href="https://maps.app.goo.gl/PAPnu2YHVdWE2pvQ6" style={{display:'inline-flex',alignSelf:'flex-start',alignItems:'center',minHeight:'52px',padding:'0 22px',background:'var(--ink-fill)',color:'var(--bg)',fontFamily:'var(--font-display)',fontSize:'22.5px',boxShadow:'5px 5px 0 #9FE3B6',transition:'transform .1s steps(2),box-shadow .1s steps(2)'}}>OPEN THE GATE PIN</a>
+              <a className="dh-h24" href="https://maps.google.com/?cid=7842846765913408154" style={{display:'inline-flex',alignSelf:'flex-start',alignItems:'center',minHeight:'52px',padding:'0 22px',background:'var(--ink-fill)',color:'var(--bg)',fontFamily:'var(--font-display)',fontSize:'22.5px',boxShadow:'5px 5px 0 #9FE3B6',transition:'transform .1s steps(2),box-shadow .1s steps(2)'}}>OPEN THE GATE PIN</a>
             </div>
             <div style={{display:'flex',flexDirection:'column',border:'3px solid var(--line)',background:'var(--surface)'}}>
               <div style={{display:'flex',justifyContent:'space-between',gap:'12px',borderBottom:'2px solid var(--line-soft)',padding:'14px 16px',fontFamily:'var(--font-mono)',fontSize:'11.5px',letterSpacing:'.14em',textTransform:'uppercase'}}>
