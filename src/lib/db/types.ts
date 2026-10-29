@@ -108,6 +108,14 @@ export type Attendee = Keyed & {
   ticketSentAt?: string
   checkedInAt?: string
   swagIssuedAt?: string
+  /** Lunch token and light food handed over at the venue: when. */
+  lunchAt?: string
+  snackAt?: string
+  /** Chosen by the attendee on their ticket page: food, college bus route number (or 'own') and the stop they board at. */
+  food?: 'veg' | 'nonveg'
+  busRoute?: string
+  busStop?: string
+  prefsAt?: string
   /** The team phoned them: when, and who ticked it. Cleared by unticking. */
   calledAt?: string
   calledBy?: string

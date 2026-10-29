@@ -5,8 +5,14 @@ import { ddb, tableName } from '@/lib/db/client'
 import { keys, normalisePassId } from '@/lib/db/keys'
 import type { Attendee } from '@/lib/db/types'
 import { programSession } from '@/content/program'
+import { FOOD, busLabel } from '@/content/transport'
 
-export type ScanAction = 'lookup' | 'checkin' | 'swag' | 'undo'
+export type ScanAction = 'lookup' | 'checkin' | 'swag' | 'lunch' | 'snack' | 'undo'
+
+/** What each marking action writes. Undo takes one of these as `what`, check in by default. */
+const FIELD = { checkin: 'checkedInAt', swag: 'swagIssuedAt', lunch: 'lunchAt', snack: 'snackAt' } as const
+type Marked = keyof typeof FIELD
+const DONE: Record<Marked, string> = { checkin: 'Already checked in', swag: 'Swag already given', lunch: 'Lunch token already given', snack: 'Light food already given' }
 
 export type ScanResult = {
   ok: boolean
@@ -15,6 +21,8 @@ export type ScanResult = {
   attendee?: GateCard
   checkedInAt?: string
   swagIssuedAt?: string
+  lunchAt?: string
+  snackAt?: string
   /** True when this exact action had already been done before this scan. */
   repeat?: boolean
   message?: string
@@ -33,6 +41,10 @@ export type GateCard = {
   builderId: string | null
   /** In a group: its size, and whether this person paid for it. */
   group: { size: number; payer: boolean } | null
+  /** Their own answers on the ticket page, null until given. */
+  food: string | null
+  bus: string | null
+  busStop: string | null
 }
 
 const summarise = (a: Attendee): GateCard => ({
@@ -43,7 +55,13 @@ const summarise = (a: Attendee): GateCard => ({
   workshop: a.workshop ? (programSession(a.workshop)?.title ?? a.workshop) : null,
   builderId: a.builderId ?? null,
   group: a.groupId ? { size: a.groupSize ?? 0, payer: a.groupId === a.passId } : null,
+  food: a.food ? FOOD[a.food] : null,
+  bus: busLabel(a.busRoute),
+  busStop: a.busStop ?? null,
 })
+
+/** Every timestamp the gate shows, from a record. */
+const marks = (a: Attendee) => ({ checkedInAt: a.checkedInAt, swagIssuedAt: a.swagIssuedAt, lunchAt: a.lunchAt, snackAt: a.snackAt })
 
 /**
  * One endpoint for the gate. Marking is conditional, so a second scan of the
@@ -61,12 +79,13 @@ export async function POST(req: Request): Promise<Response> {
   const body: unknown = await req.json().catch(() => null)
   const typed = (body as { passId?: unknown } | null)?.passId
   const action = (body as { action?: unknown } | null)?.action
+  const what = (body as { what?: unknown } | null)?.what ?? 'checkin'
 
   const ref = typeof typed === 'string' ? normalisePassId(typed) : null
   if (!ref) {
     return json(400, { ok: false, message: 'That is not a pass id.' })
   }
-  if (action !== 'lookup' && action !== 'checkin' && action !== 'swag' && action !== 'undo') {
+  if (action !== 'lookup' && action !== 'undo' && !(typeof action === 'string' && action in FIELD)) {
     return json(400, { ok: false, message: 'Unknown action.' })
   }
 
@@ -96,19 +115,20 @@ export async function POST(req: Request): Promise<Response> {
       ok: true,
       passId: ref,
       attendee: summarise(attendee),
-      checkedInAt: attendee.checkedInAt,
-      swagIssuedAt: attendee.swagIssuedAt,
+      ...marks(attendee),
     })
   }
 
-  // A check in made by mistake, undone from the same screen. Swag stays as it was.
+  // A mark made by mistake, undone from the same screen. Only that one mark changes.
   if (action === 'undo') {
-    await ddb.send(new UpdateCommand({ TableName: table, Key: keys.attendee(ref), UpdateExpression: 'REMOVE checkedInAt' }))
-    console.info(`[scan] ${ref} check in undone by ${session.email}`)
-    return json(200, { ok: true, passId: ref, attendee: summarise(attendee), swagIssuedAt: attendee.swagIssuedAt, message: 'Check in undone.' })
+    if (typeof what !== 'string' || !(what in FIELD)) return json(400, { ok: false, message: 'Unknown undo.' })
+    const f = FIELD[what as Marked]
+    await ddb.send(new UpdateCommand({ TableName: table, Key: keys.attendee(ref), UpdateExpression: 'REMOVE #f', ExpressionAttributeNames: { '#f': f } }))
+    console.info(`[scan] ${ref} ${what} undone by ${session.email}`)
+    return json(200, { ok: true, passId: ref, attendee: summarise(attendee), ...marks(attendee), [f]: undefined, message: 'Undone.' })
   }
 
-  const field = action === 'checkin' ? 'checkedInAt' : 'swagIssuedAt'
+  const field = FIELD[action as Marked]
   const now = new Date().toISOString()
 
   try {
@@ -130,12 +150,8 @@ export async function POST(req: Request): Promise<Response> {
       repeat: true,
       passId: ref,
       attendee: summarise(attendee),
-      checkedInAt: attendee.checkedInAt,
-      swagIssuedAt: attendee.swagIssuedAt,
-      message:
-        action === 'checkin'
-          ? `Already checked in at ${attendee.checkedInAt}.`
-          : `Swag already issued at ${attendee.swagIssuedAt}.`,
+      ...marks(attendee),
+      message: `${DONE[action as Marked]} at ${new Date(attendee[field] ?? now).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' })}.`,
     })
   }
 
@@ -144,7 +160,7 @@ export async function POST(req: Request): Promise<Response> {
     repeat: false,
     passId: ref,
     attendee: summarise(attendee),
-    checkedInAt: action === 'checkin' ? now : attendee.checkedInAt,
-    swagIssuedAt: action === 'swag' ? now : attendee.swagIssuedAt,
+    ...marks(attendee),
+    [field]: now,
   })
 }

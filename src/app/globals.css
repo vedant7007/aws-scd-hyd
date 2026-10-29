@@ -1634,3 +1634,14 @@ option { background: var(--color-surface); color: var(--color-ink); }
 .pd-seats { display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; }
 .pd-seat { flex: 0 1 280px; min-width: 0; }
 .pd-pic { max-width: none; }
+
+/* The gate desk (app/g): a verdict band, the name big enough to copy onto an ID card, and one row per mark. */
+.gd-verdict { display: flex; flex-direction: column; gap: 4px; padding: 18px 16px; background: var(--ok-fill); color: var(--hard); border: 3px solid var(--line); box-shadow: 6px 6px 0 var(--sh); font-family: var(--font-display); font-size: clamp(28px,8vw,40px); line-height: 1; }
+.gd-verdict small { font-family: var(--font-body, inherit); font-size: 14px; line-height: 1.4; }
+.gd-bad { background: var(--err-fill); }
+.gd-name { font-family: var(--font-display); font-size: clamp(32px,9vw,48px); line-height: 1; color: var(--ink); overflow-wrap: anywhere; }
+.gd-marks { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 12px; }
+.gd-mark { display: flex; flex-direction: column; gap: 4px; }
+.gd-mark .btn { min-height: 64px; font-family: var(--font-display); font-size: 22px; }
+.gd-mark[data-done] .btn { border-color: var(--ok); color: var(--ok); opacity: 1; }
+.gd-undo { align-self: flex-end; background: none; border: 0; padding: 2px 4px; font: inherit; font-size: 12.5px; color: var(--muted); text-decoration: underline; cursor: pointer; }

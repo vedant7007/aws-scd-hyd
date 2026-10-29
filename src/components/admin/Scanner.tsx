@@ -28,6 +28,8 @@ type Card = {
   person?: GateCard
   checkedInAt?: string
   swagIssuedAt?: string
+  lunchAt?: string
+  snackAt?: string
   message?: string
 }
 
@@ -55,7 +57,7 @@ const passIdIn = (text: string) => {
   return m ? `SCD-${m[1]!.toUpperCase()}` : text.trim().toUpperCase()
 }
 
-async function post(passId: string, action: 'lookup' | 'checkin' | 'swag' | 'undo'): Promise<Response> {
+async function post(passId: string, action: 'lookup' | 'checkin' | 'swag' | 'lunch' | 'snack' | 'undo'): Promise<Response> {
   return fetch('/api/admin/scan', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ passId, action }) })
 }
 
@@ -152,7 +154,7 @@ export function Scanner({ roster }: { roster: RosterEntry[] }) {
 
   const fromCache = (ref: string): GateCard | undefined => {
     const c = lookupCached(store(), ref) as RosterEntry | null
-    return c ? { name: c.name, tier: c.tier, college: c.college, technical: c.technical ?? '', workshop: c.workshop ?? null, builderId: c.builderId ?? null, group: c.group ?? null } : undefined
+    return c ? { name: c.name, tier: c.tier, college: c.college, technical: c.technical ?? '', workshop: c.workshop ?? null, builderId: c.builderId ?? null, group: c.group ?? null, food: null, bus: null, busStop: null } : undefined
   }
 
   const remember = (passId: string, name: string, verdict: Verdict) => setRecent((r) => [{ passId, name, verdict, at: Date.now() }, ...r.filter((x) => x.passId !== passId)].slice(0, 6))
@@ -172,7 +174,7 @@ export function Scanner({ roster }: { roster: RosterEntry[] }) {
         else if (!data.ok) verdict = 'blocked'
         else if (data.repeat || (action === 'lookup' && data.checkedInAt)) verdict = 'duplicate'
         else verdict = action === 'checkin' ? 'admitted' : 'ready'
-        setCard({ verdict, passId: ref, person: data.attendee, checkedInAt: data.checkedInAt, swagIssuedAt: data.swagIssuedAt, message: data.message })
+        setCard({ verdict, passId: ref, person: data.attendee, checkedInAt: data.checkedInAt, swagIssuedAt: data.swagIssuedAt, lunchAt: data.lunchAt, snackAt: data.snackAt, message: data.message })
         if (verdict === 'admitted') setInside((s) => new Set(s).add(ref))
         remember(ref, data.attendee?.name ?? 'Unknown', verdict)
         signal(verdict === 'admitted' || verdict === 'ready')
@@ -195,7 +197,7 @@ export function Scanner({ roster }: { roster: RosterEntry[] }) {
     [],
   )
 
-  const act = async (action: 'checkin' | 'swag' | 'undo') => {
+  const act = async (action: 'checkin' | 'swag' | 'lunch' | 'snack' | 'undo') => {
     if (!card) return
     const ref = card.passId
     try {
@@ -208,6 +210,8 @@ export function Scanner({ roster }: { roster: RosterEntry[] }) {
         signal(verdict === 'admitted')
       } else if (action === 'swag') {
         setCard({ ...card, swagIssuedAt: data.swagIssuedAt, message: data.repeat ? data.message : 'Swag kit given.' })
+      } else if (action === 'lunch' || action === 'snack') {
+        setCard({ ...card, lunchAt: data.lunchAt, snackAt: data.snackAt, message: data.repeat ? data.message : action === 'lunch' ? 'Lunch token given.' : 'Light food given.' })
       } else {
         setCard({ ...card, verdict: 'ready', checkedInAt: undefined, message: 'Check in undone.' })
         setInside((s) => {
@@ -349,7 +353,7 @@ export function Scanner({ roster }: { roster: RosterEntry[] }) {
   )
 }
 
-function GateSheet({ card, fast, autoLeft, onClose, onAct }: { card: Card; fast: boolean; autoLeft: number; onClose: () => void; onAct: (a: 'checkin' | 'swag' | 'undo') => void }) {
+function GateSheet({ card, fast, autoLeft, onClose, onAct }: { card: Card; fast: boolean; autoLeft: number; onClose: () => void; onAct: (a: 'checkin' | 'swag' | 'lunch' | 'snack' | 'undo') => void }) {
   const v = VERDICT[card.verdict]
   const p = card.person
   const pass = p ? passFor(p.tier as Tier) : undefined
@@ -412,6 +416,16 @@ function GateSheet({ card, fast, autoLeft, onClose, onAct }: { card: Card; fast:
                 <span className="gate-fact-v">{p.group ? `Group of ${p.group.size}` : p.builderId ? `@${p.builderId}` : '-'}</span>
                 <span className="hint">{p.group ? (p.group.payer ? 'Paid for the group' : 'Paid by their group') : 'AWS Builder Center'}</span>
               </div>
+              <div className="gate-fact">
+                <span className="lbl-sm">Lunch</span>
+                <span className="gate-fact-v">{p.food ?? 'Not chosen'}</span>
+                <span className="hint">{card.lunchAt ? `Token given at ${time(card.lunchAt)}` : 'Token not given yet'}</span>
+              </div>
+              <div className="gate-fact">
+                <span className="lbl-sm">College bus</span>
+                <span className="gate-fact-v">{p.bus ?? 'Not chosen'}</span>
+                <span className="hint">{p.busStop ? `Stop: ${p.busStop}` : card.snackAt ? `Light food at ${time(card.snackAt)}` : ' '}</span>
+              </div>
             </div>
           </>
         ) : null}
@@ -433,7 +447,13 @@ function GateSheet({ card, fast, autoLeft, onClose, onAct }: { card: Card; fast:
             <button type="button" className="btn" onClick={() => onAct('swag')} disabled={Boolean(card.swagIssuedAt)}>
               {card.swagIssuedAt ? 'SWAG GIVEN ✓' : 'GIVE SWAG'}
             </button>
-            <button type="button" className="btn" onClick={() => onAct('undo')}>
+            <button type="button" className="btn" onClick={() => onAct('lunch')} disabled={Boolean(card.lunchAt)}>
+              {card.lunchAt ? 'LUNCH TOKEN ✓' : 'LUNCH TOKEN'}
+            </button>
+            <button type="button" className="btn" onClick={() => onAct('snack')} disabled={Boolean(card.snackAt)}>
+              {card.snackAt ? 'LIGHT FOOD ✓' : 'LIGHT FOOD'}
+            </button>
+            <button type="button" className="btn col-span-2" onClick={() => onAct('undo')}>
               UNDO CHECK IN
             </button>
           </div>

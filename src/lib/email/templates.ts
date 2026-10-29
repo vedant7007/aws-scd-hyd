@@ -1,10 +1,12 @@
+import QRCode from 'qrcode'
 import { BUILDER_SIGNUP, BUILDER_STEPS } from '../../content/builder'
 import { event, venue } from '../../content/event'
 import { programSession } from '../../content/program'
 import { formatInr, passes, tierLabel } from '../../content/passes'
 import { REFERRAL_CUTOFF_LABEL, referralOpen } from '../../content/referral'
 import type { Attendee } from '../db/types'
-import { siteUrl } from '../site'
+import { gateLink, siteUrl } from '../site'
+import { TRANSPORT_PDF } from '../../content/transport'
 import type { Mail } from './send'
 
 /**
@@ -581,8 +583,41 @@ ${footerText}`,
 }
 
 /** The ticket, sent by an admin from the verified list: the pass link with the QR the gate scans. */
+/**
+ * A QR code drawn as a table of coloured cells, not an image: mail clients
+ * block or strip images, and a table shows in every inbox, offline too.
+ * Each run of same-coloured modules in a row is one cell.
+ */
+function emailQr(value: string, cell = 6): string {
+  const { size, data } = QRCode.create(value, { errorCorrectionLevel: 'M' }).modules
+  const td = (n: number, bg: string) => `<td colspan="${n}" width="${n * cell}" height="${cell}" style="width:${n * cell}px;height:${cell}px;line-height:${cell}px;font-size:0;background:${bg}">&nbsp;</td>`
+  let rowsHtml = ''
+  for (let y = 0; y < size; y++) {
+    let out = ''
+    for (let x = 0; x < size; ) {
+      const dark = data[y * size + x] === 1
+      let n = 1
+      while (x + n < size && (data[y * size + x + n] === 1) === dark) n++
+      out += td(n, dark ? '#000000' : '#FFFFFF')
+      x += n
+    }
+    rowsHtml += `<tr>${out}</tr>`
+  }
+  return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;border:${cell * 3}px solid #FFFFFF;border-collapse:collapse;background:#FFFFFF">${rowsHtml}</table>`
+}
+
+/** The ticket QR card for a pass: the code, the pass id under it. */
+const qrCard = (passId: string) =>
+  `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 18px;border:3px solid ${INK};background:#FFFFFF"><tr><td align="center" style="padding:18px 12px 14px">
+<p style="margin:0 0 12px;font-family:${MONO};font-size:11px;letter-spacing:2px;text-transform:uppercase;color:${MUTED}">Show this at the gate</p>
+${emailQr(gateLink(passId))}
+<p style="margin:12px 0 0;font-family:${MONO};font-size:22px;font-weight:bold;letter-spacing:2px;color:${INK}">${esc(passId)}</p>
+</td></tr></table>`
+
 export function ticket(r: Person): Body {
   const url = passLink(r.passId)
+  const prefs = `${url}#prefs`
+  const bus = link(TRANSPORT_PDF)
   const lines = sessionLines(r)
   return {
     subject: SUBJECTS.ticket,
@@ -593,7 +628,14 @@ Your ticket for ${event.name} is ready.
 OPEN YOUR TICKET
 ${url}
 
-Show the QR on that page at the gate. Open it before you arrive so it loads quickly, or screenshot it.
+Show the QR on that page at the gate. Open it before you arrive so it loads quickly, or screenshot it. The same QR is in this email.
+
+TWO QUICK QUESTIONS
+Tell us your lunch (veg or non-veg) and whether you are coming by college bus, with your route and stop:
+${prefs}
+
+College bus routes and timings (PDF):
+${bus}
 
 YOUR PASS ID
 ${r.passId}
@@ -613,10 +655,14 @@ ${footerText}`,
       tag: 'Your ticket',
       title: `Your ticket, ${r.name}`,
       body: [
-        p(`Your ticket for <strong>${esc(event.name)}</strong> is ready. Show the QR on it at the gate.`),
+        p(`Your ticket for <strong>${esc(event.name)}</strong> is ready. Show this QR at the gate: a volunteer scans it, writes your name on your ID card and hands over your lunch token.`),
+        qrCard(r.passId),
         button(url, 'OPEN MY TICKET &rarr;'),
-        small('Open it before you arrive so it loads quickly, or take a screenshot of the QR.'),
-        passIdBlock(r.passId, 'The gate can also find you by this.'),
+        small('The same QR is on your ticket page. Screenshot it, or keep this email handy. The gate can also find you by your pass ID.'),
+        card(
+          `${eyebrow('Two quick questions', ORANGE)}${p('Tell us your <strong>lunch</strong> (veg or non-veg) and whether you are coming by <strong>college bus</strong>, with your route and stop. It takes ten seconds and helps us plan food and buses.')}${button(prefs, 'CHOOSE FOOD &amp; BUS &rarr;')}${small(`<a href="${bus}" style="color:${MINT};font-weight:bold">College bus routes and timings (PDF)</a>`)}`,
+          '#FFF6E8',
+        ),
         card(`${eyebrow('Your pass')}${rows([['Pass', esc(tierLabel(r.tier))], ...sessionRows(r)])}`),
         card(
           `${eyebrow('When and where')}${rows([

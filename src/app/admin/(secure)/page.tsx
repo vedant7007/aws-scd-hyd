@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { AdminConsole, type Row } from '@/components/admin/AdminConsole'
 import { formatInr, tierLabel } from '@/content/passes'
 import { programSession } from '@/content/program'
+import { BUS_ROUTES, OWN_TRANSPORT, busLabel } from '@/content/transport'
 import { requireAdmin } from '@/lib/auth/admin'
 import { loadDashboard } from '@/lib/db/stats'
 import type { Tier } from '@/lib/db/types'
@@ -116,6 +117,14 @@ export default async function AdminDashboardPage() {
   const revVerified = sum((m) => m.verified)
   const revPeople = revenue.reduce((n, m) => n + m.verified + m.pending, 0)
 
+  // Food and college bus, from the answers on the ticket page, verified passes only: what the caterer and the transport office need.
+  const going = d.attendees.filter((a) => a.state === 'VERIFIED' && a.source !== 'preview')
+  const veg = going.filter((a) => a.food === 'veg').length
+  const nonveg = going.filter((a) => a.food === 'nonveg').length
+  const own = going.filter((a) => a.busRoute === OWN_TRANSPORT).length
+  const byRoute = BUS_ROUTES.map((r) => ({ r, n: going.filter((a) => a.busRoute === r.no).length })).filter((x) => x.n > 0)
+  const onBus = byRoute.reduce((n, x) => n + x.n, 0)
+
   return (
     <div className="page page-1180 rise">
       <div className="flex flex-wrap items-end justify-between gap-3.5">
@@ -209,6 +218,49 @@ export default async function AdminDashboardPage() {
           </span>
           <span className="stat-val stat-val-sm">{formatInr(revTotal)}</span>
         </div>
+      </section>
+
+      <section className="card flex flex-col" aria-labelledby="food-h">
+        <div className="card-head">
+          <span id="food-h" className="card-title">
+            FOOD &amp; BUS
+          </span>
+          <span className="lbl">
+            {veg + nonveg} of {going.length} verified have answered
+          </span>
+        </div>
+        <div className="row">
+          <span className="copy">Veg</span>
+          <span className="stat-val stat-val-sm">{veg}</span>
+        </div>
+        <div className="row">
+          <span className="copy">Non-veg</span>
+          <span className="stat-val stat-val-sm">{nonveg}</span>
+        </div>
+        <div className="row">
+          <span className="copy">Not answered yet</span>
+          <span className="stat-val stat-val-sm" data-tone={going.length - veg - nonveg ? 'warn' : undefined}>
+            {going.length - veg - nonveg}
+          </span>
+        </div>
+        <div className="row">
+          <span className="copy">
+            <strong>College bus</strong> ({onBus}) · own transport ({own})
+          </span>
+          <span className="stat-val stat-val-sm">{onBus}</span>
+        </div>
+        {byRoute.map(({ r, n }) => (
+          <div key={r.no} className="row">
+            <span className="copy">
+              {busLabel(r.no)}
+              <span className="hint">
+                {' · '}
+                {[...new Set(going.filter((a) => a.busRoute === r.no).map((a) => a.busStop).filter(Boolean))].join(', ')}
+              </span>
+            </span>
+            <span className="stat-val stat-val-sm">{n}</span>
+          </div>
+        ))}
       </section>
 
       <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))]">

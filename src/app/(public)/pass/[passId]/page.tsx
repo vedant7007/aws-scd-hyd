@@ -2,9 +2,11 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { PassCard, type PassSession } from '@/components/pass/PassCard'
+import { PrefsForm } from '@/components/pass/PrefsForm'
 import { doorsLabel, event, venue } from '@/content/event'
 import { tierLabel } from '@/content/passes'
 import { programSession } from '@/content/program'
+import { TRANSPORT_PDF } from '@/content/transport'
 import { normalisePassId } from '@/lib/db/keys'
 import { getAttendee } from '@/lib/db/queries'
 import { REPLY_TO } from '@/lib/email/templates'
@@ -56,6 +58,8 @@ export default async function PassPage({ params }: PageProps<'/pass/[passId]'>) 
         <p className="lede">Screenshot this page. It works with no signal at the gate, and you do not need to log in anywhere.</p>
       </div>
 
+      <PrefsForm passId={attendee.passId} food={attendee.food ?? null} busRoute={attendee.busRoute ?? null} busStop={attendee.busStop ?? null} />
+
       <PassCard
         passId={attendee.passId}
         name={attendee.name}
@@ -69,6 +73,9 @@ export default async function PassPage({ params }: PageProps<'/pass/[passId]'>) 
         <a href={venue.directionsUrl} className="btn flex-[1_1_150px]">
           GATE PIN
         </a>
+        <a href={TRANSPORT_PDF} target="_blank" rel="noopener" className="btn flex-[1_1_150px]">
+          BUS TIMINGS (PDF)
+        </a>
         <Link href={`/pass/${attendee.passId}/share`} className="btn flex-[1_1_150px]">
           TELL PEOPLE
         </Link>
@@ -80,6 +87,7 @@ export default async function PassPage({ params }: PageProps<'/pass/[passId]'>) 
         <Link href="/attending" className="btn btn-mint self-start">
           MAKE YOUR &quot;I&apos;M ATTENDING&quot; POST
         </Link>
+        <p className="copy">At the gate a volunteer scans your QR, writes your name on your ID card and hands over your lunch token. Keep this QR handy all day.</p>
         <p className="copy">Turn your screen brightness up before you reach the volunteer. Sunlight kills scanner reads.</p>
         <p className="copy">Lost this link? It is in your confirmation email.</p>
         <p className="copy">Sessions are subject to change; if yours does, we will email you. If you need a change, write to {REPLY_TO} quoting your pass ID.</p>
