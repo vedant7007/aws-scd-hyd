@@ -22,7 +22,7 @@ import { redirect } from 'next/navigation'
 import type { CrewRole } from '../db/types'
 import { required } from '../outputs'
 import { BOOTSTRAP_ADMIN, adminCount, bootstrapFirstAdmin, getUser } from './crew'
-import { VOLUNTEER_COOKIE, volunteerFromCookie } from './volunteer'
+import { GATE_PREFIX, VOLUNTEER_COOKIE, gateVolunteer, volunteerFromCookie } from './volunteer'
 
 // Server only. SPEC.md section 7: no AWS SDK call ever runs in the browser, so
 // the whole sign in round trip happens here and the browser only ever holds an
@@ -113,6 +113,11 @@ export const currentCrew = cache(async (): Promise<CrewSession> => {
     // only while they are still on the crew list.
     const volunteer = await volunteerFromCookie()
     if (!volunteer) return { status: 'signed-out' }
+    // Or by the shared gate code, while that code is still the current one.
+    if (volunteer.startsWith(GATE_PREFIX)) {
+      const name = await gateVolunteer(volunteer)
+      return name ? { status: 'ok', email: `${name} (gate code)`, role: 'volunteer' } : { status: 'signed-out' }
+    }
     return (await getUser(volunteer)) ? { status: 'ok', email: volunteer, role: 'volunteer' } : { status: 'signed-out' }
   }
 

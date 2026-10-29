@@ -9,21 +9,27 @@ import type { Tier } from '@/lib/db/types'
 import { drainQueue, enqueue, lookupCached, saveRoster, type QueuedWrite, type RosterEntry } from '@/lib/scan-queue'
 
 /**
- * The gate, built for a queue. The camera starts once and stays on. A scan
- * opens a full screen card with everything about the person: the verdict in
- * words, their pass, every session they have, their group and Builder ID.
- * In fast mode a valid pass is checked in by the scan itself and the card
- * goes back to the camera on its own; otherwise one tap checks them in.
+ * The gate, built for a queue. The camera starts once and stays on. The
+ * volunteer picks their station: the gate, the swag table, the lunch counter,
+ * the light food counter, or look up only. A scan does that station's one job
+ * and opens a full screen card with the person and four big tiles, check in,
+ * swag, lunch token and light food, each one tap to mark and one to undo. The
+ * card stays until the volunteer taps NEXT SCAN; nothing closes on its own.
  * A sound and a buzz say the verdict before anyone reads it.
  *
- * Offline, a check in is saved on the phone and sent when the network comes
+ * Offline, a mark is saved on the phone and sent when the network comes
  * back, and the card is filled from the roster cached with the page.
  */
 
-type Verdict = 'loading' | 'admitted' | 'ready' | 'duplicate' | 'blocked' | 'unknown' | 'queued'
+type Mark = 'checkin' | 'swag' | 'lunch' | 'snack'
+type Station = Mark | 'lookup'
+
+type Verdict = 'loading' | 'done' | 'ready' | 'repeat' | 'blocked' | 'unknown' | 'queued'
 
 type Card = {
   verdict: Verdict
+  /** What the scan tried to do. */
+  station: Station
   passId: string
   person?: GateCard
   checkedInAt?: string
@@ -33,20 +39,50 @@ type Card = {
   message?: string
 }
 
-type Recent = { passId: string; name: string; verdict: Verdict; at: number }
+type Recent = { passId: string; name: string; tone: Tone; at: number }
+type Tone = 'ok' | 'warn' | 'err' | 'info'
 
 const DRAIN_INTERVAL_MS = 8000
-const AUTO_NEXT_MS = 2600
-const MODE_KEY = 'scd.scan.fast'
+const STATION_KEY = 'scd.scan.station'
 
-const VERDICT: Record<Verdict, { title: string; note: string; glyph: string; tone: 'ok' | 'warn' | 'err' | 'info' }> = {
-  loading: { title: 'CHECKING', note: 'one moment', glyph: '…', tone: 'info' },
-  admitted: { title: 'WELCOME IN', note: 'checked in, let them through', glyph: '✓', tone: 'ok' },
-  ready: { title: 'VALID PASS', note: 'tap check in', glyph: '✓', tone: 'ok' },
-  duplicate: { title: 'ALREADY IN', note: 'this pass was used, check with the lead', glyph: '!', tone: 'warn' },
-  blocked: { title: 'NOT ADMITTED', note: 'payment not verified, send to help desk', glyph: '×', tone: 'err' },
-  unknown: { title: 'UNKNOWN PASS', note: 'not ours, send to help desk', glyph: '×', tone: 'err' },
-  queued: { title: 'WELCOME IN', note: 'offline: saved on this phone, sends later', glyph: '✓', tone: 'ok' },
+const MARK_FIELD = { checkin: 'checkedInAt', swag: 'swagIssuedAt', lunch: 'lunchAt', snack: 'snackAt' } as const
+const MARK_LABEL: Record<Mark, string> = { checkin: 'CHECKED IN', swag: 'SWAG KIT', lunch: 'LUNCH TOKEN', snack: 'LIGHT FOOD' }
+/** The tile before it is marked: what to do. */
+const MARK_TODO: Record<Mark, string> = { checkin: 'CHECK IN', swag: 'GIVE SWAG', lunch: 'GIVE LUNCH TOKEN', snack: 'GIVE LIGHT FOOD' }
+
+const STATIONS: { id: Station; label: string; hint: string }[] = [
+  { id: 'checkin', label: 'GATE', hint: 'scan checks them in' },
+  { id: 'swag', label: 'SWAG', hint: 'scan gives the swag kit' },
+  { id: 'lunch', label: 'LUNCH', hint: 'scan gives the lunch token' },
+  { id: 'snack', label: 'LIGHT FOOD', hint: 'scan gives light food' },
+  { id: 'lookup', label: 'LOOK UP', hint: 'scan only shows the pass' },
+]
+
+/** The headline for a card: what happened, in words a volunteer reads at a glance. */
+function headline(c: Card): { title: string; note: string; glyph: string; tone: Tone } {
+  const job = c.station === 'lookup' ? null : c.station
+  switch (c.verdict) {
+    case 'loading':
+      return { title: 'CHECKING', note: 'one moment', glyph: '…', tone: 'info' }
+    case 'blocked':
+      return { title: 'NOT ADMITTED', note: 'payment not verified, send to help desk', glyph: '×', tone: 'err' }
+    case 'unknown':
+      return { title: 'UNKNOWN PASS', note: 'not ours, send to help desk', glyph: '×', tone: 'err' }
+    case 'ready':
+      return { title: 'VALID PASS', note: c.checkedInAt ? `checked in at ${time(c.checkedInAt)}` : 'not checked in yet', glyph: '✓', tone: 'ok' }
+    case 'queued':
+      return { title: job === 'checkin' ? 'WELCOME IN' : `${MARK_LABEL[job ?? 'checkin']} GIVEN`, note: 'offline: saved on this phone, sends later', glyph: '✓', tone: 'ok' }
+    case 'repeat': {
+      const at = job ? time(c[MARK_FIELD[job]]) : ''
+      return job === 'checkin'
+        ? { title: 'ALREADY IN', note: `checked in at ${at} · same pass twice? check with the lead`, glyph: '!', tone: 'warn' }
+        : { title: `${MARK_LABEL[job ?? 'swag']} ALREADY GIVEN`, note: `given at ${at} · do not give again`, glyph: '!', tone: 'warn' }
+    }
+    case 'done':
+      return job === 'checkin'
+        ? { title: 'WELCOME IN', note: 'checked in, let them through', glyph: '✓', tone: 'ok' }
+        : { title: `GIVE ${MARK_LABEL[job ?? 'swag']}`, note: 'marked as given', glyph: '✓', tone: 'ok' }
+  }
 }
 
 const time = (iso?: string) => (iso ? new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' }) : '')
@@ -57,16 +93,11 @@ const passIdIn = (text: string) => {
   return m ? `SCD-${m[1]!.toUpperCase()}` : text.trim().toUpperCase()
 }
 
-type Given = 'swag' | 'lunch' | 'snack'
-/** Undo of one handed-over item, by the field it clears on the card. */
-const GIVEN_FIELD = { swag: 'swagIssuedAt', lunch: 'lunchAt', snack: 'snackAt' } as const
-const GIVEN_LABEL = { swag: 'SWAG', lunch: 'LUNCH TOKEN', snack: 'LIGHT FOOD' } as const
-
-async function post(passId: string, action: 'lookup' | 'checkin' | 'swag' | 'lunch' | 'snack' | 'undo', what?: 'checkin' | Given): Promise<Response> {
+async function post(passId: string, action: Station | 'undo', what?: Mark): Promise<Response> {
   return fetch('/api/admin/scan', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ passId, action, what }) })
 }
 
-/** Two short high notes for yes, one low buzz for no. */
+/** Two short high notes for yes, one low buzz for no or a repeat. */
 function signal(good: boolean) {
   try {
     navigator.vibrate?.(good ? 80 : [180, 80, 180])
@@ -96,22 +127,23 @@ export function Scanner({ roster }: { roster: RosterEntry[] }) {
   /** The pass just shown, so the same QR still in front of the camera does not reopen it. */
   const lastShown = useRef<{ ref: string; at: number }>({ ref: '', at: 0 })
   const [camera, setCamera] = useState<'idle' | 'running' | 'unsupported' | 'denied'>('idle')
-  const [fast, setFast] = useState(true)
+  const [station, setStation] = useState<Station>('checkin')
   const [queued, setQueued] = useState(0)
   const [manual, setManual] = useState('')
   const [recent, setRecent] = useState<Recent[]>([])
   const [inside, setInside] = useState(() => new Set(roster.filter((r) => r.checkedIn).map((r) => r.passId)))
-  const [autoLeft, setAutoLeft] = useState(0)
+  const [busy, setBusy] = useState<string | null>(null)
   const store = () => window.localStorage
 
   useEffect(() => {
     saveRoster(store(), roster)
     try {
       // Read after hydration: the server has no storage to agree with.
+      const saved = localStorage.getItem(STATION_KEY) as Station | null
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setFast(localStorage.getItem(MODE_KEY) !== '0')
+      if (saved && STATIONS.some((x) => x.id === saved)) setStation(saved)
     } catch {
-      // Storage blocked: fast mode stays on.
+      // Storage blocked: the gate station it is.
     }
   }, [roster])
 
@@ -140,59 +172,45 @@ export function Scanner({ roster }: { roster: RosterEntry[] }) {
     lastShown.current = { ref: lastShown.current.ref, at: Date.now() }
     cardOpen.current = false
     setCard(null)
-    setAutoLeft(0)
   }, [])
-
-  // Fast mode: a clean check in goes back to the camera on its own.
-  useEffect(() => {
-    if (!card || !fast || (card.verdict !== 'admitted' && card.verdict !== 'queued')) return
-    const started = Date.now()
-    const id = setInterval(() => {
-      const left = AUTO_NEXT_MS - (Date.now() - started)
-      if (left <= 0) {
-        clearInterval(id)
-        close()
-      } else setAutoLeft(left)
-    }, 100)
-    return () => clearInterval(id)
-  }, [card, fast, close])
 
   const fromCache = (ref: string): GateCard | undefined => {
     const c = lookupCached(store(), ref) as RosterEntry | null
     return c ? { name: c.name, tier: c.tier, college: c.college, technical: c.technical ?? '', workshop: c.workshop ?? null, builderId: c.builderId ?? null, group: c.group ?? null, food: null, bus: null, busStop: null } : undefined
   }
 
-  const remember = (passId: string, name: string, verdict: Verdict) => setRecent((r) => [{ passId, name, verdict, at: Date.now() }, ...r.filter((x) => x.passId !== passId)].slice(0, 6))
+  const remember = (passId: string, name: string, tone: Tone) => setRecent((r) => [{ passId, name, tone, at: Date.now() }, ...r.filter((x) => x.passId !== passId)].slice(0, 8))
 
   const open = useCallback(
-    async (raw: string, action: 'lookup' | 'checkin') => {
+    async (raw: string, job: Station) => {
       const ref = passIdIn(raw)
       if (!ref) return
       cardOpen.current = true
       lastShown.current = { ref, at: Date.now() }
-      setCard({ verdict: 'loading', passId: ref, person: fromCache(ref) })
+      setCard({ verdict: 'loading', station: job, passId: ref, person: fromCache(ref) })
       try {
-        const res = await post(ref, action)
+        const res = await post(ref, job)
         const data = (await res.json()) as ScanResult
         let verdict: Verdict
         if (res.status === 404 || res.status === 400) verdict = 'unknown'
         else if (!data.ok) verdict = 'blocked'
-        else if (data.repeat || (action === 'lookup' && data.checkedInAt)) verdict = 'duplicate'
-        else verdict = action === 'checkin' ? 'admitted' : 'ready'
-        setCard({ verdict, passId: ref, person: data.attendee, checkedInAt: data.checkedInAt, swagIssuedAt: data.swagIssuedAt, lunchAt: data.lunchAt, snackAt: data.snackAt, message: data.message })
-        if (verdict === 'admitted') setInside((s) => new Set(s).add(ref))
-        remember(ref, data.attendee?.name ?? 'Unknown', verdict)
-        signal(verdict === 'admitted' || verdict === 'ready')
+        else if (data.repeat) verdict = 'repeat'
+        else verdict = job === 'lookup' ? 'ready' : 'done'
+        const next: Card = { verdict, station: job, passId: ref, person: data.attendee, checkedInAt: data.checkedInAt, swagIssuedAt: data.swagIssuedAt, lunchAt: data.lunchAt, snackAt: data.snackAt, message: data.message }
+        setCard(next)
+        if (data.checkedInAt) setInside((s) => new Set(s).add(ref))
+        remember(ref, data.attendee?.name ?? 'Unknown', headline(next).tone)
+        signal(verdict === 'done' || verdict === 'ready')
       } catch {
         const person = fromCache(ref)
-        if (person && action === 'checkin') {
-          setQueued(enqueue(store(), { id: `${ref}:checkin`, passId: ref, action: 'checkin', queuedAt: new Date().toISOString() }).length)
-          setInside((s) => new Set(s).add(ref))
-          setCard({ verdict: 'queued', passId: ref, person })
-          remember(ref, person.name, 'queued')
+        if (person && job !== 'lookup') {
+          setQueued(enqueue(store(), { id: `${ref}:${job}`, passId: ref, action: job, queuedAt: new Date().toISOString() }).length)
+          if (job === 'checkin') setInside((s) => new Set(s).add(ref))
+          setCard({ verdict: 'queued', station: job, passId: ref, person })
+          remember(ref, person.name, 'ok')
           signal(true)
         } else {
-          setCard({ verdict: person ? 'ready' : 'unknown', passId: ref, person, message: person ? 'Offline: showing the saved list.' : 'Offline, and this pass is not in the saved list.' })
+          setCard({ verdict: person ? 'ready' : 'unknown', station: 'lookup', passId: ref, person, message: person ? 'Offline: showing the saved list.' : 'Offline, and this pass is not in the saved list.' })
           signal(Boolean(person))
         }
       }
@@ -202,36 +220,32 @@ export function Scanner({ roster }: { roster: RosterEntry[] }) {
     [],
   )
 
-  const act = async (action: 'checkin' | 'swag' | 'lunch' | 'snack' | 'undo', what?: Given) => {
-    if (!card) return
+  /** A tap on a tile: mark it, or undo it. The card stays open either way. */
+  const act = async (mark: Mark, undo: boolean) => {
+    if (!card || busy) return
     const ref = card.passId
+    const field = MARK_FIELD[mark]
+    setBusy(mark)
     try {
-      const res = await post(ref, action, what)
+      const res = await post(ref, undo ? 'undo' : mark, undo ? mark : undefined)
       const data = (await res.json()) as ScanResult
-      if (action === 'undo' && what) {
-        setCard({ ...card, [GIVEN_FIELD[what]]: undefined, message: `${GIVEN_LABEL[what]} undone.` })
-      } else if (action === 'checkin') {
-        const verdict: Verdict = data.repeat ? 'duplicate' : data.ok ? 'admitted' : 'blocked'
-        setCard({ ...card, verdict, checkedInAt: data.checkedInAt, swagIssuedAt: data.swagIssuedAt, message: data.message })
-        if (verdict === 'admitted') setInside((s) => new Set(s).add(ref))
-        signal(verdict === 'admitted')
-      } else if (action === 'swag') {
-        setCard({ ...card, swagIssuedAt: data.swagIssuedAt, message: data.repeat ? data.message : 'Swag kit given.' })
-      } else if (action === 'lunch' || action === 'snack') {
-        setCard({ ...card, lunchAt: data.lunchAt, snackAt: data.snackAt, message: data.repeat ? data.message : action === 'lunch' ? 'Lunch token given.' : 'Light food given.' })
-      } else {
-        setCard({ ...card, verdict: 'ready', checkedInAt: undefined, message: 'Check in undone.' })
+      if (!res.ok) throw new Error(String(res.status))
+      setCard((c) => (c ? { ...c, [field]: undo ? undefined : data[field], message: undo ? `${MARK_LABEL[mark]} undone.` : data.repeat ? data.message : `${MARK_LABEL[mark]} marked.` } : c))
+      if (mark === 'checkin')
         setInside((s) => {
           const n = new Set(s)
-          n.delete(ref)
+          if (undo) n.delete(ref)
+          else n.add(ref)
           return n
         })
-      }
+      if (!undo) signal(!data.repeat)
     } catch {
-      if (action === 'checkin' || action === 'swag') {
-        setQueued(enqueue(store(), { id: `${ref}:${action}`, passId: ref, action, queuedAt: new Date().toISOString() }).length)
-        setCard({ ...card, verdict: action === 'checkin' ? 'queued' : card.verdict, message: 'Offline: saved on this phone, sends later.' })
-      }
+      if (!undo) {
+        setQueued(enqueue(store(), { id: `${ref}:${mark}`, passId: ref, action: mark, queuedAt: new Date().toISOString() }).length)
+        setCard((c) => (c ? { ...c, [field]: new Date().toISOString(), message: 'Offline: saved on this phone, sends later.' } : c))
+      } else setCard((c) => (c ? { ...c, message: 'No connection. Undo again when the network is back.' } : c))
+    } finally {
+      setBusy(null)
     }
   }
 
@@ -240,9 +254,9 @@ export function Scanner({ roster }: { roster: RosterEntry[] }) {
       if (cardOpen.current) return
       const ref = passIdIn(text)
       if (ref === lastShown.current.ref && Date.now() - lastShown.current.at < 4000) return
-      void open(text, fast ? 'checkin' : 'lookup')
+      void open(text, station)
     },
-    [open, fast],
+    [open, station],
   )
   const decodedRef = useRef(onDecoded)
   useEffect(() => {
@@ -264,16 +278,15 @@ export function Scanner({ roster }: { roster: RosterEntry[] }) {
     }
   }
 
-  const toggleFast = () => {
-    setFast((f) => {
-      try {
-        localStorage.setItem(MODE_KEY, f ? '0' : '1')
-      } catch {
-        // Not remembered; fine for this session.
-      }
-      return !f
-    })
+  const pick = (s: Station) => {
+    setStation(s)
+    try {
+      localStorage.setItem(STATION_KEY, s)
+    } catch {
+      // Not remembered; fine for this session.
+    }
   }
+  const here = STATIONS.find((x) => x.id === station)!
 
   return (
     <div className="gate">
@@ -284,10 +297,18 @@ export function Scanner({ roster }: { roster: RosterEntry[] }) {
             <strong>{inside.size}</strong> / {roster.length} IN
           </span>
         </div>
-        <button type="button" className="gate-mode" data-on={fast ? '1' : undefined} onClick={toggleFast} aria-pressed={fast}>
-          <span className="gate-mode-dot" aria-hidden="true" />
-          {fast ? 'FAST MODE · scan checks in' : 'CHECK MODE · tap to check in'}
-        </button>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <span className="lbl">I am at</span>
+        <div className="gate-stations" role="radiogroup" aria-label="Station">
+          {STATIONS.map((x) => (
+            <button key={x.id} type="button" role="radio" aria-checked={station === x.id} className="gate-station" data-on={station === x.id ? '1' : undefined} onClick={() => pick(x.id)}>
+              {x.label}
+            </button>
+          ))}
+        </div>
+        <span className="gate-hint text-left">{here.hint}</span>
       </div>
 
       <div className="cam gate-cam">
@@ -341,11 +362,11 @@ export function Scanner({ roster }: { roster: RosterEntry[] }) {
 
       {recent.length ? (
         <section className="flex flex-col gap-2" aria-label="Recent scans">
-          <span className="lbl">Recent</span>
+          <span className="lbl">Recent · tap to open again</span>
           {recent.map((r) => (
-            <button key={r.passId} type="button" className="gate-recent" data-tone={VERDICT[r.verdict].tone} onClick={() => void open(r.passId, 'lookup')}>
+            <button key={r.passId} type="button" className="gate-recent" data-tone={r.tone} onClick={() => void open(r.passId, 'lookup')}>
               <span className="gate-recent-g" aria-hidden="true">
-                {VERDICT[r.verdict].glyph}
+                {r.tone === 'ok' ? '✓' : r.tone === 'warn' ? '!' : '×'}
               </span>
               <span className="min-w-0 flex-1 truncate text-left">{r.name}</span>
               <span className="num text-[11px] text-muted">{new Date(r.at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
@@ -355,13 +376,13 @@ export function Scanner({ roster }: { roster: RosterEntry[] }) {
       ) : null}
 
       {/* On body, not in the page: the page's entry animation is a transform, and a fixed card inside it would be boxed by it. */}
-      {card ? createPortal(<GateSheet card={card} fast={fast} autoLeft={autoLeft} onClose={close} onAct={act} />, document.body) : null}
+      {card ? createPortal(<GateSheet card={card} busy={busy} onClose={close} onAct={act} />, document.body) : null}
     </div>
   )
 }
 
-function GateSheet({ card, fast, autoLeft, onClose, onAct }: { card: Card; fast: boolean; autoLeft: number; onClose: () => void; onAct: (a: 'checkin' | 'swag' | 'lunch' | 'snack' | 'undo', what?: Given) => void }) {
-  const v = VERDICT[card.verdict]
+function GateSheet({ card, busy, onClose, onAct }: { card: Card; busy: string | null; onClose: () => void; onAct: (m: Mark, undo: boolean) => void }) {
+  const v = headline(card)
   const p = card.person
   const pass = p ? passFor(p.tier as Tier) : undefined
   const level = p ? TIER_LEVEL[p.tier as Tier] : 0
@@ -369,7 +390,13 @@ function GateSheet({ card, fast, autoLeft, onClose, onAct }: { card: Card; fast:
   const plan = (pass?.perks ?? [])
     .filter((x) => !/^Swag kit/.test(x))
     .map((x) => (/technical session/i.test(x) && p?.technical ? `Technical · ${p.technical}` : /workshop/i.test(x) && p?.workshop ? `Workshop · ${p.workshop}` : x))
-  const checkedIn = card.verdict === 'admitted' || card.verdict === 'queued' || card.verdict === 'duplicate'
+  const valid = p && card.verdict !== 'blocked' && card.verdict !== 'unknown' && card.verdict !== 'loading'
+  const tileNote: Record<Mark, string> = {
+    checkin: 'at the gate',
+    swag: `tier ${level} kit`,
+    lunch: p?.food ?? 'food not chosen',
+    snack: 'one per pass',
+  }
 
   return (
     <div className="gate-sheet" data-tone={v.tone} role="dialog" aria-modal="true" aria-label={`${v.title}: ${p?.name ?? card.passId}`}>
@@ -377,18 +404,11 @@ function GateSheet({ card, fast, autoLeft, onClose, onAct }: { card: Card; fast:
         <span className="gate-glyph" aria-hidden="true">
           {v.glyph}
         </span>
-        <span className="flex flex-col">
+        <span className="flex min-w-0 flex-col">
           <span className="gate-v-title">{v.title}</span>
-          <span className="gate-v-note">
-            {card.verdict === 'duplicate' && card.checkedInAt ? `checked in at ${time(card.checkedInAt)} · ${v.note}` : v.note}
-          </span>
+          <span className="gate-v-note">{v.note}</span>
         </span>
       </div>
-      {fast && autoLeft > 0 ? (
-        <span className="gate-auto" aria-hidden="true">
-          <span style={{ width: `${(autoLeft / AUTO_NEXT_MS) * 100}%` }} />
-        </span>
-      ) : null}
 
       <div className="gate-body">
         <span className="gate-name">{p?.name ?? (card.verdict === 'loading' ? '' : 'NOT FOUND')}</span>
@@ -402,7 +422,31 @@ function GateSheet({ card, fast, autoLeft, onClose, onAct }: { card: Card; fast:
         </span>
         {p ? <span className="copy">{p.college}</span> : null}
 
-        {p && card.verdict !== 'blocked' && card.verdict !== 'unknown' ? (
+        {valid ? (
+          <div className="gate-tiles">
+            {(Object.keys(MARK_FIELD) as Mark[]).map((m) => {
+              const at = card[MARK_FIELD[m]]
+              return (
+                <div key={m} className="gate-tile" data-done={at ? '1' : undefined}>
+                  <button type="button" className="gate-tile-main" disabled={Boolean(at) || busy !== null} onClick={() => onAct(m, false)}>
+                    <span className="gate-tile-k">{at ? `✓ ${MARK_LABEL[m]}` : MARK_TODO[m]}</span>
+                    <span className="gate-tile-v">{busy === m ? '…' : at ? `at ${time(at)}` : 'TAP WHEN DONE'}</span>
+                    <span className="gate-tile-n">{tileNote[m]}</span>
+                  </button>
+                  {at ? (
+                    <button type="button" className="gate-tile-undo" disabled={busy !== null} onClick={() => confirm(`Undo ${MARK_LABEL[m].toLowerCase()} for ${p.name}?`) && onAct(m, true)}>
+                      undo
+                    </button>
+                  ) : null}
+                </div>
+              )
+            })}
+          </div>
+        ) : null}
+
+        {card.message && card.verdict !== 'repeat' ? <p className="copy">{card.message}</p> : null}
+
+        {valid ? (
           <>
             <div className="gate-plan">
               <span className="lbl-sm">Their day</span>
@@ -414,63 +458,24 @@ function GateSheet({ card, fast, autoLeft, onClose, onAct }: { card: Card; fast:
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div className="gate-fact">
-                <span className="lbl-sm">Swag kit</span>
-                <span className="gate-fact-v">Tier {level}</span>
-                <span className="hint">{card.swagIssuedAt ? `Given at ${time(card.swagIssuedAt)}` : 'Not given yet'}</span>
-              </div>
-              <div className="gate-fact">
                 <span className="lbl-sm">{p.group ? 'Group' : 'Builder ID'}</span>
                 <span className="gate-fact-v">{p.group ? `Group of ${p.group.size}` : p.builderId ? `@${p.builderId}` : '-'}</span>
                 <span className="hint">{p.group ? (p.group.payer ? 'Paid for the group' : 'Paid by their group') : 'AWS Builder Center'}</span>
               </div>
               <div className="gate-fact">
-                <span className="lbl-sm">Lunch</span>
-                <span className="gate-fact-v">{p.food ?? 'Not chosen'}</span>
-                <span className="hint">{card.lunchAt ? `Token given at ${time(card.lunchAt)}` : 'Token not given yet'}</span>
-              </div>
-              <div className="gate-fact">
                 <span className="lbl-sm">College bus</span>
                 <span className="gate-fact-v">{p.bus ?? 'Not chosen'}</span>
-                <span className="hint">{p.busStop ? `Stop: ${p.busStop}` : card.snackAt ? `Light food at ${time(card.snackAt)}` : ' '}</span>
+                <span className="hint">{p.busStop ? `Stop: ${p.busStop}` : ' '}</span>
               </div>
             </div>
           </>
         ) : null}
-
-        {card.message && card.verdict !== 'duplicate' ? <p className="copy">{card.message}</p> : null}
       </div>
 
       <div className="gate-actions">
-        {card.verdict === 'ready' ? (
-          <button type="button" className="btn btn-mint btn-xl" onClick={() => onAct('checkin')}>
-            ✓ CHECK IN
-          </button>
-        ) : null}
-        <button type="button" className={card.verdict === 'ready' ? 'btn btn-lg' : 'btn btn-primary btn-xl'} onClick={onClose}>
+        <button type="button" className="btn btn-primary btn-xl" onClick={onClose}>
           {'NEXT SCAN >'}
         </button>
-        {p && checkedIn ? (
-          <div className="flex flex-col gap-2">
-            {(['swag', 'lunch', 'snack'] as Given[]).map((g) => {
-              const at = card[GIVEN_FIELD[g]]
-              return (
-                <div key={g} className="flex gap-2">
-                  <button type="button" className="btn flex-1" onClick={() => onAct(g)} disabled={Boolean(at)}>
-                    {at ? `${GIVEN_LABEL[g]} ✓ ${time(at)}` : `GIVE ${GIVEN_LABEL[g]}`}
-                  </button>
-                  {at ? (
-                    <button type="button" className="btn btn-mono" onClick={() => onAct('undo', g)}>
-                      UNDO
-                    </button>
-                  ) : null}
-                </div>
-              )
-            })}
-            <button type="button" className="btn" onClick={() => onAct('undo')}>
-              UNDO CHECK IN
-            </button>
-          </div>
-        ) : null}
       </div>
     </div>
   )

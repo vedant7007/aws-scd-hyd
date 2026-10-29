@@ -106,3 +106,60 @@ export async function verifyVolunteerCode(rawEmail: string, rawCode: string): Pr
   })
   return { ok: true, email }
 }
+
+/* ---------------------------------------------------------------------------
+   Gate code (organiser's decision, 30 October 2026). Collecting every
+   volunteer's email on the morning did not scale, so one short code an admin
+   reads out signs anyone in as a volunteer under the name they type. The
+   code lives in the table; making a new one changes its version, and every
+   session signed in with the old one ends on its next request.
+   --------------------------------------------------------------------------- */
+
+const GATE_KEY = { PK: 'GATECODE', SK: 'CURRENT' }
+/** No 0/O, 1/I/L: it is read out loud across a noisy gate. */
+const GATE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
+export const GATE_PREFIX = 'gate:'
+
+type GateCode = { code: string; version: string; by: string; at: string }
+
+export async function currentGateCode(): Promise<GateCode | null> {
+  const item = (await ddb.send(new GetCommand({ TableName: tableName(), Key: GATE_KEY, ConsistentRead: true }))).Item
+  return item ? (item as GateCode) : null
+}
+
+export async function newGateCode(by: string): Promise<GateCode> {
+  const code = Array.from({ length: 6 }, () => GATE_ALPHABET[randomInt(GATE_ALPHABET.length)]).join('')
+  const next: GateCode = { code, version: String(randomInt(1e9)), by, at: new Date().toISOString() }
+  await ddb.send(new PutCommand({ TableName: tableName(), Item: { ...GATE_KEY, ...next } }))
+  return next
+}
+
+/** The name behind a gate code session, while that code is still the current one. */
+export async function gateVolunteer(identity: string): Promise<string | null> {
+  const [version, ...rest] = identity.slice(GATE_PREFIX.length).split(':')
+  const gate = await currentGateCode()
+  return gate && gate.version === version ? rest.join(':') : null
+}
+
+/** Signs a volunteer in with the gate code, for the day, under the name they gave. */
+export async function signInWithGateCode(rawName: string, rawCode: string, ip: string): Promise<CodeCheck> {
+  const name = rawName.replace(/\s+/g, ' ').trim().slice(0, 40)
+  if (name.length < 2) return { ok: false, message: 'Type your name, so the gate log shows who scanned.' }
+  if (!(await withinRateLimit(ip, 'GATECODE', 20))) return { ok: false, message: 'Too many tries from this phone. Ask an admin.' }
+  const gate = await currentGateCode()
+  const code = rawCode.toUpperCase().replace(/[^A-Z0-9]/g, '')
+  const want = Buffer.from(gate?.code ?? '-')
+  const got = Buffer.from(code)
+  if (!gate || want.length !== got.length || !timingSafeEqual(want, got)) return { ok: false, message: 'That gate code is wrong. Ask an admin for today’s code.' }
+
+  const exp = String(Date.now() + 86_400_000)
+  const id64 = Buffer.from(`${GATE_PREFIX}${gate.version}:${name}`).toString('base64url')
+  ;(await cookies()).set(VOLUNTEER_COOKIE, `${id64}.${exp}.${sign(`${id64}.${exp}`)}`, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 86_400,
+  })
+  return { ok: true, email: name }
+}

@@ -1,7 +1,7 @@
 'use client'
 
 import { useActionState } from 'react'
-import { confirmResetAction, loginAction, requestResetAction, volunteerAction, type LoginState, type ResetState, type VolunteerState } from '@/app/admin/login/actions'
+import { confirmResetAction, gateCodeAction, loginAction, requestResetAction, volunteerAction, type GateState, type LoginState, type ResetState, type VolunteerState } from '@/app/admin/login/actions'
 
 export function LoginForm() {
   const [state, action, pending] = useActionState<LoginState, FormData>(loginAction, null)
@@ -115,6 +115,32 @@ export function VolunteerForm() {
           Wrong email, or no code after a few minutes? Start again.
         </a>
       ) : null}
+    </form>
+  )
+}
+
+/** Name and the gate code an admin reads out. No email, no inbox to check. */
+export function GateCodeForm() {
+  const [state, action, pending] = useActionState<GateState, FormData>(gateCodeAction, null)
+  return (
+    <form action={action} className="flex flex-col gap-4">
+      <div className="fld">
+        <label htmlFor="gate-name">Your name</label>
+        <input id="gate-name" name="name" autoComplete="name" required minLength={2} maxLength={40} className="inp" defaultValue={state?.name ?? ''} />
+      </div>
+      <div className="fld">
+        <label htmlFor="gate-code">Gate code</label>
+        <input id="gate-code" name="code" required autoComplete="off" autoCapitalize="characters" spellCheck={false} maxLength={8} className="inp inp-num" placeholder="ABC123" />
+        <span className="hint">Six letters and numbers. An admin will tell you today’s code.</span>
+      </div>
+      {state?.message ? (
+        <p role="alert" className="err-text">
+          {state.message}
+        </p>
+      ) : null}
+      <button type="submit" className="btn btn-primary btn-lg" disabled={pending}>
+        {pending ? 'WAIT' : 'OPEN THE SCANNER >'}
+      </button>
     </form>
   )
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useActionState } from 'react'
-import { addUserAction, removeUserAction, setRoleAction, type ActionState } from '@/app/admin/(secure)/actions'
+import { addUserAction, newGateCodeAction, removeUserAction, setRoleAction, type ActionState } from '@/app/admin/(secure)/actions'
 import type { CrewRole } from '@/lib/db/types'
 
 const Status = ({ state }: { state: ActionState }) =>
@@ -10,6 +10,24 @@ const Status = ({ state }: { state: ActionState }) =>
       {state.message}
     </p>
   ) : null
+
+export function NewGateCode({ has }: { has: boolean }) {
+  const [state, action, pending] = useActionState(newGateCodeAction, null as ActionState)
+  return (
+    <form
+      action={action}
+      onSubmit={(e) => {
+        if (has && !confirm('Make a new code? Every volunteer on the old code is signed out and needs the new one.')) e.preventDefault()
+      }}
+      className="flex flex-col gap-2"
+    >
+      <button type="submit" className={has ? 'btn' : 'btn btn-primary'} disabled={pending}>
+        {pending ? 'MAKING' : has ? 'NEW CODE' : 'MAKE A GATE CODE'}
+      </button>
+      <Status state={state} />
+    </form>
+  )
+}
 
 export function AddUserForm() {
   const [state, action, pending] = useActionState(addUserAction, null as ActionState)

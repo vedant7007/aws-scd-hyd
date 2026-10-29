@@ -5,11 +5,11 @@ import { useEffect, useState } from 'react'
 import type { ScanResult } from '@/app/api/admin/scan/route'
 
 type Mark = 'checkin' | 'swag' | 'lunch' | 'snack'
-const MARKS: { id: Mark; label: string; at: keyof ScanResult }[] = [
-  { id: 'checkin', label: 'CHECK IN', at: 'checkedInAt' },
-  { id: 'swag', label: 'SWAG GIVEN', at: 'swagIssuedAt' },
-  { id: 'lunch', label: 'LUNCH TOKEN', at: 'lunchAt' },
-  { id: 'snack', label: 'LIGHT FOOD', at: 'snackAt' },
+const MARKS: { id: Mark; label: string; todo: string; at: keyof ScanResult }[] = [
+  { id: 'checkin', label: 'CHECKED IN', todo: 'CHECK IN', at: 'checkedInAt' },
+  { id: 'swag', label: 'SWAG KIT', todo: 'GIVE SWAG', at: 'swagIssuedAt' },
+  { id: 'lunch', label: 'LUNCH TOKEN', todo: 'GIVE LUNCH TOKEN', at: 'lunchAt' },
+  { id: 'snack', label: 'LIGHT FOOD', todo: 'GIVE LIGHT FOOD', at: 'snackAt' },
 ]
 
 const time = (iso?: string) => (iso ? new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' }) : '')
@@ -98,17 +98,18 @@ export function GateDesk({ passId }: { passId: string }) {
           ) : null}
 
           {verified ? (
-            <div className="gd-marks">
+            <div className="gate-tiles">
               {MARKS.map((m) => {
                 const at = r[m.at] as string | undefined
                 return (
-                  <div key={m.id} className="gd-mark" data-done={at ? '1' : undefined}>
-                    <button type="button" className={at ? 'btn' : 'btn btn-primary'} disabled={busy !== null || Boolean(at)} onClick={() => act(m.id)}>
-                      {at ? `✓ ${m.label} · ${time(at)}` : busy === m.id ? '…' : m.label}
+                  <div key={m.id} className="gate-tile" data-done={at ? '1' : undefined}>
+                    <button type="button" className="gate-tile-main" disabled={busy !== null || Boolean(at)} onClick={() => act(m.id)}>
+                      <span className="gate-tile-k">{at ? `✓ ${m.label}` : m.todo}</span>
+                      <span className="gate-tile-v">{busy === m.id ? '…' : at ? `at ${time(at)}` : 'TAP WHEN DONE'}</span>
                     </button>
                     {at ? (
-                      <button type="button" className="btn btn-mono" disabled={busy !== null} onClick={() => act('undo', m.id)}>
-                        {busy === m.id ? '…' : `↶ UNDO ${m.label}`}
+                      <button type="button" className="gate-tile-undo" disabled={busy !== null} onClick={() => confirm(`Undo ${m.label.toLowerCase()} for ${a?.name ?? passId}?`) && act('undo', m.id)}>
+                        undo
                       </button>
                     ) : null}
                   </div>

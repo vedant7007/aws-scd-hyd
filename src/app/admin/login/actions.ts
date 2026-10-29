@@ -1,8 +1,9 @@
 'use server'
 
+import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { finishPasswordReset, signIn, signOut, startPasswordReset } from '@/lib/auth/admin'
-import { sendVolunteerCode, verifyVolunteerCode } from '@/lib/auth/volunteer'
+import { sendVolunteerCode, signInWithGateCode, verifyVolunteerCode } from '@/lib/auth/volunteer'
 
 export type LoginState = { message: string } | null
 
@@ -54,4 +55,15 @@ export async function volunteerAction(prev: VolunteerState, formData: FormData):
   const sent = await sendVolunteerCode(email)
   if (!sent.ok) return { step: 'email', email, message: sent.message, ok: false }
   return { step: 'code', email, message: `If ${email} is on the volunteer list, a 6 digit code is on its way to it. Check spam too.`, ok: true }
+}
+
+export type GateState = { name: string; message: string } | null
+
+/** Volunteer sign in with the shared gate code: a name and the code, straight to the scanner. */
+export async function gateCodeAction(_prev: GateState, formData: FormData): Promise<GateState> {
+  const name = String(formData.get('name') ?? '')
+  const ip = (await headers()).get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+  const out = await signInWithGateCode(name, String(formData.get('code') ?? ''), ip)
+  if (!out.ok) return { name, message: out.message }
+  redirect('/admin/scan')
 }

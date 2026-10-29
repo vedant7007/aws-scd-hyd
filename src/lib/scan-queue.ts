@@ -8,7 +8,7 @@
  * Storage is injected so this logic is testable outside a browser.
  */
 
-export type QueuedAction = 'checkin' | 'swag'
+export type QueuedAction = 'checkin' | 'swag' | 'lunch' | 'snack'
 
 export type QueuedWrite = {
   id: string

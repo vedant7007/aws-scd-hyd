@@ -1019,10 +1019,6 @@ body:has(.rg-grid) .page-bg {
 .gate-top { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .gate-count { font-family: var(--font-display); font-size: 26px; line-height: 1; color: var(--muted); }
 .gate-count strong { font-weight: 400; font-size: 44px; color: var(--ink); }
-.gate-mode { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 12px; border: 3px solid var(--line); background: var(--surface); color: var(--ink); font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; cursor: pointer; }
-.gate-mode[data-on] { background: var(--panel-mint); border-color: var(--ok); }
-.gate-mode-dot { width: 10px; height: 10px; background: var(--muted); }
-.gate-mode[data-on] .gate-mode-dot { background: var(--ok); animation: gp-blink 1.4s steps(2) infinite; }
 .gate-cam { max-height: 58vh; }
 .gate-hint { margin: 0; text-align: center; font-family: var(--font-mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
 .gate-manual { display: flex; flex-direction: column; gap: 6px; border-top: 2px dashed var(--line-dash); padding-top: 12px; }
@@ -1038,8 +1034,20 @@ body:has(.rg-grid) .page-bg {
 .gate-glyph { flex: none; width: 64px; height: 64px; display: flex; align-items: center; justify-content: center; border: 4px solid currentColor; font-family: var(--font-display); font-size: 44px; line-height: 1; }
 .gate-v-title { font-family: var(--font-display); font-size: clamp(34px, 10vw, 52px); line-height: .95; }
 .gate-v-note { font-family: var(--font-mono); font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
-.gate-auto { display: block; height: 6px; background: var(--bar); }
-.gate-auto span { display: block; height: 100%; background: var(--ok); transition: width .1s linear; }
+.gate-stations { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.gate-station { min-height: 48px; padding: 0 4px; border: 3px solid var(--line); background: var(--surface); color: var(--ink); font-family: var(--font-display); font-size: clamp(13px, 3.6vw, 17px); line-height: 1; cursor: pointer; }
+.gate-station[data-on] { background: var(--amber-fill); color: var(--on-fill); box-shadow: 3px 3px 0 var(--sh); }
+.gate-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.gate-tile { display: flex; flex-direction: column; border: 3px solid var(--line); background: var(--surface); box-shadow: 4px 4px 0 var(--sh); }
+.gate-tile[data-done] { border-color: var(--ok); background: var(--panel-mint); box-shadow: none; }
+.gate-tile-main { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-height: 96px; padding: 12px; border: 0; background: none; color: var(--ink); text-align: left; cursor: pointer; }
+.gate-tile-main:disabled { cursor: default; opacity: 1; }
+.gate-tile-k { font-family: var(--font-display); font-size: clamp(18px, 5vw, 24px); line-height: 1; }
+.gate-tile[data-done] .gate-tile-k { color: var(--ok); }
+.gate-tile-v { font-family: var(--font-mono); font-size: 12px; font-weight: 700; letter-spacing: .08em; }
+.gate-tile-n { font-size: 12.5px; color: var(--muted); }
+.gate-tile-undo { align-self: stretch; min-height: 36px; border: 0; border-top: 2px dashed var(--line-dash); background: none; color: var(--muted); font-family: var(--font-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; cursor: pointer; }
+.gate-code { font-family: var(--font-mono); font-size: clamp(34px, 9vw, 48px); font-weight: 700; letter-spacing: .18em; color: var(--ink); }
 .gate-body { display: flex; flex-direction: column; gap: 12px; padding: 18px; flex: 1; }
 .gate-name { font-family: var(--font-display); font-size: clamp(36px, 11vw, 58px); line-height: 1; color: var(--ink); word-break: break-word; }
 .gate-tier { font-family: var(--font-display); font-size: 18px; padding: 3px 10px; border: 2px solid var(--line); color: var(--on-fill); background: var(--amber-fill); }
@@ -1053,7 +1061,7 @@ body:has(.rg-grid) .page-bg {
 .gate-fact { display: flex; flex-direction: column; gap: 3px; border: 2px solid var(--line-soft); background: var(--surface); padding: 10px; min-width: 0; }
 .gate-fact-v { font-family: var(--font-display); font-size: 20px; line-height: 1.05; color: var(--ink); overflow-wrap: anywhere; }
 .gate-actions { position: sticky; bottom: 0; display: flex; flex-direction: column; gap: 8px; padding: 14px 18px max(18px, env(safe-area-inset-bottom)); background: var(--surface); border-top: 3px solid var(--line); }
-@media (prefers-reduced-motion: reduce) { .gate-sheet, .gate-mode[data-on] .gate-mode-dot { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .gate-sheet { animation: none; } }
 
 /* The ticket printer on the pass page, pixel style: a little console that boots, prints the real pass, and steps away. */
 .pp { position: relative; display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 440px; margin: 0 auto; }
@@ -1727,10 +1735,6 @@ option { background: var(--color-surface); color: var(--color-ink); }
 .gd-verdict small { font-family: var(--font-body, inherit); font-size: 14px; line-height: 1.4; }
 .gd-bad { background: var(--err-fill); }
 .gd-name { font-family: var(--font-display); font-size: clamp(32px,9vw,48px); line-height: 1; color: var(--ink); overflow-wrap: anywhere; }
-.gd-marks { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 12px; }
-.gd-mark { display: flex; flex-direction: column; gap: 4px; }
-.gd-mark .btn { min-height: 64px; font-family: var(--font-display); font-size: 22px; }
-.gd-mark[data-done] .btn { border-color: var(--ok); color: var(--ok); opacity: 1; }
 .gd-undo { align-self: flex-end; background: none; border: 0; padding: 2px 4px; font: inherit; font-size: 12.5px; color: var(--muted); text-decoration: underline; cursor: pointer; }
 
 /* The "open your ticket?" prompt over the pass page on a first visit; its button starts the printer. */

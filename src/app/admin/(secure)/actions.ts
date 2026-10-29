@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { programSession } from '@/content/program'
 import { createCrewAccount, deleteCrewAccount, forgetSessions, requireAdmin } from '@/lib/auth/admin'
 import { addUser, removeUser, setRole } from '@/lib/auth/crew'
+import { newGateCode } from '@/lib/auth/volunteer'
 import { normalisePassId } from '@/lib/db/keys'
 import type { CrewRole } from '@/lib/db/types'
 import { adminReject, adminVerify } from '@/lib/registration/flow'
@@ -227,4 +228,13 @@ export async function removeUserAction(_prev: ActionState, formData: FormData): 
   }
   await deleteCrewAccount(target)
   return { ok: true, message: `${target} removed. Their sign-in account is deleted too.` }
+}
+
+/** A new gate code. Everyone signed in with the old one is signed out on their next tap. */
+export async function newGateCodeAction(): Promise<ActionState> {
+  const { email } = await requireAdmin()
+  const gate = await newGateCode(email)
+  console.info(`[crew] new gate code by ${email}`)
+  revalidatePath('/admin/users')
+  return { ok: true, message: `New code ${gate.code}. Volunteers on the old code are signed out.` }
 }

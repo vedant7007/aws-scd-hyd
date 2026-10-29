@@ -1,7 +1,8 @@
 import { requireAdmin } from '@/lib/auth/admin'
 import { BOOTSTRAP_ADMIN } from '@/lib/auth/crew'
 import { listCrewAudit, listUsers } from '@/lib/auth/crew'
-import { AddUserForm, UserRow } from '@/components/admin/Users'
+import { AddUserForm, NewGateCode, UserRow } from '@/components/admin/Users'
+import { currentGateCode } from '@/lib/auth/volunteer'
 
 /**
  * Who is on the crew and what they may do. Admin only: a volunteer is
@@ -11,7 +12,7 @@ import { AddUserForm, UserRow } from '@/components/admin/Users'
  */
 export default async function UsersPage() {
   const { email } = await requireAdmin()
-  const [users, audit] = await Promise.all([listUsers(), listCrewAudit(30)])
+  const [users, audit, gate] = await Promise.all([listUsers(), listCrewAudit(30), currentGateCode()])
   const admins = users.filter((u) => u.role === 'admin').length
 
   return (
@@ -24,6 +25,26 @@ export default async function UsersPage() {
           address, no payment queue, no export, no settings, no crew page. That is enforced on the server, not by hiding links.
         </p>
       </div>
+
+      <section className="card flex flex-col" aria-labelledby="gate-h">
+        <div className="card-head">
+          <span id="gate-h" className="card-title">
+            GATE CODE
+          </span>
+          <span className="lbl">volunteers sign in with their name and this</span>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-4 p-4">
+          <div className="flex flex-col gap-1">
+            <span className="gate-code">{gate?.code ?? '------'}</span>
+            <span className="hint">
+              {gate
+                ? `Made ${new Date(gate.at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' })} by ${gate.by}. Read it out; volunteers open awsscdhyd.in/admin/login, tap VOLUNTEER.`
+                : 'No code yet. Make one and read it out to the volunteers.'}
+            </span>
+          </div>
+          <NewGateCode has={Boolean(gate)} />
+        </div>
+      </section>
 
       <section className="card flex flex-col" aria-labelledby="add-h">
         <div className="card-head">

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { LoginForm, VolunteerForm } from '@/components/admin/LoginForm'
+import { GateCodeForm, LoginForm, VolunteerForm } from '@/components/admin/LoginForm'
 import { currentCrew } from '@/lib/auth/admin'
 
 export const metadata: Metadata = {
@@ -21,7 +21,7 @@ export default async function AdminLoginPage({ searchParams }: PageProps<'/admin
       <div className="flex flex-col gap-2.5">
         <span className="eye eye-violet">{'// ORGANISERS ONLY'}</span>
         <h1 className="h1">CREW SIGN IN</h1>
-        <p className="lede">Attendees never see this page. Admins sign in with their password; volunteers just need their email.</p>
+        <p className="lede">Attendees never see this page. Admins sign in with their password; volunteers need their name and today’s gate code.</p>
       </div>
 
       <nav aria-label="Sign in as" className="grid grid-cols-2 gap-2">
@@ -40,10 +40,17 @@ export default async function AdminLoginPage({ searchParams }: PageProps<'/admin
       ) : null}
 
       {volunteer ? (
-        <div className="card flex flex-col gap-4 p-4">
-          <VolunteerForm />
-          <p className="hint">Not working? Ask an admin to add your email as a volunteer on the crew page first.</p>
-        </div>
+        <>
+          <div className="card flex flex-col gap-4 p-4">
+            <GateCodeForm />
+          </div>
+          <details className="card p-4">
+            <summary className="lbl cursor-pointer">Added by email instead? Sign in with a code to your inbox</summary>
+            <div className="mt-4 flex flex-col gap-4">
+              <VolunteerForm />
+            </div>
+          </details>
+        </>
       ) : (
       <div className="card flex flex-col gap-4 p-4">
         <LoginForm />
