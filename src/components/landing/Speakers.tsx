@@ -106,7 +106,7 @@ export function Speakers() {
               MEET THE SPEAKERS
             </h2>
           </div>
-          <span className="spk-count">{speakers.length} SPEAKERS · 30 OCTOBER</span>
+          <span className="spk-count">{new Set(speakers.map((s) => s.name)).size} SPEAKERS · 30 OCTOBER</span>
         </div>
 
         {chief.map((s) => (
