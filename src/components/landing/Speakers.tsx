@@ -1,6 +1,6 @@
 import Image from 'next/image'
 import { workshops } from '@/content/program'
-import { speakers, type Speaker } from '@/content/speakers'
+import { initials, speakers, type Speaker } from '@/content/speakers'
 
 /**
  * The line-up on the home page, in three tiers, in the site's pixel language:
@@ -18,7 +18,7 @@ function Chief({ s }: { s: Speaker }) {
       <span className="cg-corner cg-bl" aria-hidden="true" />
       <span className="cg-corner cg-br" aria-hidden="true" />
       <div className="cg-pic">
-        <span className="cg-frame">{s.photo ? <Image src={s.photo} alt={s.name} fill sizes="(max-width: 720px) 70vw, 340px" style={{ objectFit: 'cover' }} priority={false} /> : null}</span>
+        <span className="cg-frame">{s.photo ? <Image src={s.photo} alt={s.name} fill sizes="(max-width: 720px) 70vw, 340px" style={{ objectFit: 'cover' }} priority={false} /> : <span className="spk-initials" aria-hidden="true">{initials(s.name)}</span>}</span>
       </div>
       <div className="cg-copy">
         <span className="cg-ribbon">★ GUEST SPEAKER ★</span>
@@ -35,7 +35,7 @@ function Seat({ s, as = 'Panelist' }: { s: Speaker; as?: string }) {
   return (
     <article className="pd-seat" aria-label={`${as}: ${s.name}`}>
       <div className="pd-pic">
-        {s.photo ? <Image src={s.photo} alt={s.name} fill sizes="(max-width: 720px) 80vw, 320px" style={{ objectFit: 'cover' }} /> : null}
+        {s.photo ? <Image src={s.photo} alt={s.name} fill sizes="(max-width: 720px) 80vw, 320px" style={{ objectFit: 'cover' }} /> : <span className="spk-initials" aria-hidden="true">{initials(s.name)}</span>}
       </div>
       <div className="pd-tent">
         <span className="pd-tent-name">{s.name}</span>
@@ -106,7 +106,7 @@ export function Speakers() {
               MEET THE SPEAKERS
             </h2>
           </div>
-          <span className="spk-count">{speakers.length} ANNOUNCED · MORE SOON</span>
+          <span className="spk-count">{speakers.length} SPEAKERS · 30 OCTOBER</span>
         </div>
 
         {chief.map((s) => (
@@ -144,7 +144,7 @@ export function Speakers() {
         <div className="tl">
           <div className="tl-head">
             <span className="tl-h">HANDS-ON SESSIONS</span>
-            <span className="tl-sub">Workshop leads revealing soon. Follow @awssbg_vjit for every drop.</span>
+            <span className="tl-sub">Premium, Platinum and VIP. Bring your laptop.</span>
           </div>
           <div className="tl-grid">
             {slots.map((x) => {
@@ -155,12 +155,12 @@ export function Speakers() {
                   <span className="tl-title">{x.title}</span>
                   <span className="tl-who">
                     <span className="tl-avatar" aria-hidden="true">
-                      {who?.photo ? <Image src={who.photo} alt="" fill sizes="44px" style={{ objectFit: 'cover' }} /> : '?'}
+                      {who?.photo ? <Image src={who.photo} alt="" fill sizes="44px" style={{ objectFit: 'cover' }} /> : who ? initials(who.name) : '?'}
                     </span>
                     {who ? (
                       <span>
                         <b>{who.name}</b>
-                        <small>{who.org}</small>
+                        <small>{who.designation}, {who.org}</small>
                       </span>
                     ) : (
                       <span>

@@ -685,10 +685,12 @@ export function dayBefore(r: Person): Body {
   const slot = r.workshop ? WORKSHOP_SLOT[r.workshop] : undefined
   const when = slot ? `${clock(slot.start)} to ${clock(slot.end)}, ${slot.venue ?? VENUE_TBA}` : VENUE_TBA
   const bring = [
-    'Your ticket QR (on your phone or printed) and your college ID card',
+    `Your pass ID (${r.passId}) and ticket QR, open on your phone or printed`,
+    'Your college ID card',
     ...(handsOn ? ['Your laptop, fully charged, and its charger', 'Your phone, for AWS sign-in codes'] : []),
-    'A water bottle',
   ]
+  const patience =
+    'Around 200 people are coming, so the gate and the lunch counters will be busy. Keep your pass ID and QR open before you reach the front, follow the volunteers and please bear with us. We will get everyone in.'
   const plan = SCHEDULE.map((s) => `${clock(s.start).padEnd(9)} ${s.title}${s.venue ? ` (${s.venue})` : ''}`).join('\n')
   const planHtml = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${SCHEDULE.map(
     (s, i) =>
@@ -724,9 +726,12 @@ In short: aws.amazon.com > Create an AWS Account > email and password > Personal
 BRING
 ${bring.map((x) => `- ${x}`).join('\n')}
 
+AT THE GATE
+${patience}
+
 YOUR TICKET
+Pass ID: ${r.passId}
 ${url}
-Open it before you arrive so it is loaded, then show the QR at the gate.
 
 Lunch is included.
 
@@ -764,8 +769,10 @@ ${footerText}`,
             )
           : '',
         card(`${eyebrow('Bring')}${bring.map((x) => p(`&#9632;&nbsp; ${esc(x)}`)).join('')}`),
-        p('Open your ticket before you arrive so it is loaded, then show the QR at the gate.'),
-        button(url, 'OPEN MY TICKET &rarr;'),
+        card(
+          `${eyebrow('At the gate', ORANGE)}${p(esc(patience))}${small('Your pass ID')}<p style="margin:0 0 14px;font-family:${MONO};font-size:26px;font-weight:bold;letter-spacing:2px;color:${INK}">${esc(r.passId)}</p>${button(url, 'OPEN MY TICKET &rarr;')}`,
+          '#FFF6E8',
+        ),
       ].join('\n'),
     }),
   }

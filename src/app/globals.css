@@ -1790,3 +1790,11 @@ option { background: var(--color-surface); color: var(--color-ink); }
   .sc-card { padding:10px 11px; border-left-width:7px; }
 }
 @media (prefers-reduced-motion: reduce) { .sc-pulse, .sc-now { animation:none; } .sc-card { transition:none; } }
+
+/* A speaker without a photo yet: their initials in the frame. */
+.spk-initials { position:absolute; inset:5px; display:grid; place-items:center; clip-path:var(--notch); background:linear-gradient(rgba(196,174,242,.08) 1px, transparent 1px) 0 0 / 14px 14px, linear-gradient(90deg, rgba(196,174,242,.08) 1px, transparent 1px) 0 0 / 14px 14px, #1A1726; font-family:var(--font-display); font-size:clamp(56px,14vw,96px); letter-spacing:.04em; color:#C4AEF2; }
+.cg-frame .spk-initials { inset:6px; color:#F6D27A; background:linear-gradient(rgba(246,210,122,.08) 1px, transparent 1px) 0 0 / 14px 14px, linear-gradient(90deg, rgba(246,210,122,.08) 1px, transparent 1px) 0 0 / 14px 14px, #17130A; }
+.pd[data-kind="talks"] .spk-initials { color:#9FE3B6; }
+.cg + .cg { margin-top:clamp(18px,3vw,28px); }
+.tl-avatar { font-size:16px; }
+.tl-card:not([data-locked]) .tl-avatar { background:var(--surface); }
