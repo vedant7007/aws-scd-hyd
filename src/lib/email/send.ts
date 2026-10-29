@@ -18,7 +18,11 @@ export type Mail = {
   html: string
   /** Defaults to SES_REPLY_TO. Organiser notifications set it to the sender so a reply reaches them. */
   replyTo?: string
+  /** Files sent with the mail. One with a contentId shows inside the HTML as <img src="cid:...">. */
+  attachments?: MailAttachment[]
 }
+
+export type MailAttachment = { filename: string; contentType: string; content: Uint8Array; contentId?: string }
 
 export type SendResult = {
   transport: 'ses' | 'console'
@@ -92,6 +96,14 @@ export async function sendEmail(mail: Mail): Promise<SendResult> {
               Text: { Data: mail.text, Charset: 'UTF-8' },
               Html: { Data: mail.html, Charset: 'UTF-8' },
             },
+            Attachments: mail.attachments?.map((x) => ({
+              RawContent: x.content,
+              FileName: x.filename,
+              ContentType: x.contentType,
+              ContentDisposition: x.contentId ? 'INLINE' : 'ATTACHMENT',
+              ContentId: x.contentId,
+              ContentTransferEncoding: 'BASE64',
+            })),
           },
         },
       }),

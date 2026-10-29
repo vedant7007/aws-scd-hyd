@@ -54,6 +54,8 @@ const HANDOFF_FILES = [
   // Email HTML: mail clients cannot read CSS variables, so the brand colours
   // and font stacks have to be literal, inline, in the one templates file.
   'src/lib/email/templates.ts',
+  // The ticket image the ticket email carries: rasterised by satori, so literal like the templates.
+  'src/lib/email/ticket-image.tsx',
   // The v3 Speak, Sponsor and report forms, ported the same way.
   ...globSync('src/components/forms/**/*.{ts,tsx}').map(normalise),
   'src/app/(register)/register/page.tsx',

@@ -17,6 +17,7 @@ import { keys } from '@/lib/db/keys'
 import { getAttendee } from '@/lib/db/queries'
 import { isReservedAddress, sendEmail } from '@/lib/email/send'
 import { ticket } from '@/lib/email/templates'
+import { ticketImages } from '@/lib/email/ticket-image'
 
 /**
  * Amendment 1 section 6. Every action resolves the admin first, so the
@@ -39,7 +40,7 @@ export async function sendTicketAction(_prev: ActionState, formData: FormData): 
   if (!a || a.state !== 'VERIFIED') return { ok: false, message: `${passId} is not verified, so it has no ticket yet.` }
   if (isReservedAddress(a.email)) return { ok: false, message: `${a.email} is a test address; nothing was sent.` }
   try {
-    await sendEmail({ to: a.email, ...ticket(a) })
+    await sendEmail({ to: a.email, ...ticket(a), attachments: await ticketImages(a) })
   } catch (err) {
     console.error(`[ticket] ${passId} failed`, err)
     return { ok: false, message: 'The email did not go. Try again in a minute.' }
