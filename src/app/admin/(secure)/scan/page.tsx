@@ -19,7 +19,8 @@ export default async function ScanPage() {
    * phone numbers are included: the gate needs to identify a person, not contact them.
    */
   const roster: RosterEntry[] = attendees
-    .filter((a) => a.state === 'VERIFIED')
+    // Test passes still scan, but stay out of the count at the gate.
+    .filter((a) => a.state === 'VERIFIED' && a.source !== 'preview')
     .map((a) => ({
       passId: a.passId,
       name: a.name,
