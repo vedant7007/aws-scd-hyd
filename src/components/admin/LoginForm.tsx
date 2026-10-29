@@ -130,8 +130,8 @@ export function GateCodeForm() {
       </div>
       <div className="fld">
         <label htmlFor="gate-code">Gate code</label>
-        <input id="gate-code" name="code" required autoComplete="off" autoCapitalize="characters" spellCheck={false} maxLength={8} className="inp inp-num" placeholder="ABC123" />
-        <span className="hint">Six letters and numbers. An admin will tell you today’s code.</span>
+        <input id="gate-code" name="code" required autoComplete="off" autoCapitalize="characters" spellCheck={false} maxLength={20} className="inp inp-num" />
+        <span className="hint">An admin will tell you today’s code. Capitals or not, either works.</span>
       </div>
       {state?.message ? (
         <p role="alert" className="err-text">

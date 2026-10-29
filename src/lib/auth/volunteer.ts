@@ -145,12 +145,16 @@ export async function gateVolunteer(identity: string): Promise<string | null> {
 export async function signInWithGateCode(rawName: string, rawCode: string, ip: string): Promise<CodeCheck> {
   const name = rawName.replace(/\s+/g, ' ').trim().slice(0, 40)
   if (name.length < 2) return { ok: false, message: 'Type your name, so the gate log shows who scanned.' }
-  if (!(await withinRateLimit(ip, 'GATECODE', 20))) return { ok: false, message: 'Too many tries from this phone. Ask an admin.' }
   const gate = await currentGateCode()
   const code = rawCode.toUpperCase().replace(/[^A-Z0-9]/g, '')
   const want = Buffer.from(gate?.code ?? '-')
   const got = Buffer.from(code)
-  if (!gate || want.length !== got.length || !timingSafeEqual(want, got)) return { ok: false, message: 'That gate code is wrong. Ask an admin for today’s code.' }
+  if (!gate || want.length !== got.length || !timingSafeEqual(want, got)) {
+    // Only wrong codes count, per IP: every phone on the campus wifi shares
+    // one address, so counting every sign in would lock the crew out.
+    const under = await withinRateLimit(ip, 'GATECODE', 100)
+    return { ok: false, message: under ? 'That gate code is wrong. Ask an admin for today’s code.' : 'Too many wrong codes from this network. Ask an admin.' }
+  }
 
   const exp = String(Date.now() + 86_400_000)
   const id64 = Buffer.from(`${GATE_PREFIX}${gate.version}:${name}`).toString('base64url')

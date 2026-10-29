@@ -1047,7 +1047,7 @@ body:has(.rg-grid) .page-bg {
 .gate-tile-v { font-family: var(--font-mono); font-size: 12px; font-weight: 700; letter-spacing: .08em; }
 .gate-tile-n { font-size: 12.5px; color: var(--muted); }
 .gate-tile-undo { align-self: stretch; min-height: 36px; border: 0; border-top: 2px dashed var(--line-dash); background: none; color: var(--muted); font-family: var(--font-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; cursor: pointer; }
-.gate-code { font-family: var(--font-mono); font-size: clamp(34px, 9vw, 48px); font-weight: 700; letter-spacing: .18em; color: var(--ink); }
+.gate-code { font-family: var(--font-mono); font-size: clamp(34px, 9vw, 48px); font-weight: 700; letter-spacing: .18em; color: var(--ink); overflow-wrap: anywhere; }
 .gate-body { display: flex; flex-direction: column; gap: 12px; padding: 18px; flex: 1; }
 .gate-name { font-family: var(--font-display); font-size: clamp(36px, 11vw, 58px); line-height: 1; color: var(--ink); word-break: break-word; }
 .gate-tier { font-family: var(--font-display); font-size: 18px; padding: 3px 10px; border: 2px solid var(--line); color: var(--on-fill); background: var(--amber-fill); }
