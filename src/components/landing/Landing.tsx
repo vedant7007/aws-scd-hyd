@@ -823,7 +823,7 @@ export function Landing({ registrationOpen, board, doors, prices }: Props) {
               </details>
               <details style={{border:'3px solid var(--line)',background:'var(--surface)'}}>
                 <summary style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:'14px',padding:'20px 22px',cursor:'pointer',fontFamily:'var(--font-display)',fontSize:'clamp(21.3px,5.3vw,26.3px)',color:'var(--ink)'}}>What time does it start?<span data-faq-plus="1" style={{flex:'none',fontFamily:'var(--font-mono)',fontSize:'18px',color:'var(--amber-ink)',transition:'transform .16s steps(3)'}}>+</span></summary>
-                <div style={{padding:'0 22px 22px',fontSize:'15px',lineHeight:'1.65',color:'var(--body)',maxWidth:'68ch'}}>Doors open at {doors}. Session timings are announced closer to the day.</div>
+                <div style={{padding:'0 22px 22px',fontSize:'15px',lineHeight:'1.65',color:'var(--body)',maxWidth:'68ch'}}>Doors open at {doors}. <a href="/agenda" style={{color:'var(--mint-ink)',fontWeight:'bold'}}>See the full schedule</a>. Timings and venues may change on the day.</div>
               </details>
               <details style={{border:'3px solid var(--line)',background:'var(--surface)'}}>
                 <summary style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:'14px',padding:'20px 22px',cursor:'pointer',fontFamily:'var(--font-display)',fontSize:'clamp(21.3px,5.3vw,26.3px)',color:'var(--ink)'}}>Is this run by AWS?<span data-faq-plus="1" style={{flex:'none',fontFamily:'var(--font-mono)',fontSize:'18px',color:'var(--amber-ink)',transition:'transform .16s steps(3)'}}>+</span></summary>

@@ -1,6 +1,7 @@
 import { BUILDER_SIGNUP, BUILDER_STEPS } from '../../content/builder'
 import { event, venue } from '../../content/event'
-import { programSession } from '../../content/program'
+import { ALONGSIDE, SCHEDULE, SCHEDULE_CAVEAT, VENUE_TBA, WORKSHOP_SLOT, clock } from '../../content/schedule'
+import { hasWorkshop, programSession } from '../../content/program'
 import { formatInr, passes, tierLabel } from '../../content/passes'
 import { REFERRAL_CUTOFF_LABEL, referralOpen } from '../../content/referral'
 import type { Attendee } from '../db/types'
@@ -37,7 +38,7 @@ export const SUBJECTS = {
   receipt: `We have your details, ${event.shortName}`,
   confirmation: `You're in! Payment verified, ${event.shortName}`,
   rejection: `We could not match your payment, ${event.shortName}`,
-  dayBefore: `Tomorrow: ${event.shortName}`,
+  dayBefore: `Today: your schedule and what to bring, ${event.shortName}`,
   ticket: `Your ticket: ${event.shortName}`,
   registrationsOpen: `Registrations are open: ${event.shortName}`,
   stillVerifying: `We are still checking your payment, ${event.shortName}`,
@@ -657,42 +658,113 @@ ${footerText}`,
   }
 }
 
-/** Sent the day before with timings and directions. */
+/** The AWS sign-up in eight lines, for the day-before email. The attached PDF has the long form. */
+const AWS_STEPS = [
+  'Go to <strong>aws.amazon.com</strong>, click <strong>Create an AWS Account</strong>',
+  'Email, the code from your inbox, a password',
+  'Account type <strong>Personal</strong>, your details as on your ID',
+  'Pick the <strong>Free plan</strong>',
+  'Card check if asked: INR 2, refunded',
+  'Phone OTP',
+  'Support: <strong>Basic (free)</strong>',
+  'Sign in once at console.aws.amazon.com',
+]
+
+/**
+ * Sent on the morning of the event (named dayBefore from the original plan):
+ * the running order with a link to the live schedule page, what to bring and,
+ * for the hands-on passes only, the laptop and the AWS account (the sender
+ * attaches the PDF guide to those).
+ */
 export function dayBefore(r: Person): Body {
   const url = passLink(r.passId)
+  const scheduleUrl = link('/agenda')
+  const howTo = link('/aws-account')
+  const handsOn = hasWorkshop(r.tier)
+  const workshop = programSession(r.workshop)?.title
+  const slot = r.workshop ? WORKSHOP_SLOT[r.workshop] : undefined
+  const when = slot ? `${clock(slot.start)} to ${clock(slot.end)}, ${slot.venue ?? VENUE_TBA}` : VENUE_TBA
+  const bring = [
+    'Your ticket QR (on your phone or printed) and your college ID card',
+    ...(handsOn ? ['Your laptop, fully charged, and its charger', 'Your phone, for AWS sign-in codes'] : []),
+    'A water bottle',
+  ]
+  const plan = SCHEDULE.map((s) => `${clock(s.start).padEnd(9)} ${s.title}${s.venue ? ` (${s.venue})` : ''}`).join('\n')
+  const planHtml = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${SCHEDULE.map(
+    (s, i) =>
+      `<tr><td style="padding:7px 10px 7px 0;${i ? 'border-top:1px solid #E3DDD4;' : ''}font-family:${MONO};font-size:12px;font-weight:bold;color:${s.kind === 'workshop' ? '#55359F' : INK};white-space:nowrap;vertical-align:top;width:70px">${clock(s.start)}</td><td style="padding:7px 0;${i ? 'border-top:1px solid #E3DDD4;' : ''}font-family:${SANS};font-size:14px;line-height:1.4;color:${INK}">${s.kind === 'break' ? `<span style="color:${MUTED}">${esc(s.title)}</span>` : `<strong>${esc(s.title)}</strong>`}${s.venue ? `<br><span style="font-family:${MONO};font-size:11px;color:${MINT}">${esc(s.venue)}</span>` : ''}</td></tr>`,
+  ).join('')}</table>`
   return {
     subject: SUBJECTS.dayBefore,
     text: `Hi ${r.name},
 
-See you tomorrow.
+See you today at ${event.name}.
 
+THE DAY
+Date:   ${event.dateLabel}
 Doors:  ${doors} IST. Come early, the gate queue is the slow part.
-Where:  ${venue.name}${venue.address ? `\n        ${venue.address}` : ''}
+Where:  ${venue.address}
 Map:    ${venue.directionsUrl}
+
+SCHEDULE
+${plan}
+Project Expo runs all afternoon, ${clock(ALONGSIDE.start)} to ${clock(ALONGSIDE.end)}, ${ALONGSIDE.venue}.
+${SCHEDULE_CAVEAT}
+Full schedule, live on the day: ${scheduleUrl}
+${handsOn ? `
+YOUR HANDS-ON WORKSHOP: BRING YOUR LAPTOP
+${workshop ? `${workshop}\n` : ''}${when}
+This is laptop open: you build along with the speaker. Bring your laptop fully charged and its charger. Charging points are limited.
+
+MAKE YOUR AWS ACCOUNT BEFORE YOU LEAVE
+You need an AWS account for your workshop. The step by step guide is attached to this email as a PDF (AWS-account-guide.pdf). Sign-up needs an OTP on your phone and sometimes a card check, and campus Wi-Fi with 200 people is the worst place to wait for that.
+Watch how (short video): ${howTo}
+In short: aws.amazon.com > Create an AWS Account > email and password > Personal > Free plan > card check if asked (INR 2, refunded) > phone OTP > Basic support (free) > sign in once.
+` : ''}
+BRING
+${bring.map((x) => `- ${x}`).join('\n')}
 
 YOUR TICKET
 ${url}
-
 Open it before you arrive so it is loaded, then show the QR at the gate.
 
 Lunch is included.
 
 ${footerText}`,
     html: shell({
-      preheader: `Doors at ${doors} IST tomorrow. Bring your ticket QR.`,
-      tag: 'Tomorrow',
-      title: `See you tomorrow, ${r.name}`,
+      preheader: `Doors at ${doors} IST today. Your schedule${handsOn ? ', your laptop and your AWS account' : ' and what to bring'}.`,
+      tag: 'Today',
+      title: `See you today, ${r.name}`,
       body: [
+        p(`Today is <strong>${esc(event.name)}</strong>. Here is everything you need, in one place.`),
         card(
           `${eyebrow('The day')}${rows([
-            ['Doors', `${esc(doors)} IST`],
-            ['Venue', `${esc(venue.name)}${venue.address ? `<br>${esc(venue.address)}` : ''}`],
+            ['Date', esc(event.dateLabel)],
+            ['Doors', `<strong>${esc(doors)} IST</strong>`],
+            ['Venue', esc(venue.address)],
             ['Map', `<a href="${venue.directionsUrl}" style="color:${MINT};font-weight:bold">Open in Google Maps</a>`],
             ['Lunch', 'Included'],
           ])}`,
           '#E6F5EB',
         ),
-        p('Come early, the gate queue is the slow part. Open your ticket before you arrive so it is loaded, then show the QR at the gate.'),
+        card(
+          `${eyebrow('Schedule', ORANGE)}${button(scheduleUrl, 'SEE THE FULL SCHEDULE &rarr;')}${planHtml}${small(`<strong>Project Expo</strong> runs all afternoon, ${clock(ALONGSIDE.start)} to ${clock(ALONGSIDE.end)}, ${esc(ALONGSIDE.venue)}.`)}${small(esc(SCHEDULE_CAVEAT))}`,
+        ),
+        handsOn
+          ? card(
+              `${eyebrow('Your hands-on workshop', ORANGE)}<p style="margin:0 0 10px;font-family:${SANS};font-size:20px;font-weight:bold;line-height:1.25;color:${INK}">BRING YOUR LAPTOP</p>${workshop ? p(`<strong>${esc(workshop)}</strong><br><span style="font-family:${MONO};font-size:12px;color:${MUTED}">${esc(when)}</span>`) : ''}${p('This is laptop open: you build along with the speaker. Bring your laptop <strong>fully charged</strong> and its <strong>charger</strong>. Charging points are limited.')}`,
+              '#FFF6E8',
+            )
+          : '',
+        handsOn
+          ? card(
+              `${eyebrow('Make your AWS account before you leave', ORANGE)}${p(
+                'You need an AWS account for your workshop. The <strong>step by step guide is attached</strong> to this email as a PDF. Sign-up needs an OTP on your phone and sometimes a card check, and campus Wi-Fi with 200 people is the worst place to wait for that.',
+              )}${button(howTo, 'WATCH HOW &rarr;')}${AWS_STEPS.map((x, i) => p(`<strong style="font-family:${MONO};color:${ORANGE}">${i + 1}</strong>&nbsp;&nbsp;${x}`)).join('')}${small('Offered sign-up with Google or GitHub? Take it, it usually needs no card. Stuck? Ask a volunteer at the venue.')}`,
+            )
+          : '',
+        card(`${eyebrow('Bring')}${bring.map((x) => p(`&#9632;&nbsp; ${esc(x)}`)).join('')}`),
+        p('Open your ticket before you arrive so it is loaded, then show the QR at the gate.'),
         button(url, 'OPEN MY TICKET &rarr;'),
       ].join('\n'),
     }),

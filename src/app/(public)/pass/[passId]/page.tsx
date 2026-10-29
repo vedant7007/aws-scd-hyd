@@ -6,7 +6,7 @@ import { PassPrinter } from '@/components/pass/PassPrinter'
 import { PrefsForm } from '@/components/pass/PrefsForm'
 import { doorsLabel, event, venue } from '@/content/event'
 import { tierLabel } from '@/content/passes'
-import { programSession } from '@/content/program'
+import { hasWorkshop, programSession } from '@/content/program'
 import { TRANSPORT_PDF } from '@/content/transport'
 import { normalisePassId } from '@/lib/db/keys'
 import { getAttendee } from '@/lib/db/queries'
@@ -89,6 +89,10 @@ export default async function PassPage({ params }: PageProps<'/pass/[passId]'>) 
       <PrefsForm passId={attendee.passId} food={attendee.food ?? null} busRoute={attendee.busRoute ?? null} busStop={attendee.busStop ?? null} />
 
       <nav aria-label="Ticket actions" className="pt-actions">
+        <Link href="/agenda" className="pt-action" data-hot="1">
+          <span className="pt-action-i" aria-hidden="true">◷</span>
+          TODAY&apos;S SCHEDULE
+        </Link>
         <a href={calendar} target="_blank" rel="noopener" className="pt-action">
           <span className="pt-action-i" aria-hidden="true">▦</span>
           ADD TO CALENDAR
@@ -101,6 +105,12 @@ export default async function PassPage({ params }: PageProps<'/pass/[passId]'>) 
           <span className="pt-action-i" aria-hidden="true">▣</span>
           BUS TIMINGS (PDF)
         </a>
+        {hasWorkshop(attendee.tier) && (
+          <Link href="/aws-account" className="pt-action">
+            <span className="pt-action-i" aria-hidden="true">▶</span>
+            HOW TO MAKE YOUR AWS ACCOUNT
+          </Link>
+        )}
         <Link href="/attending" className="pt-action" data-hot="1">
           <span className="pt-action-i" aria-hidden="true">★</span>
           I&apos;M ATTENDING POST
