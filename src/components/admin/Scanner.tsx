@@ -57,8 +57,13 @@ const passIdIn = (text: string) => {
   return m ? `SCD-${m[1]!.toUpperCase()}` : text.trim().toUpperCase()
 }
 
-async function post(passId: string, action: 'lookup' | 'checkin' | 'swag' | 'lunch' | 'snack' | 'undo'): Promise<Response> {
-  return fetch('/api/admin/scan', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ passId, action }) })
+type Given = 'swag' | 'lunch' | 'snack'
+/** Undo of one handed-over item, by the field it clears on the card. */
+const GIVEN_FIELD = { swag: 'swagIssuedAt', lunch: 'lunchAt', snack: 'snackAt' } as const
+const GIVEN_LABEL = { swag: 'SWAG', lunch: 'LUNCH TOKEN', snack: 'LIGHT FOOD' } as const
+
+async function post(passId: string, action: 'lookup' | 'checkin' | 'swag' | 'lunch' | 'snack' | 'undo', what?: 'checkin' | Given): Promise<Response> {
+  return fetch('/api/admin/scan', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ passId, action, what }) })
 }
 
 /** Two short high notes for yes, one low buzz for no. */
@@ -197,13 +202,15 @@ export function Scanner({ roster }: { roster: RosterEntry[] }) {
     [],
   )
 
-  const act = async (action: 'checkin' | 'swag' | 'lunch' | 'snack' | 'undo') => {
+  const act = async (action: 'checkin' | 'swag' | 'lunch' | 'snack' | 'undo', what?: Given) => {
     if (!card) return
     const ref = card.passId
     try {
-      const res = await post(ref, action)
+      const res = await post(ref, action, what)
       const data = (await res.json()) as ScanResult
-      if (action === 'checkin') {
+      if (action === 'undo' && what) {
+        setCard({ ...card, [GIVEN_FIELD[what]]: undefined, message: `${GIVEN_LABEL[what]} undone.` })
+      } else if (action === 'checkin') {
         const verdict: Verdict = data.repeat ? 'duplicate' : data.ok ? 'admitted' : 'blocked'
         setCard({ ...card, verdict, checkedInAt: data.checkedInAt, swagIssuedAt: data.swagIssuedAt, message: data.message })
         if (verdict === 'admitted') setInside((s) => new Set(s).add(ref))
@@ -353,7 +360,7 @@ export function Scanner({ roster }: { roster: RosterEntry[] }) {
   )
 }
 
-function GateSheet({ card, fast, autoLeft, onClose, onAct }: { card: Card; fast: boolean; autoLeft: number; onClose: () => void; onAct: (a: 'checkin' | 'swag' | 'lunch' | 'snack' | 'undo') => void }) {
+function GateSheet({ card, fast, autoLeft, onClose, onAct }: { card: Card; fast: boolean; autoLeft: number; onClose: () => void; onAct: (a: 'checkin' | 'swag' | 'lunch' | 'snack' | 'undo', what?: Given) => void }) {
   const v = VERDICT[card.verdict]
   const p = card.person
   const pass = p ? passFor(p.tier as Tier) : undefined
@@ -443,17 +450,23 @@ function GateSheet({ card, fast, autoLeft, onClose, onAct }: { card: Card; fast:
           {'NEXT SCAN >'}
         </button>
         {p && checkedIn ? (
-          <div className="grid grid-cols-2 gap-2">
-            <button type="button" className="btn" onClick={() => onAct('swag')} disabled={Boolean(card.swagIssuedAt)}>
-              {card.swagIssuedAt ? 'SWAG GIVEN ✓' : 'GIVE SWAG'}
-            </button>
-            <button type="button" className="btn" onClick={() => onAct('lunch')} disabled={Boolean(card.lunchAt)}>
-              {card.lunchAt ? 'LUNCH TOKEN ✓' : 'LUNCH TOKEN'}
-            </button>
-            <button type="button" className="btn" onClick={() => onAct('snack')} disabled={Boolean(card.snackAt)}>
-              {card.snackAt ? 'LIGHT FOOD ✓' : 'LIGHT FOOD'}
-            </button>
-            <button type="button" className="btn col-span-2" onClick={() => onAct('undo')}>
+          <div className="flex flex-col gap-2">
+            {(['swag', 'lunch', 'snack'] as Given[]).map((g) => {
+              const at = card[GIVEN_FIELD[g]]
+              return (
+                <div key={g} className="flex gap-2">
+                  <button type="button" className="btn flex-1" onClick={() => onAct(g)} disabled={Boolean(at)}>
+                    {at ? `${GIVEN_LABEL[g]} ✓ ${time(at)}` : `GIVE ${GIVEN_LABEL[g]}`}
+                  </button>
+                  {at ? (
+                    <button type="button" className="btn btn-mono" onClick={() => onAct('undo', g)}>
+                      UNDO
+                    </button>
+                  ) : null}
+                </div>
+              )
+            })}
+            <button type="button" className="btn" onClick={() => onAct('undo')}>
               UNDO CHECK IN
             </button>
           </div>

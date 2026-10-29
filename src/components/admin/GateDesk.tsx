@@ -107,8 +107,8 @@ export function GateDesk({ passId }: { passId: string }) {
                       {at ? `✓ ${m.label} · ${time(at)}` : busy === m.id ? '…' : m.label}
                     </button>
                     {at ? (
-                      <button type="button" className="gd-undo" disabled={busy !== null} onClick={() => act('undo', m.id)}>
-                        undo
+                      <button type="button" className="btn btn-mono" disabled={busy !== null} onClick={() => act('undo', m.id)}>
+                        {busy === m.id ? '…' : `↶ UNDO ${m.label}`}
                       </button>
                     ) : null}
                   </div>
