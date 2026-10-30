@@ -41,53 +41,69 @@ export default async function HandsOnPage({ searchParams }: PageProps<'/handson'
         .slice(0, 10)
 
   return (
-    <div className="page page-760 rise">
+    <div className="page page-760 rise flex flex-col gap-7">
       <div className="flex flex-col gap-3.5">
-        <span className="eye">{'// HANDS-ON SESSIONS'}</span>
-        <h1 className="h1 h1-lg">FIND YOUR VENUE</h1>
-        <p className="lede">For Premium, VIP and Ultra passes. Everyone takes both hands-on sessions. Search your name or pass ID, or find your name in the lists below.</p>
-        <form method="get" className="flex gap-2">
-          <input
-            name="q"
-            defaultValue={q}
-            placeholder="Your name or SCD-XXXXXXXXXX"
-            aria-label="Your name or pass ID"
-            className="min-w-0 flex-1 rounded border px-3 py-2"
-          />
+        <span className="eye">{'// HANDS-ON SESSIONS · PREMIUM, VIP & ULTRA'}</span>
+        <h1 className="h1 h1-lg">FIND YOUR LAB</h1>
+        <p className="lede">You take both hands-on sessions in the same lab. Search your name or pass ID to see which one.</p>
+      </div>
+
+      <form method="get" className="card-orange flex flex-col gap-3 p-4">
+        <label htmlFor="hq" className="lbl">
+          Your name or pass ID
+        </label>
+        <div className="flex gap-2">
+          <input id="hq" name="q" defaultValue={q} placeholder="e.g. Priya or SCD-XXXXXXXXXX" autoComplete="off" className="inp min-w-0 flex-1" />
           <button type="submit" className="btn btn-primary">
             FIND
           </button>
-        </form>
-        {q && (
-          <div className="flex flex-col gap-1" aria-live="polite">
-            {matches.length === 0 ? (
-              <p className="lede">No match for &quot;{q}&quot;. Hands-on is for Premium, VIP and Ultra passes. Try part of your name, or ask a volunteer.</p>
-            ) : (
-              matches.map((m, i) => (
-                <p key={i} className="lede">
-                  <strong>{m.name}</strong>: {m.venue}
-                </p>
-              ))
-            )}
-          </div>
-        )}
-        <p className="lede">
-          {venues.map((v) => (
-            <a key={v.label} href={`#${v.label.replaceAll(' ', '-')}`} className="mr-4 underline">
-              {v.label} ({v.names.length})
-            </a>
-          ))}
-        </p>
+        </div>
+      </form>
+
+      {q && (
+        <div aria-live="polite" className="flex flex-col gap-3">
+          {matches.length === 0 ? (
+            <div className="card-warn p-4">
+              <p className="lede">
+                No match for &quot;{q}&quot;. Try part of your name. Hands-on is for Premium, VIP and Ultra passes; ask a volunteer if yours is one.
+              </p>
+            </div>
+          ) : (
+            matches.map((m, i) => (
+              <div key={i} className="card-gold flex flex-wrap items-center justify-between gap-3 p-4">
+                <span className="card-title">{m.name}</span>
+                <span className="h2">{m.venue}</span>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-3">
+        {venues.map((v) => (
+          <a key={v.label} href={`#${v.label.replaceAll(' ', '-')}`} className="card flex flex-col gap-1 p-4">
+            <span className="h2">{v.label}</span>
+            <span className="lbl">
+              <span className="num">{v.names.length}</span> people · {v.names[0]?.[0]} to {v.names[v.names.length - 1]?.[0]}
+            </span>
+          </a>
+        ))}
       </div>
+
       {venues.map((v) => (
-        <section key={v.label} id={v.label.replaceAll(' ', '-')} className="mt-10 flex flex-col gap-3">
-          <h2 className="h1">{v.label}</h2>
-          <p className="lede">
-            {v.names[0]} to {v.names[v.names.length - 1]}
-          </p>
-          <ol className="list-decimal pl-6 leading-8">
+        <section key={v.label} id={v.label.replaceAll(' ', '-')} className="card scroll-mt-24">
+          <div className="card-head">
+            <span className="card-title">{v.label}</span>
+            <span className="lbl">
+              {v.names[0]} to {v.names[v.names.length - 1]}
+            </span>
+          </div>
+          <ol className="grid gap-x-6 p-4 sm:grid-cols-2">
             {v.names.map((n, i) => (
-              <li key={i}>{n}</li>
+              <li key={i} className="flex gap-3 border-b border-[var(--line-soft)] py-2">
+                <span className="num w-7 shrink-0 text-right text-[var(--muted)]">{i + 1}</span>
+                <span>{n}</span>
+              </li>
             ))}
           </ol>
         </section>
