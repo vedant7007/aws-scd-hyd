@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 /**
  * The hands-on split, for a QR at the hall doors. Verified attendees sorted by
- * name, first half Venue 1, the rest Venue 2. Both halves take both sessions.
+ * name, first half C 205, the rest N 203. Both halves take both sessions.
  * The lists show names only. A pass id is matched on the server and never
  * printed, so the page does not hand out everyone's pass.
  */
@@ -25,10 +25,10 @@ export default async function HandsOnPage({ searchParams }: PageProps<'/handson'
     .map((a) => ({ name: a.name.trim(), passId: a.passId }))
     .sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }))
   const half = Math.ceil(people.length / 2)
-  const venueOf = (i: number) => (i < half ? 'VENUE 1' : 'VENUE 2')
+  const venueOf = (i: number) => (i < half ? 'C 205 LAB' : 'N 203 LAB')
   const venues = [
-    { label: 'VENUE 1', names: people.slice(0, half).map((p) => p.name) },
-    { label: 'VENUE 2', names: people.slice(half).map((p) => p.name) },
+    { label: 'C 205 LAB', names: people.slice(0, half).map((p) => p.name) },
+    { label: 'N 203 LAB', names: people.slice(half).map((p) => p.name) },
   ]
 
   const passId = normalisePassId(q)
@@ -73,14 +73,14 @@ export default async function HandsOnPage({ searchParams }: PageProps<'/handson'
         )}
         <p className="lede">
           {venues.map((v) => (
-            <a key={v.label} href={`#${v.label.replace(' ', '-')}`} className="mr-4 underline">
+            <a key={v.label} href={`#${v.label.replaceAll(' ', '-')}`} className="mr-4 underline">
               {v.label} ({v.names.length})
             </a>
           ))}
         </p>
       </div>
       {venues.map((v) => (
-        <section key={v.label} id={v.label.replace(' ', '-')} className="mt-10 flex flex-col gap-3">
+        <section key={v.label} id={v.label.replaceAll(' ', '-')} className="mt-10 flex flex-col gap-3">
           <h2 className="h1">{v.label}</h2>
           <p className="lede">
             {v.names[0]} to {v.names[v.names.length - 1]}
