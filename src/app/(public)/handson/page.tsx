@@ -98,7 +98,9 @@ export default async function HandsOnPage({ searchParams }: PageProps<'/handson'
         <section key={v.label} id={v.label.replaceAll(' ', '-')} className="card scroll-mt-24">
           <div className="card-head">
             <span className="card-title">{v.label}</span>
-            <span className="lbl">A to Z · groups together</span>
+            <span className="lbl">
+              {v.names[0]} to {v.names[v.names.length - 1]}
+            </span>
           </div>
           <ol className="grid gap-x-6 p-4 sm:grid-cols-2">
             {v.names.map((n, i) => (
