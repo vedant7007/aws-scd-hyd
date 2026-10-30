@@ -10,8 +10,9 @@ export const metadata: Metadata = {
 }
 
 /**
- * The hands-on split, for a QR at the hall doors. Verified attendees sorted by
- * name, first half C 205, the rest N 203. Both halves take both sessions.
+ * The hands-on split, for a QR at the hall doors. A group pass stays in one
+ * lab: people are taken as units (a group, or one person), in name order, and
+ * C 205 fills to half before N 203 takes the rest. Both labs take both sessions.
  * The lists show names only. A pass id is matched on the server and never
  * printed, so the page does not hand out everyone's pass.
  */
@@ -19,24 +20,27 @@ export default async function HandsOnPage({ searchParams }: PageProps<'/handson'
   const raw = (await searchParams).q
   const q = (Array.isArray(raw) ? raw[0] : raw ?? '').trim()
 
-  const people = (await listAttendees())
+  const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' })
+  const units = new Map<string, { name: string; passId: string }[]>()
+  for (const a of await listAttendees()) {
     // Basic passes do not include the hands-on workshop (content/passes.ts).
-    .filter((a) => a.state === 'VERIFIED' && a.source !== 'preview' && a.tier !== 'basic')
-    .map((a) => ({ name: a.name.trim(), passId: a.passId }))
-    .sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }))
-  const half = Math.ceil(people.length / 2)
-  const venueOf = (i: number) => (i < half ? 'C 205 LAB' : 'N 203 LAB')
-  const venues = [
-    { label: 'C 205 LAB', names: people.slice(0, half).map((p) => p.name) },
-    { label: 'N 203 LAB', names: people.slice(half).map((p) => p.name) },
-  ]
+    if (a.state !== 'VERIFIED' || a.source === 'preview' || a.tier === 'basic') continue
+    const key = a.groupId ?? a.passId
+    units.set(key, [...(units.get(key) ?? []), { name: a.name.trim(), passId: a.passId }])
+  }
+  const ordered = [...units.values()].map((u) => u.sort(byName)).sort((a, b) => byName(a[0], b[0]))
+  const total = ordered.reduce((n, u) => n + u.length, 0)
+  const labs = { 'C 205 LAB': [] as { name: string; passId: string }[], 'N 203 LAB': [] as { name: string; passId: string }[] }
+  for (const u of ordered) (labs['C 205 LAB'].length < total / 2 ? labs['C 205 LAB'] : labs['N 203 LAB']).push(...u)
+  const people = Object.entries(labs).flatMap(([venue, ps]) => ps.sort(byName).map((p) => ({ ...p, venue })))
+  const venues = Object.entries(labs).map(([label, ps]) => ({ label, names: ps.map((p) => p.name) }))
 
   const passId = normalisePassId(q)
   const needle = q.toLowerCase()
   const matches = !q
     ? []
     : people
-        .map((p, i) => ({ name: p.name, venue: venueOf(i), hit: passId ? p.passId === passId : needle.length >= 2 && p.name.toLowerCase().includes(needle) }))
+        .map((p) => ({ name: p.name, venue: p.venue, hit: passId ? p.passId === passId : needle.length >= 2 && p.name.toLowerCase().includes(needle) }))
         .filter((m) => m.hit)
         .slice(0, 10)
 
@@ -84,7 +88,7 @@ export default async function HandsOnPage({ searchParams }: PageProps<'/handson'
           <a key={v.label} href={`#${v.label.replaceAll(' ', '-')}`} className="card flex flex-col gap-1 p-4">
             <span className="h2">{v.label}</span>
             <span className="lbl">
-              <span className="num">{v.names.length}</span> people · {v.names[0]?.[0]} to {v.names[v.names.length - 1]?.[0]}
+              <span className="num">{v.names.length}</span> people
             </span>
           </a>
         ))}
@@ -94,9 +98,7 @@ export default async function HandsOnPage({ searchParams }: PageProps<'/handson'
         <section key={v.label} id={v.label.replaceAll(' ', '-')} className="card scroll-mt-24">
           <div className="card-head">
             <span className="card-title">{v.label}</span>
-            <span className="lbl">
-              {v.names[0]} to {v.names[v.names.length - 1]}
-            </span>
+            <span className="lbl">A to Z · groups together</span>
           </div>
           <ol className="grid gap-x-6 p-4 sm:grid-cols-2">
             {v.names.map((n, i) => (
