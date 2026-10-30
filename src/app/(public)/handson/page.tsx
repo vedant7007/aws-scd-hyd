@@ -20,7 +20,8 @@ export default async function HandsOnPage({ searchParams }: PageProps<'/handson'
   const q = (Array.isArray(raw) ? raw[0] : raw ?? '').trim()
 
   const people = (await listAttendees())
-    .filter((a) => a.state === 'VERIFIED' && a.source !== 'preview')
+    // Basic passes do not include the hands-on workshop (content/passes.ts).
+    .filter((a) => a.state === 'VERIFIED' && a.source !== 'preview' && a.tier !== 'basic')
     .map((a) => ({ name: a.name.trim(), passId: a.passId }))
     .sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }))
   const half = Math.ceil(people.length / 2)
@@ -44,7 +45,7 @@ export default async function HandsOnPage({ searchParams }: PageProps<'/handson'
       <div className="flex flex-col gap-3.5">
         <span className="eye">{'// HANDS-ON SESSIONS'}</span>
         <h1 className="h1 h1-lg">FIND YOUR VENUE</h1>
-        <p className="lede">Everyone takes both hands-on sessions. Search your name or pass ID, or find your name in the lists below.</p>
+        <p className="lede">For Premium, VIP and Ultra passes. Everyone takes both hands-on sessions. Search your name or pass ID, or find your name in the lists below.</p>
         <form method="get" className="flex gap-2">
           <input
             name="q"
@@ -60,7 +61,7 @@ export default async function HandsOnPage({ searchParams }: PageProps<'/handson'
         {q && (
           <div className="flex flex-col gap-1" aria-live="polite">
             {matches.length === 0 ? (
-              <p className="lede">No match for &quot;{q}&quot;. Try part of your name, or ask a volunteer.</p>
+              <p className="lede">No match for &quot;{q}&quot;. Hands-on is for Premium, VIP and Ultra passes. Try part of your name, or ask a volunteer.</p>
             ) : (
               matches.map((m, i) => (
                 <p key={i} className="lede">
