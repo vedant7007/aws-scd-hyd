@@ -40,11 +40,11 @@ export type UploadGrant = { key: string; url: string; headers: Record<string, st
  * A one-shot URL to PUT one image for one pass. The content type and length
  * are signed into it, so nothing else can be uploaded with it.
  */
-export async function presignUpload(passId: string, contentType: string, bytes: number): Promise<UploadGrant | { error: string }> {
+export async function presignUpload(passId: string, contentType: string, bytes: number, folder = 'screenshots'): Promise<UploadGrant | { error: string }> {
   const ext = ALLOWED[contentType]
   if (!ext) return { error: 'That file type did not work. Use a JPG or PNG under 5 MB.' }
   if (!Number.isInteger(bytes) || bytes <= 0 || bytes > MAX_SCREENSHOT_BYTES) return { error: 'That image is over 5 MB. Crop it or send a normal screenshot instead.' }
-  const key = `screenshots/${passId}/${randomUUID()}.${ext}`
+  const key = `${folder}/${passId}/${randomUUID()}.${ext}`
   const url = await getSignedUrl(
     s3(),
     new PutObjectCommand({ Bucket: screenshotBucket(), Key: key, ContentType: contentType, ContentLength: bytes }),
@@ -54,8 +54,8 @@ export async function presignUpload(passId: string, contentType: string, bytes: 
 }
 
 /** Whether the object the browser says it uploaded is actually there and is this pass's. */
-export async function screenshotExists(passId: string, key: string): Promise<boolean> {
-  if (!key.startsWith(`screenshots/${passId}/`)) return false
+export async function screenshotExists(passId: string, key: string, folder = 'screenshots'): Promise<boolean> {
+  if (!key.startsWith(`${folder}/${passId}/`)) return false
   try {
     await s3().send(new HeadObjectCommand({ Bucket: screenshotBucket(), Key: key }))
     return true

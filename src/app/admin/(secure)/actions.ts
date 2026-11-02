@@ -19,6 +19,7 @@ import { getAttendee } from '@/lib/db/queries'
 import { isReservedAddress, sendEmail } from '@/lib/email/send'
 import { ticket } from '@/lib/email/templates'
 import { ticketImages } from '@/lib/email/ticket-image'
+import { mailCertificate, setCertState } from '@/lib/certificates'
 
 /**
  * Amendment 1 section 6. Every action resolves the admin first, so the
@@ -237,4 +238,18 @@ export async function newGateCodeAction(): Promise<ActionState> {
   console.info(`[crew] new gate code by ${email}`)
   revalidatePath('/admin/users')
   return { ok: true, message: `New code ${gate.code}. Volunteers on the old code are signed out.` }
+}
+
+/** Issue a held certificate (and mail it), or withdraw one. */
+export async function certAction(formData: FormData): Promise<void> {
+  const { email } = await requireAdmin()
+  const passId = normalisePassId(String(formData.get('passId') ?? ''))
+  const to = formData.get('to') === 'ISSUED' ? 'ISSUED' : 'REVOKED'
+  if (!passId) return
+  const cert = await setCertState(passId, to, email)
+  console.info(`[cert] ${passId} -> ${to} by ${email}${cert ? '' : ' (no change)'}`)
+  if (cert && to === 'ISSUED' && !isReservedAddress(cert.email)) {
+    await mailCertificate(cert).catch((err) => console.error(`[cert] mail for ${cert.certId} failed`, err))
+  }
+  revalidatePath('/admin/certificates')
 }
