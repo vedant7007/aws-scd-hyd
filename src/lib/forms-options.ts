@@ -113,6 +113,9 @@ export const SPEAKER_FORM: Section[] = [
 ]
 
 export const REPORT_KINDS = [
+  { id: 'swag', label: 'SWAG / KIT' },
+  { id: 'food', label: 'FOOD' },
+  { id: 'certificate', label: 'CERTIFICATE' },
   { id: 'conduct', label: 'CONDUCT' },
   { id: 'registration', label: 'REGISTRATION' },
   { id: 'payment', label: 'PAYMENT' },
